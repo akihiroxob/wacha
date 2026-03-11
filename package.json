@@ -1,0 +1,33 @@
+{
+  "name": "wacha",
+  "version": "1.0.0",
+  "description": "Worker Aggregation and Control Hub for Agents",
+  "homepage": "https://github.com/akihiroxob/wacha#readme",
+  "bugs": {
+    "url": "https://github.com/akihiroxob/wacha/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/akihiroxob/wacha.git"
+  },
+  "license": "MIT",
+  "author": "",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "test": "mkdir -p .tmp && WACHA_DB_PATH=.tmp/wacha-test.db node --import tsx --test test/**/*.test.ts"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.2"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.6.2",
+    "hono": "^4.12.4",
+    "kysely": "^0.28.11",
+    "zod": "^4.3.6"
+  }
+}

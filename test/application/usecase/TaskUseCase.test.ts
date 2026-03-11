@@ -1,0 +1,125 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+
+import { Task } from "@domain/model/Task.ts";
+import { TaskRepository } from "@domain/repository/TaskRepository.ts";
+import { TaskStatus } from "@constants/TaskStatus.ts";
+import { ListTaskUseCase } from "@application/usecase/ListTaskUseCase.ts";
+import { IssueTaskUseCase } from "@application/usecase/IssueTaskUseCase.ts";
+import { ClaimTaskUseCase } from "@application/usecase/ClaimTaskUseCase.ts";
+import { CompleteTaskUseCase } from "@application/usecase/CompleteTaskUseCase.ts";
+import { AcceptTaskUseCase } from "@application/usecase/AcceptTaskUseCase.ts";
+import { RejectTaskUseCase } from "@application/usecase/RejectTaskUseCase.ts";
+
+class InMemoryTaskRepository implements TaskRepository {
+  private tasks = new Map<string, Task>();
+
+  constructor(seed: Task[] = []) {
+    seed.forEach((task) => this.tasks.set(task.id, task));
+  }
+
+  async findAll(): Promise<Task[]> {
+    return [...this.tasks.values()];
+  }
+
+  async findByStatus(status: TaskStatus): Promise<Task[]> {
+    return [...this.tasks.values()].filter((task) => task.status === status);
+  }
+
+  async findById(taskId: string): Promise<Task | null> {
+    return this.tasks.get(taskId) ?? null;
+  }
+
+  async create(title: string, description?: string): Promise<Task> {
+    const task = new Task(
+      `task-${this.tasks.size + 1}`,
+      title,
+      description ?? null,
+      TaskStatus.TODO,
+      null,
+      1000,
+      1000,
+    );
+    this.tasks.set(task.id, task);
+    return task;
+  }
+
+  async save(task: Task): Promise<void> {
+    this.tasks.set(task.id, task);
+  }
+}
+
+function createTask(status: TaskStatus = TaskStatus.TODO) {
+  return new Task("task-1", "Sample Task", "desc", status, null, 1000, 1000);
+}
+
+test("ListTaskUseCase returns all tasks", async () => {
+  const repo = new InMemoryTaskRepository([
+    createTask(TaskStatus.TODO),
+    new Task("task-2", "Task 2", null, TaskStatus.DOING, "worker-1", 1000, 1000),
+  ]);
+
+  const tasks = await new ListTaskUseCase(repo).execute();
+
+  assert.equal(tasks.length, 2);
+});
+
+test("IssueTaskUseCase creates a todo task", async () => {
+  const repo = new InMemoryTaskRepository();
+
+  const task = await new IssueTaskUseCase(repo).execute("New Task", "details");
+
+  assert.equal(task.title, "New Task");
+  assert.equal(task.description, "details");
+  assert.equal(task.status, TaskStatus.TODO);
+});
+
+test("ClaimTaskUseCase claims a todo task", async () => {
+  const task = createTask(TaskStatus.TODO);
+  const repo = new InMemoryTaskRepository([task]);
+
+  await new ClaimTaskUseCase(repo).execute(task.id, "worker-1");
+
+  const savedTask = await repo.findById(task.id);
+  assert.equal(savedTask?.status, TaskStatus.DOING);
+  assert.equal(savedTask?.assignee, "worker-1");
+});
+
+test("CompleteTaskUseCase completes a doing task", async () => {
+  const task = createTask(TaskStatus.DOING);
+  const repo = new InMemoryTaskRepository([task]);
+
+  await new CompleteTaskUseCase(repo).execute(task.id);
+
+  const savedTask = await repo.findById(task.id);
+  assert.equal(savedTask?.status, TaskStatus.IN_REVIEW);
+});
+
+test("AcceptTaskUseCase accepts an in_review task", async () => {
+  const task = createTask(TaskStatus.IN_REVIEW);
+  const repo = new InMemoryTaskRepository([task]);
+
+  await new AcceptTaskUseCase(repo).execute(task.id);
+
+  const savedTask = await repo.findById(task.id);
+  assert.equal(savedTask?.status, TaskStatus.ACCEPTED);
+});
+
+test("RejectTaskUseCase rejects an in_review task", async () => {
+  const task = createTask(TaskStatus.IN_REVIEW);
+  const repo = new InMemoryTaskRepository([task]);
+
+  await new RejectTaskUseCase(repo).execute(task.id);
+
+  const savedTask = await repo.findById(task.id);
+  assert.equal(savedTask?.status, TaskStatus.REJECTED);
+});
+
+test("CompleteTaskUseCase throws when task is missing", async () => {
+  const repo = new InMemoryTaskRepository();
+
+  await assert.rejects(
+    () => new CompleteTaskUseCase(repo).execute("missing-task"),
+    /not exists/,
+  );
+});

@@ -1,0 +1,49 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "rootDir": ".",
+    "baseUrl": "src",
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "paths": {
+      "@application/*": [
+        "application/*"
+      ],
+      "@constants/*": [
+        "constants/*"
+      ],
+      "@domain/*": [
+        "domain/*"
+      ],
+      "@repository/*": [
+        "infrastructure/repository/*"
+      ],
+      "@database/*": [
+        "infrastructure/database/*"
+      ],
+      "@bootstrap/*": [
+        "bootstrap/*"
+      ],
+      "@controller/*": [
+        "presentation/controller/*"
+      ],
+      "@routes/*": [
+        "presentation/routes/*"
+      ]
+    },
+  },
+  "include": [
+    "src/**/*.ts",
+    "test/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}
