@@ -25,6 +25,7 @@
     "typescript": "^5.9.2"
   },
   "dependencies": {
+    "@hono/node-server": "^1.19.11",
     "better-sqlite3": "^12.6.2",
     "hono": "^4.12.4",
     "kysely": "^0.28.11",

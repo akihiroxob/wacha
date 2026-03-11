@@ -55,13 +55,18 @@ function createTask(status: TaskStatus = TaskStatus.TODO) {
 
 test("ListTaskUseCase returns all tasks", async () => {
   const repo = new InMemoryTaskRepository([
-    createTask(TaskStatus.TODO),
-    new Task("task-2", "Task 2", null, TaskStatus.DOING, "worker-1", 1000, 1000),
+    new Task("task-1", "Task 1", "desc", TaskStatus.TODO, null, 1000, 1500),
+    new Task("task-2", "Task 2", null, TaskStatus.DOING, "worker-1", 1000, 2000),
   ]);
 
-  const tasks = await new ListTaskUseCase(repo).execute();
+  const result = await new ListTaskUseCase(repo).execute();
 
-  assert.equal(tasks.length, 2);
+  assert.equal(result.summary.total, 2);
+  assert.equal(result.summary.byStatus[TaskStatus.TODO], 1);
+  assert.equal(result.summary.byStatus[TaskStatus.DOING], 1);
+  assert.equal(result.summary.lastUpdatedAt, 2000);
+  assert.equal(result.tasks.length, 2);
+  assert.equal(result.tasks[0]?.id, "task-2");
 });
 
 test("IssueTaskUseCase creates a todo task", async () => {
