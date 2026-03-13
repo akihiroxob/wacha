@@ -1,14 +1,12 @@
 import { Generated } from "kysely";
-import type { TaskStatus } from "@constants/TaskStatus.ts";
+import type { StoryStatus } from "@constants/StoryStatus.ts";
 
-export interface TaskTable {
+export interface StoryTable {
   id: string;
   project_id: string;
-  story_id: string | null;
   title: string;
   description: string | null;
-  status: TaskStatus;
-  assignee: string | null;
+  status: StoryStatus;
   created_at: Generated<number>;
   updated_at: Generated<number>;
 }

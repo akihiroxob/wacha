@@ -18,6 +18,9 @@
       "@constants/*": [
         "constants/*"
       ],
+      "@mcp/*": [
+        "mcp/*"
+      ],
       "@domain/*": [
         "domain/*"
       ],

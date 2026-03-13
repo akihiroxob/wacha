@@ -4,7 +4,10 @@ import { serve } from "@hono/node-server";
 import { z } from "zod";
 import { RequestMethod } from "@constants/RequestMethod.ts";
 import { TaskStatus } from "@constants/TaskStatus.ts";
+import { initializeSchema } from "@database/initializeSchema.ts";
 import * as container from "container.ts";
+
+await initializeSchema();
 
 const app = new Hono();
 
@@ -356,11 +359,18 @@ app.post("/mcp", async (c) => {
     case RequestMethod.TASK_ISSUE: {
       const schema = z.object({
         title: z.string(),
-        description: z.string().optional(),
+        description: z.string().nullable().optional(),
+        projectId: z.string(),
+        storyId: z.string().optional(),
       });
-      const { title, description } = schema.parse(params);
+      const { title, description, projectId, storyId } = schema.parse(params);
 
-      const task = await container.issueTaskUseCase.execute(title, description);
+      const task = await container.issueTaskUseCase.execute(
+        title,
+        description ?? null,
+        projectId,
+        storyId,
+      );
       return c.json({ result: task });
     }
 

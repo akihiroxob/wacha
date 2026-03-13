@@ -10,6 +10,8 @@ export class SQLiteTaskRepository implements TaskRepository {
       (row) =>
         new Task(
           row.id,
+          row.project_id,
+          row.story_id,
           row.title,
           row.description,
           row.status as TaskStatus,
@@ -29,6 +31,8 @@ export class SQLiteTaskRepository implements TaskRepository {
       (row) =>
         new Task(
           row.id,
+          row.project_id,
+          row.story_id,
           row.title,
           row.description,
           row.status as TaskStatus,
@@ -47,6 +51,8 @@ export class SQLiteTaskRepository implements TaskRepository {
     if (!row) return null;
     return new Task(
       row.id,
+      row.project_id,
+      row.story_id,
       row.title,
       row.description,
       row.status as TaskStatus,
@@ -56,13 +62,15 @@ export class SQLiteTaskRepository implements TaskRepository {
     );
   }
 
-  async create(title: string, description?: string) {
+  async create(title: string, description: string | null, projectId: string, storyId?: string) {
     const id = crypto.randomUUID();
     const now = Date.now();
 
     const task = await DatabaseClient.insertInto("task")
       .values({
         id,
+        project_id: projectId,
+        story_id: storyId ?? null,
         title,
         description: description ?? null,
         status: TaskStatus.TODO,
@@ -75,6 +83,8 @@ export class SQLiteTaskRepository implements TaskRepository {
 
     return new Task(
       task.id,
+      task.project_id,
+      task.story_id,
       task.title,
       task.description,
       task.status as TaskStatus,
@@ -97,17 +107,6 @@ export class SQLiteTaskRepository implements TaskRepository {
         updated_at: Date.now(),
       })
       .where("id", "=", task.id)
-      .execute();
-  }
-
-  async updateTaskStatus(taskId: string, status: TaskStatus, workerId?: string) {
-    await DatabaseClient.updateTable("task")
-      .set({
-        status,
-        assignee: workerId ?? null,
-        updated_at: Date.now(),
-      })
-      .where("id", "=", taskId)
       .execute();
   }
 

@@ -3,13 +3,22 @@ import { TaskStatus } from "@constants/TaskStatus.ts";
 export class Task {
   constructor(
     public id: string,
+    public projectId: string,
+    public storyId: string | null,
     public title: string,
     public description: string | null,
     public status: TaskStatus,
     public assignee: string | null,
     public createdAt: number,
     public updatedAt: number,
-  ) {}
+  ) {
+    if (projectId.trim() === "") {
+      throw new Error("task projectId cannot be empty");
+    }
+    if (title.trim() === "") {
+      throw new Error("task title cannot be empty");
+    }
+  }
 
   claim(workerId: string) {
     if (this.status !== TaskStatus.TODO) {

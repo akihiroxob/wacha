@@ -5,7 +5,7 @@ import { Task } from "@domain/model/Task.ts";
 import { TaskStatus } from "@constants/TaskStatus.ts";
 
 function createTask(status: TaskStatus = TaskStatus.TODO) {
-  return new Task("task-1", "Sample Task", "desc", status, null, 1000, 1000);
+  return new Task("task-1", "project-1", null, "Sample Task", "desc", status, null, 1000, 1000);
 }
 
 test("Task.claim changes status to doing and sets assignee", () => {

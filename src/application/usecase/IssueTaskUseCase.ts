@@ -4,7 +4,12 @@ import { Task } from "@domain/model/Task.ts";
 export class IssueTaskUseCase {
   constructor(private taskRepository: TaskRepository) {}
 
-  async execute(title: string, description?: string): Promise<Task> {
-    return this.taskRepository.create(title, description);
+  async execute(
+    title: string,
+    description: string | null,
+    projectId: string,
+    storyId?: string,
+  ): Promise<Task> {
+    return this.taskRepository.create(title, description, projectId, storyId);
   }
 }

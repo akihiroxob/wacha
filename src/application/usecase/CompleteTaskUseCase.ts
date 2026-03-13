@@ -11,7 +11,7 @@ export class CompleteTaskUseCase {
       throw new Error(`the task(${taskId}) is not in doing status`);
     }
 
-    task.status = TaskStatus.IN_REVIEW;
+    task.complete();
     await this.taskRepository.save(task);
   }
 }

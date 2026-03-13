@@ -11,7 +11,7 @@ export class RejectTaskUseCase {
       throw new Error(`the task(${taskId}) is not in in_review status`);
     }
 
-    task.status = TaskStatus.REJECTED;
+    task.reject();
     await this.taskRepository.save(task);
   }
 }

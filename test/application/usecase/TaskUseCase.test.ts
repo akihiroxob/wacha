@@ -30,11 +30,18 @@ class InMemoryTaskRepository implements TaskRepository {
     return this.tasks.get(taskId) ?? null;
   }
 
-  async create(title: string, description?: string): Promise<Task> {
+  async create(
+    title: string,
+    description: string | null,
+    projectId: string,
+    storyId?: string,
+  ): Promise<Task> {
     const task = new Task(
       `task-${this.tasks.size + 1}`,
+      projectId,
+      storyId ?? null,
       title,
-      description ?? null,
+      description,
       TaskStatus.TODO,
       null,
       1000,
@@ -50,13 +57,13 @@ class InMemoryTaskRepository implements TaskRepository {
 }
 
 function createTask(status: TaskStatus = TaskStatus.TODO) {
-  return new Task("task-1", "Sample Task", "desc", status, null, 1000, 1000);
+  return new Task("task-1", "project-1", null, "Sample Task", "desc", status, null, 1000, 1000);
 }
 
 test("ListTaskUseCase returns all tasks", async () => {
   const repo = new InMemoryTaskRepository([
-    new Task("task-1", "Task 1", "desc", TaskStatus.TODO, null, 1000, 1500),
-    new Task("task-2", "Task 2", null, TaskStatus.DOING, "worker-1", 1000, 2000),
+    new Task("task-1", "project-1", null, "Task 1", "desc", TaskStatus.TODO, null, 1000, 1500),
+    new Task("task-2", "project-1", "story-1", "Task 2", null, TaskStatus.DOING, "worker-1", 1000, 2000),
   ]);
 
   const result = await new ListTaskUseCase(repo).execute();
@@ -72,10 +79,11 @@ test("ListTaskUseCase returns all tasks", async () => {
 test("IssueTaskUseCase creates a todo task", async () => {
   const repo = new InMemoryTaskRepository();
 
-  const task = await new IssueTaskUseCase(repo).execute("New Task", "details");
+  const task = await new IssueTaskUseCase(repo).execute("New Task", "details", "project-1");
 
   assert.equal(task.title, "New Task");
   assert.equal(task.description, "details");
+  assert.equal(task.projectId, "project-1");
   assert.equal(task.status, TaskStatus.TODO);
 });
 
