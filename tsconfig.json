@@ -1,9 +1,11 @@
 {
   "compilerOptions": {
+    "strict": true,
     "target": "ES2022",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "strict": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "hono/jsx",
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
@@ -12,6 +14,9 @@
     "allowImportingTsExtensions": true,
     "noEmit": true,
     "paths": {
+      "@container": [
+        "container.ts"
+      ],
       "@application/*": [
         "application/*"
       ],
@@ -33,17 +38,24 @@
       "@bootstrap/*": [
         "bootstrap/*"
       ],
+      "@tool/*": [
+        "presentation/tool/*"
+      ],
       "@controller/*": [
         "presentation/controller/*"
       ],
-      "@routes/*": [
-        "presentation/routes/*"
+      "@views/*": [
+        "views/*"
+      ],
+      "@utils/*": [
+        "utils/*"
       ]
     },
   },
   "include": [
     "src/**/*.ts",
-    "test/**/*.ts"
+    "src/**/*.tsx",
+    "test/**/*.ts",
   ],
   "exclude": [
     "node_modules",
