@@ -21,7 +21,7 @@ export class Task {
   }
 
   claim(workerId: string) {
-    if (this.status !== TaskStatus.TODO) {
+    if (this.status !== TaskStatus.TODO && this.status !== TaskStatus.REJECTED) {
       throw new Error(`the task(${this.id}) is already claimed`);
     }
     this.status = TaskStatus.DOING;

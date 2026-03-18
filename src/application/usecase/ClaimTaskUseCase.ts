@@ -7,7 +7,8 @@ export class ClaimTaskUseCase {
   async execute(taskId: string, assignee: string) {
     const task = await this.taskRepository.findById(taskId);
     if (!task) throw new Error("Task not found");
-    if (task.status !== TaskStatus.TODO) throw new Error("Task is not in todo status");
+    if (task.status !== TaskStatus.TODO && task.status !== TaskStatus.REJECTED)
+      throw new Error("Task is not in todo or rejected status");
 
     task.claim(assignee);
     await this.taskRepository.save(task);
