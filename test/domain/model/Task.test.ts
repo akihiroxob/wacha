@@ -5,7 +5,7 @@ import { Task } from "@domain/model/Task.ts";
 import { TaskStatus } from "@constants/TaskStatus.ts";
 
 function createTask(status: TaskStatus = TaskStatus.TODO) {
-  return new Task("task-1", "project-1", null, "Sample Task", "desc", status, null, 1000, 1000);
+  return new Task("task-1", "project-1", null, "Sample Task", "desc", status, null, null, null, 1000, 1000);
 }
 
 test("Task.claim changes status to doing and sets assignee", () => {
@@ -15,7 +15,17 @@ test("Task.claim changes status to doing and sets assignee", () => {
 
   assert.equal(task.status, TaskStatus.DOING);
   assert.equal(task.assignee, "worker-1");
+  assert.equal(task.resumeSourceStatus, TaskStatus.TODO);
   assert.ok(task.updatedAt >= 1000);
+});
+
+test("Task.claim from rejected keeps rejected as resume source", () => {
+  const task = createTask(TaskStatus.REJECTED);
+
+  task.claim("worker-1");
+
+  assert.equal(task.status, TaskStatus.DOING);
+  assert.equal(task.resumeSourceStatus, TaskStatus.REJECTED);
 });
 
 test("Task.complete changes status from doing to in_review", () => {
@@ -27,19 +37,35 @@ test("Task.complete changes status from doing to in_review", () => {
 });
 
 test("Task.accept changes status from in_review to accepted", () => {
-  const task = createTask(TaskStatus.IN_REVIEW);
+  const task = new Task(
+    "task-1",
+    "project-1",
+    null,
+    "Sample Task",
+    "desc",
+    TaskStatus.IN_REVIEW,
+    null,
+    "Need tests",
+    TaskStatus.REJECTED,
+    1000,
+    1000,
+  );
 
   task.accept();
 
   assert.equal(task.status, TaskStatus.ACCEPTED);
+  assert.equal(task.rejectReason, null);
+  assert.equal(task.resumeSourceStatus, null);
 });
 
 test("Task.reject changes status from in_review to rejected", () => {
   const task = createTask(TaskStatus.IN_REVIEW);
 
-  task.reject();
+  task.reject("Need tests");
 
   assert.equal(task.status, TaskStatus.REJECTED);
+  assert.equal(task.rejectReason, "Need tests");
+  assert.equal(task.resumeSourceStatus, null);
 });
 
 test("Task.claim throws when status is not todo", () => {
@@ -63,5 +89,11 @@ test("Task.accept throws when status is not in_review", () => {
 test("Task.reject throws when status is not in_review", () => {
   const task = createTask(TaskStatus.DOING);
 
-  assert.throws(() => task.reject(), /not in in_review status/);
+  assert.throws(() => task.reject("Need tests"), /not in in_review status/);
+});
+
+test("Task.reject throws when reason is empty", () => {
+  const task = createTask(TaskStatus.IN_REVIEW);
+
+  assert.throws(() => task.reject(" "), /reject reason cannot be empty/);
 });

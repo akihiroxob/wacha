@@ -1,5 +1,7 @@
 import { TaskStatus } from "@constants/TaskStatus.ts";
 
+export type ResumeSourceStatus = typeof TaskStatus.TODO | typeof TaskStatus.REJECTED;
+
 export class Task {
   constructor(
     public id: string,
@@ -9,6 +11,8 @@ export class Task {
     public description: string | null,
     public status: TaskStatus,
     public assignee: string | null,
+    public rejectReason: string | null,
+    public resumeSourceStatus: ResumeSourceStatus | null,
     public createdAt: number,
     public updatedAt: number,
   ) {
@@ -24,6 +28,7 @@ export class Task {
     if (this.status !== TaskStatus.TODO && this.status !== TaskStatus.REJECTED) {
       throw new Error(`the task(${this.id}) is already claimed`);
     }
+    this.resumeSourceStatus = this.status;
     this.status = TaskStatus.DOING;
     this.assignee = workerId;
     this.updatedAt = Date.now();
@@ -34,6 +39,7 @@ export class Task {
       throw new Error(`the task(${this.id}) is not in doing status`);
     }
     this.status = TaskStatus.IN_REVIEW;
+    this.resumeSourceStatus = null;
     this.updatedAt = Date.now();
   }
 
@@ -42,14 +48,21 @@ export class Task {
       throw new Error(`the task(${this.id}) is not in in_review status`);
     }
     this.status = TaskStatus.ACCEPTED;
+    this.rejectReason = null;
+    this.resumeSourceStatus = null;
     this.updatedAt = Date.now();
   }
 
-  reject() {
+  reject(reason: string) {
     if (this.status !== TaskStatus.IN_REVIEW) {
       throw new Error(`the task(${this.id}) is not in in_review status`);
     }
+    if (reason.trim() === "") {
+      throw new Error(`the task(${this.id}) reject reason cannot be empty`);
+    }
     this.status = TaskStatus.REJECTED;
+    this.rejectReason = reason.trim();
+    this.resumeSourceStatus = null;
     this.updatedAt = Date.now();
   }
 }

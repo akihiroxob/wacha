@@ -11,6 +11,7 @@ const repository = new SQLiteProjectRepository();
 beforeEach(async () => {
   await initializeSchema();
   await DatabaseClient.deleteFrom("task").execute();
+  await DatabaseClient.deleteFrom("project_membership").execute();
   await DatabaseClient.deleteFrom("story").execute();
   await DatabaseClient.deleteFrom("project").execute();
 });

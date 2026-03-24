@@ -44,6 +44,8 @@ class InMemoryTaskRepository implements TaskRepository {
       description,
       TaskStatus.TODO,
       null,
+      null,
+      null,
       1000,
       1000,
     );
@@ -57,13 +59,25 @@ class InMemoryTaskRepository implements TaskRepository {
 }
 
 function createTask(status: TaskStatus = TaskStatus.TODO) {
-  return new Task("task-1", "project-1", null, "Sample Task", "desc", status, null, 1000, 1000);
+  return new Task(
+    "task-1",
+    "project-1",
+    null,
+    "Sample Task",
+    "desc",
+    status,
+    null,
+    null,
+    null,
+    1000,
+    1000,
+  );
 }
 
 test("ListTaskUseCase returns all tasks", async () => {
   const repo = new InMemoryTaskRepository([
-    new Task("task-1", "project-1", null, "Task 1", "desc", TaskStatus.TODO, null, 1000, 1500),
-    new Task("task-2", "project-1", "story-1", "Task 2", null, TaskStatus.DOING, "worker-1", 1000, 2000),
+    new Task("task-1", "project-1", null, "Task 1", "desc", TaskStatus.TODO, null, null, null, 1000, 1500),
+    new Task("task-2", "project-1", "story-1", "Task 2", null, TaskStatus.DOING, "worker-1", null, TaskStatus.TODO, 1000, 2000),
   ]);
 
   const result = await new ListTaskUseCase(repo).execute();
@@ -96,6 +110,7 @@ test("ClaimTaskUseCase claims a todo task", async () => {
   const savedTask = await repo.findById(task.id);
   assert.equal(savedTask?.status, TaskStatus.DOING);
   assert.equal(savedTask?.assignee, "worker-1");
+  assert.equal(savedTask?.resumeSourceStatus, TaskStatus.TODO);
 });
 
 test("CompleteTaskUseCase completes a doing task", async () => {
@@ -109,7 +124,19 @@ test("CompleteTaskUseCase completes a doing task", async () => {
 });
 
 test("AcceptTaskUseCase accepts an in_review task", async () => {
-  const task = createTask(TaskStatus.IN_REVIEW);
+  const task = new Task(
+    "task-1",
+    "project-1",
+    null,
+    "Sample Task",
+    "desc",
+    TaskStatus.IN_REVIEW,
+    null,
+    "Need tests",
+    TaskStatus.REJECTED,
+    1000,
+    1000,
+  );
   const repo = new InMemoryTaskRepository([task]);
 
   await new AcceptTaskUseCase(repo).execute(task.id);
@@ -122,10 +149,11 @@ test("RejectTaskUseCase rejects an in_review task", async () => {
   const task = createTask(TaskStatus.IN_REVIEW);
   const repo = new InMemoryTaskRepository([task]);
 
-  await new RejectTaskUseCase(repo).execute(task.id);
+  await new RejectTaskUseCase(repo).execute(task.id, "Need tests");
 
   const savedTask = await repo.findById(task.id);
   assert.equal(savedTask?.status, TaskStatus.REJECTED);
+  assert.equal(savedTask?.rejectReason, "Need tests");
 });
 
 test("CompleteTaskUseCase throws when task is missing", async () => {

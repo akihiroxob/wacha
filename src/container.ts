@@ -1,15 +1,28 @@
+import { AssignProjectRoleUseCase } from "@application/usecase/AssignProjectRoleUseCase.ts";
 import { SQLiteTaskRepository } from "@repository/SQLiteTaskRepository.ts";
+import { SQLiteProjectRepository } from "@repository/SQLiteProjectRepository.ts";
+import { SQLiteProjectMembershipRepository } from "@repository/SQLiteProjectMembershipRepository.ts";
 import { ListTaskUseCase } from "@application/usecase/ListTaskUseCase.ts";
 import { IssueTaskUseCase } from "@application/usecase/IssueTaskUseCase.ts";
 import { ClaimTaskUseCase } from "@application/usecase/ClaimTaskUseCase.ts";
 import { CompleteTaskUseCase } from "@application/usecase/CompleteTaskUseCase.ts";
 import { AcceptTaskUseCase } from "@application/usecase/AcceptTaskUseCase.ts";
 import { RejectTaskUseCase } from "@application/usecase/RejectTaskUseCase.ts";
+import { RoleAssignmentService } from "@domain/service/RoleAssignmentService.ts";
 
-const repo = new SQLiteTaskRepository();
-export const listTaskUseCase = new ListTaskUseCase(repo);
-export const issueTaskUseCase = new IssueTaskUseCase(repo);
-export const claimTaskUseCase = new ClaimTaskUseCase(repo);
-export const completeTaskUseCase = new CompleteTaskUseCase(repo);
-export const acceptTaskUseCase = new AcceptTaskUseCase(repo);
-export const rejectTaskUseCase = new RejectTaskUseCase(repo);
+const taskRepository = new SQLiteTaskRepository();
+const projectRepository = new SQLiteProjectRepository();
+const projectMembershipRepository = new SQLiteProjectMembershipRepository();
+const roleAssignmentService = new RoleAssignmentService();
+
+export const listTaskUseCase = new ListTaskUseCase(taskRepository);
+export const issueTaskUseCase = new IssueTaskUseCase(taskRepository);
+export const claimTaskUseCase = new ClaimTaskUseCase(taskRepository);
+export const completeTaskUseCase = new CompleteTaskUseCase(taskRepository);
+export const acceptTaskUseCase = new AcceptTaskUseCase(taskRepository);
+export const rejectTaskUseCase = new RejectTaskUseCase(taskRepository);
+export const assignProjectRoleUseCase = new AssignProjectRoleUseCase(
+  projectRepository,
+  projectMembershipRepository,
+  roleAssignmentService,
+);
