@@ -20,6 +20,5 @@ export class ProjectMembership {
 
   heartbeat(timestamp = Date.now()) {
     this.lastHeartbeatAt = timestamp;
-    this.updatedAt = timestamp;
   }
 }
