@@ -12,6 +12,7 @@ const repository = new SQLiteTaskRepository();
 beforeEach(async () => {
   await initializeSchema();
   await DatabaseClient.deleteFrom("task").execute();
+  await DatabaseClient.deleteFrom("project_membership").execute();
   await DatabaseClient.deleteFrom("story").execute();
   await DatabaseClient.deleteFrom("project").execute();
 
@@ -36,6 +37,8 @@ test("SQLiteTaskRepository.create persists a task", async () => {
   assert.equal(savedTask?.description, "details");
   assert.equal(savedTask?.projectId, "project-1");
   assert.equal(savedTask?.status, TaskStatus.TODO);
+  assert.equal(savedTask?.rejectReason, null);
+  assert.equal(savedTask?.resumeSourceStatus, null);
 });
 
 test("SQLiteTaskRepository.findAll returns persisted tasks", async () => {
@@ -51,6 +54,7 @@ test("SQLiteTaskRepository.findByStatus filters by status", async () => {
   const task = await repository.create("Task 1", null, "project-1");
   task.status = TaskStatus.DOING;
   task.assignee = "worker-1";
+  task.resumeSourceStatus = TaskStatus.TODO;
   await repository.save(task);
 
   await repository.create("Task 2", null, "project-1");
@@ -81,6 +85,8 @@ test("SQLiteTaskRepository.save throws for a missing task", async () => {
     "Task 1",
     null,
     TaskStatus.TODO,
+    null,
+    null,
     null,
     1000,
     1000,

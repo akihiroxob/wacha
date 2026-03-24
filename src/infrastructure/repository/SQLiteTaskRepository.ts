@@ -16,6 +16,8 @@ export class SQLiteTaskRepository implements TaskRepository {
           row.description,
           row.status as TaskStatus,
           row.assignee,
+          row.reject_reason,
+          row.resume_source_status,
           row.created_at,
           row.updated_at,
         ),
@@ -37,6 +39,8 @@ export class SQLiteTaskRepository implements TaskRepository {
           row.description,
           row.status as TaskStatus,
           row.assignee,
+          row.reject_reason,
+          row.resume_source_status,
           row.created_at,
           row.updated_at,
         ),
@@ -57,6 +61,8 @@ export class SQLiteTaskRepository implements TaskRepository {
       row.description,
       row.status as TaskStatus,
       row.assignee,
+      row.reject_reason,
+      row.resume_source_status,
       row.created_at,
       row.updated_at,
     );
@@ -75,6 +81,8 @@ export class SQLiteTaskRepository implements TaskRepository {
         description: description ?? null,
         status: TaskStatus.TODO,
         assignee: null,
+        reject_reason: null,
+        resume_source_status: null,
         created_at: now,
         updated_at: now,
       })
@@ -89,6 +97,8 @@ export class SQLiteTaskRepository implements TaskRepository {
       task.description,
       task.status as TaskStatus,
       task.assignee,
+      task.reject_reason,
+      task.resume_source_status,
       task.created_at,
       task.updated_at,
     );
@@ -104,6 +114,8 @@ export class SQLiteTaskRepository implements TaskRepository {
         description: task.description,
         status: task.status,
         assignee: task.assignee,
+        reject_reason: task.rejectReason,
+        resume_source_status: task.resumeSourceStatus,
         updated_at: Date.now(),
       })
       .where("id", "=", task.id)

@@ -33,6 +33,19 @@ export function initializeSchema(): Promise<void> {
       .execute();
 
     await DatabaseClient.schema
+      .createTable("project_membership")
+      .ifNotExists()
+      .addColumn("id", "text", (col) => col.primaryKey())
+      .addColumn("project_id", "text", (col) => col.notNull())
+      .addColumn("worker_id", "text", (col) => col.notNull())
+      .addColumn("role", "text", (col) => col.notNull())
+      .addColumn("last_heartbeat_at", "integer")
+      .addColumn("created_at", "integer", (col) => col.notNull())
+      .addColumn("updated_at", "integer", (col) => col.notNull())
+      .addForeignKeyConstraint("project_membership_project_fk", ["project_id"], "project", ["id"])
+      .execute();
+
+    await DatabaseClient.schema
       .createTable("task")
       .ifNotExists()
       .addColumn("id", "text", (col) => col.primaryKey())
@@ -42,6 +55,8 @@ export function initializeSchema(): Promise<void> {
       .addColumn("description", "text")
       .addColumn("status", "text", (col) => col.notNull())
       .addColumn("assignee", "text")
+      .addColumn("reject_reason", "text")
+      .addColumn("resume_source_status", "text")
       .addColumn("created_at", "integer", (col) => col.notNull())
       .addColumn("updated_at", "integer", (col) => col.notNull())
       .addForeignKeyConstraint("task_project_fk", ["project_id"], "project", ["id"])
@@ -53,6 +68,28 @@ export function initializeSchema(): Promise<void> {
       .ifNotExists()
       .on("story")
       .column("project_id")
+      .execute();
+
+    await DatabaseClient.schema
+      .createIndex("idx_project_membership_project_id")
+      .ifNotExists()
+      .on("project_membership")
+      .column("project_id")
+      .execute();
+
+    await DatabaseClient.schema
+      .createIndex("idx_project_membership_worker_id")
+      .ifNotExists()
+      .on("project_membership")
+      .column("worker_id")
+      .execute();
+
+    await DatabaseClient.schema
+      .createIndex("uq_project_membership_project_worker_role")
+      .ifNotExists()
+      .unique()
+      .on("project_membership")
+      .columns(["project_id", "worker_id", "role"])
       .execute();
 
     await DatabaseClient.schema

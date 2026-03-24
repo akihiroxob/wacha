@@ -4,6 +4,7 @@ import { rejectTaskUseCase } from "@container";
 
 type RejectTaskInput = {
   taskId: string;
+  reason: string;
 };
 
 export const RejectTaskTool = {
@@ -12,10 +13,14 @@ export const RejectTaskTool = {
     description: "Move an in_review task to rejected.",
     inputSchema: {
       taskId: z.string().min(1).describe("Task ID"),
+      reason: z.string().min(1).describe("Reject reason"),
     },
   },
-  execute: async ({ taskId }: RejectTaskInput) => {
-    await rejectTaskUseCase.execute(taskId);
-    return toTextResult({ taskId, status: "rejected" }, `Rejected task ${taskId}.`);
+  execute: async ({ taskId, reason }: RejectTaskInput) => {
+    await rejectTaskUseCase.execute(taskId, reason);
+    return toTextResult(
+      { taskId, status: "rejected", rejectReason: reason },
+      `Rejected task ${taskId}.`,
+    );
   },
 };

@@ -5,6 +5,7 @@ import { AcceptTaskTool } from "@tool/AcceptTaskTool.ts";
 import { RejectTaskTool } from "@tool/RejectTaskTool.ts";
 import { ClaimTaskTool } from "@tool/ClaimTaskTool.ts";
 import { CompleteTaskTool } from "@tool/CompleteTaskTool.ts";
+import { AssignTool } from "@tool/AssignTool.ts";
 
 const name = "wacha";
 const version = "1.0.0";
@@ -18,6 +19,7 @@ export const createMcpServer = () => {
   server.registerTool("complete_task", CompleteTaskTool.config, CompleteTaskTool.execute);
   server.registerTool("accept_task", AcceptTaskTool.config, AcceptTaskTool.execute);
   server.registerTool("reject_task", RejectTaskTool.config, RejectTaskTool.execute);
+  server.registerTool("assign_project_role", AssignTool.config, AssignTool.execute);
 
   return server;
 };

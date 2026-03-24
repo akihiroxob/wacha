@@ -36,6 +36,24 @@ export class SQLiteProjectRepository implements ProjectRepository {
     );
   }
 
+  async findByBaseDir(baseDir: string): Promise<Project | null> {
+    const row = await DatabaseClient.selectFrom("project")
+      .selectAll()
+      .where("basedir", "=", baseDir)
+      .executeTakeFirst();
+
+    if (!row) return null;
+
+    return new Project(
+      row.id,
+      row.name,
+      row.description,
+      row.basedir,
+      row.created_at,
+      row.updated_at,
+    );
+  }
+
   async create(name: string, description: string | null, baseDir: string): Promise<Project> {
     const id = crypto.randomUUID();
     const now = Date.now();
