@@ -29,7 +29,7 @@ export const ProjectPage: FC<ProjectProps> = ({ summary, tasks, project }) => {
         <div className="flex flex-col">
           <h1 className="text-2xl font-bold">{project.name}</h1>
           <p className="text-gray-600">{project.description}</p>
-          <p className="text-gray-400">最終更新:{project.updatedAt.toLocaleString()}</p>
+          <p className="text-gray-400">最終更新:{new Date(project.updatedAt).toLocaleString()}</p>
         </div>
         <a href="/project/1/add">
           <Button text="+ 新しいStoryを作成" />
