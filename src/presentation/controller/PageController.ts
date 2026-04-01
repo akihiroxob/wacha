@@ -1,8 +1,15 @@
 import { Context } from "hono";
 import { Index } from "@views/index.tsx";
 import { ProjectPage } from "@views/project.tsx";
+import { AddStoryPage } from "@views/add-story.tsx";
 import { renderToString } from "hono/jsx/dom/server";
-import { listTaskUseCase, listProjectUseCase, getProjectUseCase } from "@container";
+import {
+  listTaskUseCase,
+  listProjectUseCase,
+  getProjectUseCase,
+  listStoryUseCase,
+  issueStoryUseCase,
+} from "@container";
 
 export class PageController {
   async index(c: Context) {
@@ -21,9 +28,56 @@ export class PageController {
     const project = await getProjectUseCase.execute(projectId);
     if (!project) return c.json({ error: "Project not found" }, 404);
 
-    const result = await listTaskUseCase.execute(projectId);
-    const page = ProjectPage({ project, summary: result.summary, tasks: result.tasks });
+    const taskResult = await listTaskUseCase.execute(projectId);
+    const storyResult = await listStoryUseCase.execute(projectId);
+    const page = ProjectPage({
+      project,
+      summary: taskResult.summary,
+      tasks: taskResult.tasks,
+      stories: storyResult.stories,
+    });
     return c.html(`<!doctype html>${renderToString(page ?? "")}`);
+  }
+
+  async addStory(c: Context) {
+    const projectId = c.req.param("projectId");
+
+    if (!projectId) {
+      return c.json({ error: "projectId is required" }, 400);
+    }
+
+    const project = await getProjectUseCase.execute(projectId);
+    if (!project) return c.json({ error: "Project not found" }, 404);
+
+    const page = AddStoryPage({ project });
+    return c.html(`<!doctype html>${renderToString(page ?? "")}`);
+  }
+
+  async createStory(c: Context) {
+    const projectId = c.req.param("projectId");
+
+    if (!projectId) {
+      return c.json({ error: "projectId is required" }, 400);
+    }
+
+    const project = await getProjectUseCase.execute(projectId);
+    if (!project) return c.json({ error: "Project not found" }, 404);
+
+    const formData = await c.req.formData();
+    const title = String(formData.get("title") ?? "").trim();
+    const description = String(formData.get("description") ?? "").trim();
+
+    if (title === "") {
+      const page = AddStoryPage({
+        project,
+        error: "Title は必須です。",
+        values: { title, description },
+      });
+      return c.html(`<!doctype html>${renderToString(page ?? "")}`, 400);
+    }
+
+    await issueStoryUseCase.execute(projectId, title, description || null);
+    return c.redirect(`/project/${projectId}`, 303);
   }
 }
 

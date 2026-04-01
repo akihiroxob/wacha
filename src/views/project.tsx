@@ -2,6 +2,7 @@ import type { FC } from "hono/jsx";
 import { type TaskStatus as TaskStatusValue } from "@constants/TaskStatus.ts";
 import type { Task } from "@domain/model/Task.ts";
 import type { Project } from "@domain/model/Project.ts";
+import type { Story } from "@domain/model/Story.ts";
 import { Layout } from "./layout/Layout.tsx";
 import { Button } from "./components/button.tsx";
 import { TaskRow } from "./components/task-row.tsx";
@@ -13,10 +14,11 @@ type ProjectProps = {
     lastUpdatedAt: number | null;
   };
   tasks: Task[];
+  stories: Story[];
   project: Project;
 };
 
-export const ProjectPage: FC<ProjectProps> = ({ summary, tasks, project }) => {
+export const ProjectPage: FC<ProjectProps> = ({ summary, tasks, stories, project }) => {
   return (
     <Layout>
       <div className="flex flex-col gap-4 p-8">
@@ -31,26 +33,70 @@ export const ProjectPage: FC<ProjectProps> = ({ summary, tasks, project }) => {
           <p className="text-gray-600">{project.description}</p>
           <p className="text-gray-400">最終更新:{new Date(project.updatedAt).toLocaleString()}</p>
         </div>
-        <a href="/project/1/add">
+        <a href={`/project/${project.id}/story/add`}>
           <Button text="+ 新しいStoryを作成" />
         </a>
 
-        <div className="flex flex-col gap-2">
-          <h2 className="text-lg font-semibold">タスクのステータス</h2>
-          <div className="flex flex-col gap-2">
-            {tasks.map((task) => {
-              return (
-                <TaskRow
-                  key={task.id}
-                  id={task.id}
-                  title={task.title}
-                  description={task.description}
-                  status={task.status}
-                  updatedAt={task.updatedAt}
-                />
-              );
-            })}
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Stories</h2>
+            <p className="text-sm text-gray-400">{stories.length} items</p>
           </div>
+          {stories.length > 0 ? (
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              {stories.map((story) => (
+                <div
+                  key={story.id}
+                  className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] text-gray-500">
+                      {story.status}
+                    </span>
+                    <span className="text-xs text-gray-400">{story.id}</span>
+                  </div>
+                  <h3 className="mt-3 text-lg font-semibold text-gray-900">{story.title}</h3>
+                  <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-gray-600">
+                    {story.description ?? "Description は未設定です。"}
+                  </p>
+                  <p className="mt-4 text-xs text-gray-400">
+                    更新: {new Date(story.updatedAt).toLocaleString()}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-gray-200 bg-white px-5 py-6 text-sm text-gray-500">
+              まだ Story はありません。上のボタンから追加してください。
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">タスクのステータス</h2>
+            <p className="text-sm text-gray-400">{summary.total} tasks</p>
+          </div>
+          {tasks.length > 0 ? (
+            <div className="flex flex-col gap-2">
+              {tasks.map((task) => {
+                return (
+                  <TaskRow
+                    key={task.id}
+                    id={task.id}
+                    title={task.title}
+                    description={task.description}
+                    status={task.status}
+                    updatedAt={task.updatedAt}
+                  />
+                );
+              })}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-gray-200 bg-white px-5 py-6 text-sm text-gray-500">
+              まだ Task はありません。
+            </div>
+          )}
         </div>
       </div>
     </Layout>

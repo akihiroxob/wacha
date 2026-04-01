@@ -28,6 +28,8 @@ app.use("/*", serveStatic({ root }));
 // Page Routes
 app.get("/", PageController.index);
 app.get("/project/:projectId", PageController.project);
+app.get("/project/:projectId/story/add", PageController.addStory);
+app.post("/project/:projectId/story", PageController.createStory);
 
 app.all("/mcp", async (c) => {
   const transport = new WebStandardStreamableHTTPServerTransport();
