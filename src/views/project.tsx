@@ -5,6 +5,7 @@ import type { Project } from "@domain/model/Project.ts";
 import type { Story } from "@domain/model/Story.ts";
 import { Layout } from "./layout/Layout.tsx";
 import { Button } from "./components/button.tsx";
+import { StoryCard } from "./components/story-card.tsx";
 import { TaskRow } from "./components/task-row.tsx";
 
 type ProjectProps = {
@@ -44,26 +45,7 @@ export const ProjectPage: FC<ProjectProps> = ({ summary, tasks, stories, project
           </div>
           {stories.length > 0 ? (
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              {stories.map((story) => (
-                <div
-                  key={story.id}
-                  className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] text-gray-500">
-                      {story.status}
-                    </span>
-                    <span className="text-xs text-gray-400">{story.id}</span>
-                  </div>
-                  <h3 className="mt-3 text-lg font-semibold text-gray-900">{story.title}</h3>
-                  <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-gray-600">
-                    {story.description ?? "Description は未設定です。"}
-                  </p>
-                  <p className="mt-4 text-xs text-gray-400">
-                    更新: {new Date(story.updatedAt).toLocaleString()}
-                  </p>
-                </div>
-              ))}
+              {stories.map((story) => <StoryCard key={story.id} story={story} />)}
             </div>
           ) : (
             <div className="rounded-2xl border border-dashed border-gray-200 bg-white px-5 py-6 text-sm text-gray-500">
