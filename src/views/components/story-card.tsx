@@ -1,5 +1,7 @@
 import type { FC } from "hono/jsx";
+import { StoryStatus } from "@constants/StoryStatus.ts";
 import type { Story } from "@domain/model/Story.ts";
+import { CanceledBadge, DoingBadge, DoneBadge, TodoBadge } from "./badge.tsx";
 
 type StoryCardProps = {
   story: Story;
@@ -16,9 +18,10 @@ export const StoryCard: FC<StoryCardProps> = ({ story, taskCount, embedded = fal
     <div className={containerClass}>
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] text-stone-500">
-            {story.status}
-          </span>
+          {story.status === StoryStatus.TODO && <TodoBadge />}
+          {story.status === StoryStatus.DOING && <DoingBadge />}
+          {story.status === StoryStatus.DONE && <DoneBadge />}
+          {story.status === StoryStatus.CANCELED && <CanceledBadge />}
           {typeof taskCount === "number" && (
             <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-500">
               {taskCount} tasks

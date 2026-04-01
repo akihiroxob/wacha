@@ -33,9 +33,6 @@ export const TaskRow: FC<TaskRowProps> = ({ id, title, description, status, upda
           <div class="min-w-0 flex-1">
             <p class="text-xs font-medium uppercase tracking-[0.18em] text-stone-400">{id}</p>
             <h3 class="mt-1 truncate text-lg font-semibold text-stone-900">{title}</h3>
-            <p class="mt-2 line-clamp-2 text-sm leading-6 text-stone-600">
-              {description?.trim() ? description : "Description は未設定です。"}
-            </p>
           </div>
         </div>
         <div class="flex shrink-0 items-center gap-3 pl-4">

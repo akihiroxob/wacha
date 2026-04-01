@@ -48,6 +48,7 @@ export const ProjectPage: FC<ProjectProps> = ({ summary, tasks, stories, project
               <p className="text-sm leading-7 text-stone-600">
                 {project.description ?? "プロジェクトの説明はまだ設定されていません。"}
               </p>
+              <p className="text-sm text-stone-500">BaseDir: {project.baseDir}</p>
               <p className="text-sm text-stone-400">
                 最終更新: {new Date(project.updatedAt).toLocaleString()}
               </p>
@@ -74,11 +75,13 @@ export const ProjectPage: FC<ProjectProps> = ({ summary, tasks, stories, project
                     className="group rounded-[2rem] border border-stone-200 bg-white px-6 py-5 shadow-sm open:shadow-md"
                   >
                     <summary className="list-none cursor-pointer [&::-webkit-details-marker]:hidden">
-                      <div className="relative pr-10">
+                      <div className="relative pr-32">
                         <StoryCard story={story} taskCount={storyTasks.length} embedded />
-                        <span className="pointer-events-none absolute right-0 top-1 text-sm font-medium text-stone-400 transition group-open:rotate-180">
-                          ▾
-                        </span>
+                        <div className="pointer-events-none absolute right-0 top-0 flex items-center gap-2 rounded-full bg-stone-100 px-3 py-1.5 text-xs font-medium text-stone-500">
+                          <span className="group-open:hidden">Task を表示</span>
+                          <span className="hidden group-open:inline">Task を閉じる</span>
+                          <span className="text-sm transition group-open:rotate-180">▾</span>
+                        </div>
                       </div>
                     </summary>
                     <div className="mt-5 border-l border-stone-200 pl-6">
