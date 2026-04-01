@@ -1,21 +1,29 @@
-import { readFile } from "node:fs/promises";
 import { Context } from "hono";
 import { Index } from "@views/index.tsx";
+import { ProjectPage } from "@views/project.tsx";
 import { renderToString } from "hono/jsx/dom/server";
-import { listTaskUseCase } from "@container";
+import { listTaskUseCase, listProjectUseCase, getProjectUseCase } from "@container";
 
 export class PageController {
   async index(c: Context) {
-    const result = await listTaskUseCase.execute();
-    const page = Index({ summary: result.summary, tasks: result.tasks });
+    const result = await listProjectUseCase.execute();
+    const page = Index({ projects: result.projects });
     return c.html(`<!doctype html>${renderToString(page ?? "")}`);
   }
 
-  async css(c: Context) {
-    const cssPath = new URL("../../views/index.css", import.meta.url);
-    const css = await readFile(cssPath, "utf-8");
-    c.header("Content-Type", "text/css; charset=utf-8");
-    return c.body(css);
+  async project(c: Context) {
+    const projectId = c.req.param("projectId");
+
+    if (!projectId) {
+      return c.json({ error: "projectId is required" }, 400);
+    }
+
+    const project = await getProjectUseCase.execute(projectId);
+    if (!project) return c.json({ error: "Project not found" }, 404);
+
+    const result = await listTaskUseCase.execute(projectId);
+    const page = ProjectPage({ project, summary: result.summary, tasks: result.tasks });
+    return c.html(`<!doctype html>${renderToString(page ?? "")}`);
   }
 }
 

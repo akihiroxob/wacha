@@ -41,11 +41,22 @@ test("SQLiteTaskRepository.create persists a task", async () => {
   assert.equal(savedTask?.resumeSourceStatus, null);
 });
 
-test("SQLiteTaskRepository.findAll returns persisted tasks", async () => {
+test("SQLiteTaskRepository.findByProjectId returns persisted tasks for one project", async () => {
   await repository.create("Task 1", null, "project-1");
   await repository.create("Task 2", null, "project-1");
+  await DatabaseClient.insertInto("project")
+    .values({
+      id: "project-2",
+      name: "Project 2",
+      description: null,
+      basedir: "repo/project-2",
+      created_at: 1000,
+      updated_at: 1000,
+    })
+    .execute();
+  await repository.create("Task 3", null, "project-2");
 
-  const tasks = await repository.findAll();
+  const tasks = await repository.findByProjectId("project-1");
 
   assert.equal(tasks.length, 2);
 });
