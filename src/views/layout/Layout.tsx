@@ -9,7 +9,11 @@ export const Layout: FC<{ children: any }> = ({ children }) => {
         <link rel="stylesheet" href="/css/style.css" />
         <title>Wacha</title>
       </head>
-      <body className="font-sans text-gray-700">{children}</body>
+      <body className="min-h-screen bg-white text-gray-700 antialiased">
+        <div className="min-h-screen bg-white">
+          {children}
+        </div>
+      </body>
     </html>
   );
 };

@@ -15,26 +15,28 @@ type AddStoryPageProps = {
 export const AddStoryPage: FC<AddStoryPageProps> = ({ project, values, error }) => {
   return (
     <Layout>
-      <div class="mx-auto flex w-full max-w-3xl flex-col gap-6 p-8">
+      <main class="mx-auto flex w-full max-w-4xl flex-col gap-8 px-6 py-10 md:px-8">
         <a
           href={`/project/${project.id}`}
-          class="inline-flex w-fit rounded-xl px-3 py-2 text-sm text-gray-500 hover:bg-gray-100"
+          class="inline-flex w-fit rounded-xl px-3 py-2 text-sm text-stone-500 transition hover:bg-white hover:shadow-sm"
         >
           ← プロジェクト詳細に戻る
         </a>
 
-        <div class="flex flex-col gap-2">
-          <p class="text-sm font-medium uppercase tracking-[0.18em] text-gray-400">{project.name}</p>
-          <h1 class="text-3xl font-semibold text-gray-900">新しい Story を作成</h1>
-          <p class="text-base leading-7 text-gray-600">
-            作業のまとまりを Story として登録します。あとから task を紐付けられる前提の入力です。
-          </p>
-        </div>
+        <section class="rounded-[2rem] border border-stone-200 bg-white px-6 py-8 shadow-sm md:px-8">
+          <div class="flex flex-col gap-3">
+            <p class="text-sm font-medium uppercase tracking-[0.22em] text-stone-400">{project.name}</p>
+            <h1 class="text-4xl font-semibold tracking-tight text-stone-900">新しい Story を作成</h1>
+            <p class="max-w-2xl text-sm leading-7 text-stone-600">
+              作業のまとまりを Story として登録します。背景や目的を先に整理しておく前提の、少し余白のある入力画面です。
+            </p>
+          </div>
+        </section>
 
         <form
           method="post"
           action={`/project/${project.id}/story`}
-          class="flex flex-col gap-5 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm"
+          class="flex flex-col gap-6 rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm md:p-8"
         >
           {error && (
             <div class="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -43,24 +45,24 @@ export const AddStoryPage: FC<AddStoryPageProps> = ({ project, values, error }) 
           )}
 
           <label class="flex flex-col gap-2">
-            <span class="text-sm font-medium text-gray-700">Title</span>
+            <span class="text-sm font-medium text-stone-700">Title</span>
             <input
               type="text"
               name="title"
               value={values?.title ?? ""}
               placeholder="例: Story 管理画面を追加する"
-              class="rounded-xl border border-gray-200 px-4 py-3 text-base text-gray-900 outline-none transition focus:border-gray-400"
+              class="rounded-2xl border border-stone-200 px-4 py-3 text-base text-stone-900 outline-none transition focus:border-stone-400"
               required
             />
           </label>
 
           <label class="flex flex-col gap-2">
-            <span class="text-sm font-medium text-gray-700">Description</span>
+            <span class="text-sm font-medium text-stone-700">Description</span>
             <textarea
               name="description"
-              rows={6}
+              rows={7}
               placeholder="背景、目的、完了条件など"
-              class="rounded-xl border border-gray-200 px-4 py-3 text-base leading-7 text-gray-900 outline-none transition focus:border-gray-400"
+              class="rounded-2xl border border-stone-200 px-4 py-3 text-base leading-7 text-stone-900 outline-none transition focus:border-stone-400"
             >
               {values?.description ?? ""}
             </textarea>
@@ -69,14 +71,14 @@ export const AddStoryPage: FC<AddStoryPageProps> = ({ project, values, error }) 
           <div class="flex items-center justify-end gap-3">
             <a
               href={`/project/${project.id}`}
-              class="inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-medium text-gray-500 hover:bg-gray-100"
+              class="inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-medium text-stone-500 transition hover:bg-stone-100"
             >
               キャンセル
             </a>
             <Button text="Story を作成" />
           </div>
         </form>
-      </div>
+      </main>
     </Layout>
   );
 };
