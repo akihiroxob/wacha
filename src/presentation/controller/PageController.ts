@@ -9,6 +9,8 @@ import {
   getProjectUseCase,
   listStoryUseCase,
   issueStoryUseCase,
+  deleteStoryUseCase,
+  deleteTaskUseCase,
 } from "@container";
 
 export class PageController {
@@ -77,6 +79,36 @@ export class PageController {
     }
 
     await issueStoryUseCase.execute(projectId, title, description || null);
+    return c.redirect(`/project/${projectId}`, 303);
+  }
+
+  async deleteStory(c: Context) {
+    const projectId = c.req.param("projectId");
+    const storyId = c.req.param("storyId");
+
+    if (!projectId || !storyId) {
+      return c.json({ error: "projectId and storyId are required" }, 400);
+    }
+
+    const project = await getProjectUseCase.execute(projectId);
+    if (!project) return c.json({ error: "Project not found" }, 404);
+
+    await deleteStoryUseCase.execute(storyId);
+    return c.redirect(`/project/${projectId}`, 303);
+  }
+
+  async deleteTask(c: Context) {
+    const projectId = c.req.param("projectId");
+    const taskId = c.req.param("taskId");
+
+    if (!projectId || !taskId) {
+      return c.json({ error: "projectId and taskId are required" }, 400);
+    }
+
+    const project = await getProjectUseCase.execute(projectId);
+    if (!project) return c.json({ error: "Project not found" }, 404);
+
+    await deleteTaskUseCase.execute(taskId);
     return c.redirect(`/project/${projectId}`, 303);
   }
 }

@@ -3,6 +3,7 @@ import { TaskStatus } from "@constants/TaskStatus.ts";
 import { TodoBadge, DoingBadge, InReviewBadge, AcceptedBadge, RejectedBadge } from "./badge.tsx";
 
 type TaskRowProps = {
+  projectId: string;
   id: string;
   title: string;
   description: string | null;
@@ -10,39 +11,54 @@ type TaskRowProps = {
   updatedAt: number;
 };
 
-export const TaskRow: FC<TaskRowProps> = ({ id, title, description, status, updatedAt }) => {
+export const TaskRow: FC<TaskRowProps> = ({ projectId, id, title, description, status, updatedAt }) => {
   const detailId = `task-detail-${id}`;
   const formattedUpdatedAt = new Date(updatedAt).toLocaleString();
 
   return (
     <>
-      <button
-        type="button"
-        popovertarget={detailId}
-        class="flex w-full cursor-pointer items-start justify-between gap-4 rounded-3xl border border-stone-200 bg-white px-5 py-4 text-left shadow-sm transition hover:border-stone-300 hover:shadow-md"
-        aria-haspopup="dialog"
-      >
-        <div class="flex min-w-0 flex-1 items-center gap-4">
-          <div class="flex items-center self-stretch">
-            {status === TaskStatus.TODO && <TodoBadge />}
-            {status === TaskStatus.DOING && <DoingBadge />}
-            {status === TaskStatus.IN_REVIEW && <InReviewBadge />}
-            {status === TaskStatus.ACCEPTED && <AcceptedBadge />}
-            {status === TaskStatus.REJECTED && <RejectedBadge />}
-          </div>
-          <div class="min-w-0 flex-1">
-            <p class="text-xs font-medium uppercase tracking-[0.18em] text-stone-400">{id}</p>
-            <h3 class="mt-1 truncate text-lg font-semibold text-stone-900">{title}</h3>
-          </div>
+      <div class="rounded-3xl border border-stone-200 bg-white px-5 py-4 shadow-sm transition hover:border-stone-300 hover:shadow-md">
+        <div class="flex items-start justify-between gap-4">
+          <button
+            type="button"
+            popovertarget={detailId}
+            class="flex min-w-0 flex-1 cursor-pointer items-start gap-4 text-left"
+            aria-haspopup="dialog"
+          >
+            <div class="flex items-center self-stretch">
+              {status === TaskStatus.TODO && <TodoBadge />}
+              {status === TaskStatus.DOING && <DoingBadge />}
+              {status === TaskStatus.IN_REVIEW && <InReviewBadge />}
+              {status === TaskStatus.ACCEPTED && <AcceptedBadge />}
+              {status === TaskStatus.REJECTED && <RejectedBadge />}
+            </div>
+            <div class="min-w-0 flex-1">
+              <div class="flex items-start justify-between gap-4">
+                <div class="min-w-0">
+                  <p class="text-xs font-medium uppercase tracking-[0.18em] text-stone-400">{id}</p>
+                  <h3 class="mt-1 truncate text-lg font-semibold text-stone-900">{title}</h3>
+                </div>
+                <div class="shrink-0 text-right">
+                  <p class="text-xs font-medium uppercase tracking-[0.18em] text-stone-400">Updated</p>
+                  <span class="mt-1 block text-sm text-stone-600">{formattedUpdatedAt}</span>
+                </div>
+              </div>
+            </div>
+          </button>
+          <form
+            method="post"
+            action={`/project/${projectId}/task/${id}/delete`}
+            onsubmit={"return confirm('この Task を削除しますか？');"}
+          >
+            <button
+              type="submit"
+              class="rounded-xl border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
+            >
+              削除
+            </button>
+          </form>
         </div>
-        <div class="flex shrink-0 items-center gap-3 pl-4">
-          <div class="text-right">
-            <p class="text-xs font-medium uppercase tracking-[0.18em] text-stone-400">Updated</p>
-            <span class="mt-1 block text-sm text-stone-600">{formattedUpdatedAt}</span>
-          </div>
-          <span class="text-xl leading-none text-stone-300">›</span>
-        </div>
-      </button>
+      </div>
 
       <div
         id={detailId}

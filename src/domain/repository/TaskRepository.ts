@@ -7,4 +7,6 @@ export interface TaskRepository {
   findById(taskId: string): Promise<Task | null>;
   create(title: string, description: string | null, projectId: string, storyId?: string): Promise<Task>;
   save(task: Task): Promise<void>;
+  delete(taskId: string): Promise<void>;
+  deleteByStoryId(storyId: string): Promise<void>;
 }

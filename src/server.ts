@@ -30,6 +30,8 @@ app.get("/", PageController.index);
 app.get("/project/:projectId", PageController.project);
 app.get("/project/:projectId/story/add", PageController.addStory);
 app.post("/project/:projectId/story", PageController.createStory);
+app.post("/project/:projectId/story/:storyId/delete", PageController.deleteStory);
+app.post("/project/:projectId/task/:taskId/delete", PageController.deleteTask);
 
 app.all("/mcp", async (c) => {
   const transport = new WebStandardStreamableHTTPServerTransport();

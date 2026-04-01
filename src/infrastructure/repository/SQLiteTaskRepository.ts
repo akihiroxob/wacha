@@ -125,7 +125,11 @@ export class SQLiteTaskRepository implements TaskRepository {
       .execute();
   }
 
-  async deleteTask(taskId: string) {
+  async delete(taskId: string) {
     await DatabaseClient.deleteFrom("task").where("id", "=", taskId).execute();
+  }
+
+  async deleteByStoryId(storyId: string) {
+    await DatabaseClient.deleteFrom("task").where("story_id", "=", storyId).execute();
   }
 }

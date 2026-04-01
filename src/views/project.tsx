@@ -70,26 +70,34 @@ export const ProjectPage: FC<ProjectProps> = ({ summary, tasks, stories, project
                 const storyTasks = tasksByStoryId.get(story.id) ?? [];
 
                 return (
-                  <details
+                  <div
                     key={story.id}
-                    className="group rounded-[2rem] border border-stone-200 bg-white px-6 py-5 shadow-sm open:shadow-md"
+                    className="rounded-[2rem] border border-stone-200 bg-white px-6 py-5 shadow-sm"
                   >
-                    <summary className="list-none cursor-pointer [&::-webkit-details-marker]:hidden">
-                      <div className="relative pr-32">
+                    <div className="flex items-start gap-3">
+                      <div className="min-w-0 flex-1">
                         <StoryCard story={story} taskCount={storyTasks.length} embedded />
-                        <div className="pointer-events-none absolute right-0 top-0 flex items-center gap-2 rounded-full bg-stone-100 px-3 py-1.5 text-xs font-medium text-stone-500">
-                          <span className="group-open:hidden">Task を表示</span>
-                          <span className="hidden group-open:inline">Task を閉じる</span>
-                          <span className="text-sm transition group-open:rotate-180">▾</span>
-                        </div>
                       </div>
-                    </summary>
+                      <form
+                        method="post"
+                        action={`/project/${project.id}/story/${story.id}/delete`}
+                        onsubmit={"return confirm('この Story と配下の Task を削除しますか？');"}
+                      >
+                        <button
+                          type="submit"
+                          className="rounded-xl border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
+                        >
+                          削除
+                        </button>
+                      </form>
+                    </div>
                     <div className="mt-5 border-l border-stone-200 pl-6">
                       {storyTasks.length > 0 ? (
                         <div className="flex flex-col gap-2">
                           {storyTasks.map((task) => (
                             <TaskRow
                               key={task.id}
+                              projectId={project.id}
                               id={task.id}
                               title={task.title}
                               description={task.description}
@@ -104,7 +112,7 @@ export const ProjectPage: FC<ProjectProps> = ({ summary, tasks, stories, project
                         </div>
                       )}
                     </div>
-                  </details>
+                  </div>
                 );
               })}
             </div>
@@ -126,6 +134,7 @@ export const ProjectPage: FC<ProjectProps> = ({ summary, tasks, stories, project
                 return (
                   <TaskRow
                     key={task.id}
+                    projectId={project.id}
                     id={task.id}
                     title={task.title}
                     description={task.description}
