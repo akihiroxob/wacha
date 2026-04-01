@@ -1,4 +1,5 @@
 import type { FC } from "hono/jsx";
+import { StoryStatus } from "@constants/StoryStatus.ts";
 import { type TaskStatus as TaskStatusValue } from "@constants/TaskStatus.ts";
 import type { Task } from "@domain/model/Task.ts";
 import type { Project } from "@domain/model/Project.ts";
@@ -78,18 +79,20 @@ export const ProjectPage: FC<ProjectProps> = ({ summary, tasks, stories, project
                       <div className="min-w-0 flex-1">
                         <StoryCard story={story} taskCount={storyTasks.length} embedded />
                       </div>
-                      <form
-                        method="post"
-                        action={`/project/${project.id}/story/${story.id}/delete`}
-                        onsubmit={"return confirm('この Story と配下の Task を削除しますか？');"}
-                      >
-                        <button
-                          type="submit"
-                          className="rounded-xl border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
+                      {story.status === StoryStatus.TODO && (
+                        <form
+                          method="post"
+                          action={`/project/${project.id}/story/${story.id}/delete`}
+                          onsubmit={"return confirm('この Story と配下の Task を削除しますか？');"}
                         >
-                          削除
-                        </button>
-                      </form>
+                          <button
+                            type="submit"
+                            className="rounded-xl border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
+                          >
+                            削除
+                          </button>
+                        </form>
+                      )}
                     </div>
                     <div className="mt-5 border-l border-stone-200 pl-6">
                       {storyTasks.length > 0 ? (

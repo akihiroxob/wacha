@@ -14,6 +14,7 @@ type TaskRowProps = {
 export const TaskRow: FC<TaskRowProps> = ({ projectId, id, title, description, status, updatedAt }) => {
   const detailId = `task-detail-${id}`;
   const formattedUpdatedAt = new Date(updatedAt).toLocaleString();
+  const canDelete = status === TaskStatus.TODO;
 
   return (
     <>
@@ -45,18 +46,20 @@ export const TaskRow: FC<TaskRowProps> = ({ projectId, id, title, description, s
               </div>
             </div>
           </button>
-          <form
-            method="post"
-            action={`/project/${projectId}/task/${id}/delete`}
-            onsubmit={"return confirm('この Task を削除しますか？');"}
-          >
-            <button
-              type="submit"
-              class="rounded-xl border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
+          {canDelete && (
+            <form
+              method="post"
+              action={`/project/${projectId}/task/${id}/delete`}
+              onsubmit={"return confirm('この Task を削除しますか？');"}
             >
-              削除
-            </button>
-          </form>
+              <button
+                type="submit"
+                class="rounded-xl border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
+              >
+                削除
+              </button>
+            </form>
+          )}
         </div>
       </div>
 
