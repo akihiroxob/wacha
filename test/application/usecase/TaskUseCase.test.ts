@@ -4,12 +4,12 @@ import assert from "node:assert/strict";
 import { Task } from "@domain/model/Task.ts";
 import { TaskRepository } from "@domain/repository/TaskRepository.ts";
 import { TaskStatus } from "@constants/TaskStatus.ts";
-import { ListTaskUseCase } from "@application/usecase/task/ListTaskUseCase.ts";
-import { IssueTaskUseCase } from "@application/usecase/task/IssueTaskUseCase.ts";
-import { ClaimTaskUseCase } from "@application/usecase/task/ClaimTaskUseCase.ts";
-import { CompleteTaskUseCase } from "@application/usecase/task/CompleteTaskUseCase.ts";
-import { AcceptTaskUseCase } from "@application/usecase/task/AcceptTaskUseCase.ts";
-import { RejectTaskUseCase } from "@application/usecase/task/RejectTaskUseCase.ts";
+import { ListTaskUseCase } from "@application/usecase/tasks/ListTaskUseCase.ts";
+import { IssueTaskUseCase } from "@application/usecase/tasks/IssueTaskUseCase.ts";
+import { ClaimTaskUseCase } from "@application/usecase/tasks/ClaimTaskUseCase.ts";
+import { CompleteTaskUseCase } from "@application/usecase/tasks/CompleteTaskUseCase.ts";
+import { AcceptTaskUseCase } from "@application/usecase/tasks/AcceptTaskUseCase.ts";
+import { RejectTaskUseCase } from "@application/usecase/tasks/RejectTaskUseCase.ts";
 
 class InMemoryTaskRepository implements TaskRepository {
   private tasks = new Map<string, Task>();

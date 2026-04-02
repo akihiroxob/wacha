@@ -23,6 +23,9 @@ import { DeleteTaskUseCase } from "@application/usecase/tasks/DeleteTaskUseCase.
 import { ListStoryUseCase } from "@application/usecase/stories/ListStoryUseCase.ts";
 import { IssueStoryUseCase } from "@application/usecase/stories/IssueStoryUseCase.ts";
 import { DeleteStoryUseCase } from "@application/usecase/stories/DeleteStoryUseCase.ts";
+import { ClaimStoryUseCase } from "@application/usecase/stories/ClaimStoryUseCase.ts";
+import { CompleteStoryUseCase } from "@application/usecase/stories/CompleteStoryUseCase.ts";
+import { CancelStoryUseCase } from "@application/usecase/stories/CancelStoryUseCase.ts";
 
 // repositoriesのインスタンスを作成
 const taskRepository = new SQLiteTaskRepository();
@@ -42,6 +45,9 @@ export const deleteTaskUseCase = new DeleteTaskUseCase(taskRepository);
 export const listStoryUseCase = new ListStoryUseCase(storyRepository);
 export const issueStoryUseCase = new IssueStoryUseCase(storyRepository);
 export const deleteStoryUseCase = new DeleteStoryUseCase(storyRepository, taskRepository);
+export const claimStoryUseCase = new ClaimStoryUseCase(storyRepository);
+export const completeStoryUseCase = new CompleteStoryUseCase(storyRepository);
+export const cancelStoryUseCase = new CancelStoryUseCase(storyRepository);
 export const assignProjectRoleUseCase = new AssignProjectRoleUseCase(
   projectRepository,
   projectMembershipRepository,
