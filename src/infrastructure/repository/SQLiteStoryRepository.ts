@@ -101,4 +101,8 @@ export class SQLiteStoryRepository implements StoryRepository {
       .where("id", "=", story.id)
       .execute();
   }
+
+  async delete(storyId: string): Promise<void> {
+    await DatabaseClient.deleteFrom("story").where("id", "=", storyId).execute();
+  }
 }

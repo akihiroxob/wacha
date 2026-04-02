@@ -1,13 +1,21 @@
 import * as container from "@container";
 import { toTextResult } from "@utils/mcpUtils.ts";
+import { z } from "zod";
+
+type ListTaskToolInput = {
+  projectId: string;
+};
 
 export const ListTaskTool = {
   config: {
     title: "List Tasks",
-    description: "List all tasks with summary information.",
+    description: "List tasks for a project with summary information.",
+    inputSchema: {
+      projectId: z.string().min(1).describe("Project ID"),
+    },
   },
-  execute: async () => {
-    const result = await container.listTaskUseCase.execute();
+  execute: async ({ projectId }: ListTaskToolInput) => {
+    const result = await container.listTaskUseCase.execute(projectId);
     return toTextResult(result, `Returned ${result.summary.total} tasks with status summary.`);
   },
 };

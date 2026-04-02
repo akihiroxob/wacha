@@ -4,12 +4,12 @@ import assert from "node:assert/strict";
 import { Task } from "@domain/model/Task.ts";
 import { TaskRepository } from "@domain/repository/TaskRepository.ts";
 import { TaskStatus } from "@constants/TaskStatus.ts";
-import { ListTaskUseCase } from "@application/usecase/ListTaskUseCase.ts";
-import { IssueTaskUseCase } from "@application/usecase/IssueTaskUseCase.ts";
-import { ClaimTaskUseCase } from "@application/usecase/ClaimTaskUseCase.ts";
-import { CompleteTaskUseCase } from "@application/usecase/CompleteTaskUseCase.ts";
-import { AcceptTaskUseCase } from "@application/usecase/AcceptTaskUseCase.ts";
-import { RejectTaskUseCase } from "@application/usecase/RejectTaskUseCase.ts";
+import { ListTaskUseCase } from "@application/usecase/task/ListTaskUseCase.ts";
+import { IssueTaskUseCase } from "@application/usecase/task/IssueTaskUseCase.ts";
+import { ClaimTaskUseCase } from "@application/usecase/task/ClaimTaskUseCase.ts";
+import { CompleteTaskUseCase } from "@application/usecase/task/CompleteTaskUseCase.ts";
+import { AcceptTaskUseCase } from "@application/usecase/task/AcceptTaskUseCase.ts";
+import { RejectTaskUseCase } from "@application/usecase/task/RejectTaskUseCase.ts";
 
 class InMemoryTaskRepository implements TaskRepository {
   private tasks = new Map<string, Task>();
@@ -18,8 +18,8 @@ class InMemoryTaskRepository implements TaskRepository {
     seed.forEach((task) => this.tasks.set(task.id, task));
   }
 
-  async findAll(): Promise<Task[]> {
-    return [...this.tasks.values()];
+  async findByProjectId(projectId: string): Promise<Task[]> {
+    return [...this.tasks.values()].filter((task) => task.projectId === projectId);
   }
 
   async findByStatus(status: TaskStatus): Promise<Task[]> {
@@ -74,13 +74,50 @@ function createTask(status: TaskStatus = TaskStatus.TODO) {
   );
 }
 
-test("ListTaskUseCase returns all tasks", async () => {
+test("ListTaskUseCase returns tasks for the specified project", async () => {
   const repo = new InMemoryTaskRepository([
-    new Task("task-1", "project-1", null, "Task 1", "desc", TaskStatus.TODO, null, null, null, 1000, 1500),
-    new Task("task-2", "project-1", "story-1", "Task 2", null, TaskStatus.DOING, "worker-1", null, TaskStatus.TODO, 1000, 2000),
+    new Task(
+      "task-1",
+      "project-1",
+      null,
+      "Task 1",
+      "desc",
+      TaskStatus.TODO,
+      null,
+      null,
+      null,
+      1000,
+      1500,
+    ),
+    new Task(
+      "task-2",
+      "project-1",
+      "story-1",
+      "Task 2",
+      null,
+      TaskStatus.DOING,
+      "worker-1",
+      null,
+      TaskStatus.TODO,
+      1000,
+      2000,
+    ),
+    new Task(
+      "task-3",
+      "project-2",
+      null,
+      "Task 3",
+      null,
+      TaskStatus.ACCEPTED,
+      null,
+      null,
+      null,
+      1000,
+      2500,
+    ),
   ]);
 
-  const result = await new ListTaskUseCase(repo).execute();
+  const result = await new ListTaskUseCase(repo).execute("project-1");
 
   assert.equal(result.summary.total, 2);
   assert.equal(result.summary.byStatus[TaskStatus.TODO], 1);
@@ -159,8 +196,5 @@ test("RejectTaskUseCase rejects an in_review task", async () => {
 test("CompleteTaskUseCase throws when task is missing", async () => {
   const repo = new InMemoryTaskRepository();
 
-  await assert.rejects(
-    () => new CompleteTaskUseCase(repo).execute("missing-task"),
-    /not exists/,
-  );
+  await assert.rejects(() => new CompleteTaskUseCase(repo).execute("missing-task"), /not exists/);
 });

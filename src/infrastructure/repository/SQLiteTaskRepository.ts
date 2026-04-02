@@ -4,8 +4,11 @@ import { TaskRepository } from "@domain/repository/TaskRepository.ts";
 import { DatabaseClient } from "@database/SQLiteClient.ts";
 import { TaskStatus } from "@constants/TaskStatus.ts";
 export class SQLiteTaskRepository implements TaskRepository {
-  async findAll(): Promise<Task[]> {
-    const rows = await DatabaseClient.selectFrom("task").selectAll().execute();
+  async findByProjectId(projectId: string): Promise<Task[]> {
+    const rows = await DatabaseClient.selectFrom("task")
+      .selectAll()
+      .where("project_id", "=", projectId)
+      .execute();
     return rows.map(
       (row) =>
         new Task(
@@ -122,7 +125,11 @@ export class SQLiteTaskRepository implements TaskRepository {
       .execute();
   }
 
-  async deleteTask(taskId: string) {
+  async delete(taskId: string) {
     await DatabaseClient.deleteFrom("task").where("id", "=", taskId).execute();
+  }
+
+  async deleteByStoryId(storyId: string) {
+    await DatabaseClient.deleteFrom("task").where("story_id", "=", storyId).execute();
   }
 }

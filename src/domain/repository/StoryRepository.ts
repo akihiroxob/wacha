@@ -6,4 +6,5 @@ export interface StoryRepository {
   findByProjectId(projectId: string): Promise<Story[]>;
   create(projectId: string, title: string, description: string | null): Promise<Story>;
   save(story: Story): Promise<void>;
+  delete(storyId: string): Promise<void>;
 }

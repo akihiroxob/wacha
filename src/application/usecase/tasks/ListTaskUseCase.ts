@@ -14,8 +14,8 @@ interface ListTaskUseCaseResult {
 export class ListTaskUseCase {
   constructor(private taskRepository: TaskRepository) {}
 
-  async execute(): Promise<ListTaskUseCaseResult> {
-    const tasks = await this.taskRepository.findAll();
+  async execute(projectId: string): Promise<ListTaskUseCaseResult> {
+    const tasks = await this.taskRepository.findByProjectId(projectId);
     const sortedTasks = [...tasks].sort((a: Task, b: Task) => b.updatedAt - a.updatedAt);
 
     return {
