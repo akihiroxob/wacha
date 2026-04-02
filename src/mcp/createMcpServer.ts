@@ -1,4 +1,10 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import {
+  resolveProjectIdFromProjectArgs,
+  resolveProjectIdFromStoryArgs,
+  resolveProjectIdFromTaskArgs,
+  withManagerRoleGuard,
+} from "@mcp/managerGuard.ts";
 import { ListProjectTool } from "@tool/ListProjectTool.ts";
 import { ListStoryTool } from "@tool/ListStoryTool.ts";
 import { IssueStoryTool } from "@tool/IssueStoryTool.ts";
@@ -21,15 +27,39 @@ export const createMcpServer = () => {
   const server = new McpServer({ name, version }, { instructions });
   server.registerTool("list_projects", ListProjectTool.config, ListProjectTool.execute);
   server.registerTool("list_stories", ListStoryTool.config, ListStoryTool.execute);
-  server.registerTool("issue_story", IssueStoryTool.config, IssueStoryTool.execute);
-  server.registerTool("claim_story", ClaimStoryTool.config, ClaimStoryTool.execute);
-  server.registerTool("complete_story", CompleteStoryTool.config, CompleteStoryTool.execute);
-  server.registerTool("cancel_story", CancelStoryTool.config, CancelStoryTool.execute);
+  server.registerTool(
+    "issue_story",
+    IssueStoryTool.config,
+    withManagerRoleGuard("issue_story", IssueStoryTool.execute, resolveProjectIdFromProjectArgs),
+  );
+  server.registerTool(
+    "claim_story",
+    ClaimStoryTool.config,
+    withManagerRoleGuard("claim_story", ClaimStoryTool.execute, resolveProjectIdFromStoryArgs),
+  );
+  server.registerTool(
+    "complete_story",
+    CompleteStoryTool.config,
+    withManagerRoleGuard("complete_story", CompleteStoryTool.execute, resolveProjectIdFromStoryArgs),
+  );
+  server.registerTool(
+    "cancel_story",
+    CancelStoryTool.config,
+    withManagerRoleGuard("cancel_story", CancelStoryTool.execute, resolveProjectIdFromStoryArgs),
+  );
   server.registerTool("list_tasks", ListTaskTool.config, ListTaskTool.execute);
-  server.registerTool("issue_task", IssueTaskTool.config, IssueTaskTool.execute);
+  server.registerTool(
+    "issue_task",
+    IssueTaskTool.config,
+    withManagerRoleGuard("issue_task", IssueTaskTool.execute, resolveProjectIdFromProjectArgs),
+  );
   server.registerTool("claim_task", ClaimTaskTool.config, ClaimTaskTool.execute);
   server.registerTool("complete_task", CompleteTaskTool.config, CompleteTaskTool.execute);
-  server.registerTool("accept_task", AcceptTaskTool.config, AcceptTaskTool.execute);
+  server.registerTool(
+    "accept_task",
+    AcceptTaskTool.config,
+    withManagerRoleGuard("accept_task", AcceptTaskTool.execute, resolveProjectIdFromTaskArgs),
+  );
   server.registerTool("reject_task", RejectTaskTool.config, RejectTaskTool.execute);
   server.registerTool("assign_project_role", AssignTool.config, AssignTool.execute);
 

@@ -150,6 +150,34 @@ Task は `worker` が着手時に迷わない粒度まで具体化する。
 
 `claim_task` と `complete_task` は実装上は利用可能だが、本来の責務としては `worker` 側の操作である。
 
+## 許可される MCP 操作
+
+- `list_projects`
+- `list_stories`
+- `issue_story`
+- `claim_story`
+- `complete_story`
+- `cancel_story`
+- `list_tasks`
+- `issue_task`
+- `accept_task`
+- `reject_task`
+- `assign_project_role`
+
+## 禁止される MCP 操作
+
+- `claim_task`
+- `complete_task`
+
+当面の MCP 実装では、`manager` 以外を拒否するのは `manager` 専用 tool のみとする。
+
+## Push を受ける条件
+
+- 新しい `todo` Story が発行されたとき
+- `doing` の Story が止まっているとき
+- 最終判断が必要な Task が出たとき
+- 人から manager 宛ての直接依頼が来たとき
+
 ## manager の基本姿勢
 
 - 不明点を曖昧なまま Task 化しない

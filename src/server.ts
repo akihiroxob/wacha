@@ -7,6 +7,7 @@ import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { fileURLToPath } from "node:url";
 import { createMcpServer } from "@mcp/createMcpServer.ts";
+import { managerGuardHeader } from "@mcp/managerGuard.ts";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import PageController from "@controller/PageController.ts";
 
@@ -17,7 +18,13 @@ app.use(
   cors({
     origin: "*",
     allowMethods: ["GET", "POST", "DELETE", "OPTIONS"],
-    allowHeaders: ["Content-Type", "mcp-session-id", "mcp-protocol-version", "last-event-id"],
+    allowHeaders: [
+      "Content-Type",
+      "mcp-session-id",
+      "mcp-protocol-version",
+      "last-event-id",
+      managerGuardHeader,
+    ],
     exposeHeaders: ["mcp-session-id", "mcp-protocol-version"],
   }),
 );

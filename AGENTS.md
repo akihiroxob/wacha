@@ -6,13 +6,23 @@
 
 このリポジトリで作業する Agent は、現在の作業状況の確認と、必要に応じたタスク状態の更新のためにこの仕組みを利用してください。
 
-役割ごとの運用ルールは `agent/` 配下に配置します。`manager` の詳細は `agent/manager.md` を参照してください。
+役割ごとの運用ルールは `agent/` 配下に配置します。
+
+- `agent/role-policy.md`
+  - role ごとの権限表と Push 対象イベント
+- `agent/manager.md`
+  - manager の責務と運用フロー
+- `agent/reviewer.md`
+  - reviewer の責務と確認観点
+- `agent/worker.md`
+  - worker の責務と作業フロー
 
 ## 起動方法
 
 - MCP サーバを起動する: `npm run start`
 - デフォルトの接続先: `http://localhost:3000/mcp`
 - ヘルスチェック: `http://localhost:3000/health`
+- `manager` 専用 tool を呼ぶ場合は HTTP header `x-wacha-worker-id` を付与する
 
 `PORT` を指定すると待ち受けポートを変更できます。
 
