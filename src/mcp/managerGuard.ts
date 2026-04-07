@@ -1,3 +1,5 @@
+import { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
+import { ServerNotification, ServerRequest } from "@modelcontextprotocol/sdk/types.js";
 import { ProjectRole } from "@constants/ProjectRole.ts";
 import { ProjectMembershipRepository } from "@domain/repository/ProjectMembershipRepository.ts";
 import { StoryRepository } from "@domain/repository/StoryRepository.ts";
@@ -5,12 +7,9 @@ import { TaskRepository } from "@domain/repository/TaskRepository.ts";
 import { SQLiteProjectMembershipRepository } from "@repository/SQLiteProjectMembershipRepository.ts";
 import { SQLiteStoryRepository } from "@repository/SQLiteStoryRepository.ts";
 import { SQLiteTaskRepository } from "@repository/SQLiteTaskRepository.ts";
+import { MCP_HEADER } from "@constants/McpHeader.ts";
 
-const WORKER_ID_HEADER = "x-wacha-worker-id";
-
-type ManagerGuardExtra = {
-  requestInfo?: Request;
-};
+export type ManagerGuardExtra = RequestHandlerExtra<ServerRequest, ServerNotification>;
 
 type ManagerGuardDeps = {
   projectMembershipRepository: ProjectMembershipRepository;
@@ -33,9 +32,15 @@ export async function ensureManagerRole<TArgs>(
   resolveProjectId: ResolveProjectId<TArgs>,
   deps: ManagerGuardDeps = defaultDeps,
 ): Promise<void> {
-  const workerId = extra?.requestInfo?.headers.get(WORKER_ID_HEADER)?.trim();
+  const rawWorkerId = extra?.requestInfo?.headers[MCP_HEADER.WACHA_WORKER_ID];
+  const workerId =
+    typeof rawWorkerId === "string"
+      ? rawWorkerId.trim()
+      : Array.isArray(rawWorkerId)
+        ? rawWorkerId[0]?.trim()
+        : undefined;
   if (!workerId) {
-    throw new Error(`Missing ${WORKER_ID_HEADER} header for ${toolName}`);
+    throw new Error(`Missing ${MCP_HEADER.WACHA_WORKER_ID} header for ${toolName}`);
   }
 
   const projectId = await resolveProjectId(args, deps);
@@ -46,7 +51,9 @@ export async function ensureManagerRole<TArgs>(
   );
 
   if (!membership) {
-    throw new Error(`Worker ${workerId} is not allowed to call ${toolName} for project ${projectId}`);
+    throw new Error(
+      `Worker ${workerId} is not allowed to call ${toolName} for project ${projectId}`,
+    );
   }
 }
 
@@ -89,5 +96,3 @@ export const resolveProjectIdFromTaskArgs = async <TArgs extends { taskId: strin
 
   return task.projectId;
 };
-
-export const managerGuardHeader = WORKER_ID_HEADER;

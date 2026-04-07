@@ -4,7 +4,7 @@ import { Story } from "@domain/model/Story.ts";
 import { TaskRepository } from "@domain/repository/TaskRepository.ts";
 import { SQLiteProjectMembershipRepository } from "@repository/SQLiteProjectMembershipRepository.ts";
 import { SQLiteTaskRepository } from "@repository/SQLiteTaskRepository.ts";
-import { getSessionsByWorkerId } from "@mcp/sessionRegistry.ts";
+import { getSessionByWorkerId } from "@mcp/sessionRegistry.ts";
 
 type PushNotifierDeps = {
   projectMembershipRepository: ProjectMembershipRepository;
@@ -20,7 +20,9 @@ class PushNotifier {
   constructor(private deps: PushNotifierDeps = defaultDeps) {}
 
   async notifyManagersStoryCreated(story: Story): Promise<void> {
-    const memberships = await this.deps.projectMembershipRepository.findByProjectId(story.projectId);
+    const memberships = await this.deps.projectMembershipRepository.findByProjectId(
+      story.projectId,
+    );
     const managerWorkerIds = memberships
       .filter((membership) => membership.role === ProjectRole.MANAGER)
       .map((membership) => membership.workerId);
@@ -91,7 +93,7 @@ class PushNotifier {
 
     await Promise.all(
       uniqueWorkerIds.flatMap((workerId) =>
-        getSessionsByWorkerId(workerId).map(async (session) => {
+        getSessionByWorkerId(workerId)?.mapcancel_storycancel_story(async (session) => {
           try {
             await session.server.sendLoggingMessage(params, session.transport.sessionId);
           } catch (error) {

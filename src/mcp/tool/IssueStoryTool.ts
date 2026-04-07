@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { issueStoryUseCase } from "@container";
 import { pushNotifier } from "@mcp/pushNotifier.ts";
-import { toTextResult } from "@utils/mcpUtils.ts";
+import { toTextResult } from "@mcp/utils/mcpUtils.ts";
 
 type IssueStoryInput = {
   projectId: string;

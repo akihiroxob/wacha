@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { claimStoryUseCase } from "@container";
-import { toTextResult } from "@utils/mcpUtils.ts";
+import { toTextResult } from "@mcp/utils/mcpUtils.ts";
 
 type ClaimStoryInput = {
   storyId: string;

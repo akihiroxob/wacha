@@ -1,5 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
+import { ServerNotification, ServerRequest } from "@modelcontextprotocol/sdk/types.js";
 
 import { ProjectRole } from "@constants/ProjectRole.ts";
 import { ProjectMembership } from "@domain/model/ProjectMembership.ts";
@@ -119,14 +121,17 @@ class InMemoryTaskRepository implements TaskRepository {
   }
 }
 
-const createRequestInfo = (workerId?: string): Request => {
-  const headers = new Headers();
-  if (workerId) {
-    headers.set(managerGuardHeader, workerId);
-  }
-
-  return new Request("http://localhost:3000/mcp", { headers });
-};
+const createExtra = (workerId?: string): RequestHandlerExtra<ServerRequest, ServerNotification> => ({
+  signal: new AbortController().signal,
+  requestId: "request-1",
+  requestInfo: {
+    headers: workerId ? { [managerGuardHeader]: workerId } : {},
+  },
+  sendNotification: async () => {},
+  sendRequest: async () => {
+    throw new Error("not implemented");
+  },
+});
 
 test("ensureManagerRole allows a manager to call a guarded project tool", async () => {
   const deps = {
@@ -149,7 +154,7 @@ test("ensureManagerRole allows a manager to call a guarded project tool", async 
     ensureManagerRole(
       "issue_story",
       { projectId: "project-1" },
-      { requestInfo: createRequestInfo("worker-1") },
+      createExtra("worker-1"),
       resolveProjectIdFromProjectArgs,
       deps,
     ),
@@ -164,14 +169,7 @@ test("ensureManagerRole rejects when worker header is missing", async () => {
   };
 
   await assert.rejects(
-    () =>
-      ensureManagerRole(
-        "issue_story",
-        { projectId: "project-1" },
-        { requestInfo: createRequestInfo() },
-        resolveProjectIdFromProjectArgs,
-        deps,
-      ),
+    () => ensureManagerRole("issue_story", { projectId: "project-1" }, createExtra(), resolveProjectIdFromProjectArgs, deps),
     /Missing x-wacha-worker-id header/,
   );
 });
@@ -198,7 +196,7 @@ test("ensureManagerRole rejects a non-manager caller", async () => {
       ensureManagerRole(
         "issue_story",
         { projectId: "project-1" },
-        { requestInfo: createRequestInfo("worker-1") },
+        createExtra("worker-1"),
         resolveProjectIdFromProjectArgs,
         deps,
       ),

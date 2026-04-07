@@ -1,5 +1,5 @@
 import * as container from "@container";
-import { toTextResult } from "@utils/mcpUtils.ts";
+import { toTextResult } from "@mcp/utils/mcpUtils.ts";
 import { z } from "zod";
 
 type ListTaskToolInput = {

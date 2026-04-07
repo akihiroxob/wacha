@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { listStoryUseCase } from "@container";
 import { StoryStatus } from "@constants/StoryStatus.ts";
-import { toTextResult } from "@utils/mcpUtils.ts";
+import { toTextResult } from "@mcp/utils/mcpUtils.ts";
 
 type ListStoryToolInput = {
   projectId: string;

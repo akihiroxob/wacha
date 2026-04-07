@@ -8,15 +8,11 @@ import { serveStatic } from "@hono/node-server/serve-static";
 import { fileURLToPath } from "node:url";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { createMcpServer } from "@mcp/createMcpServer.ts";
-import { managerGuardHeader } from "@mcp/managerGuard.ts";
-import {
-  getSession,
-  registerSession,
-  removeSession,
-  setSessionWorkerId,
-} from "@mcp/sessionRegistry.ts";
+import { MCP_HEADER } from "@constants/McpHeader.ts";
+import { registerSession, getSessionBySessionId, removeSession } from "@mcp/sessionRegistry.ts";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import PageController from "@controller/PageController.ts";
+import { ValidationError } from "@application/error/ValidationError.ts";
 
 const app = new Hono();
 app.use(logger());
@@ -27,12 +23,12 @@ app.use(
     allowMethods: ["GET", "POST", "DELETE", "OPTIONS"],
     allowHeaders: [
       "Content-Type",
-      "mcp-session-id",
-      "mcp-protocol-version",
-      "last-event-id",
-      managerGuardHeader,
+      MCP_HEADER.MCP_SESSION_ID,
+      MCP_HEADER.MCP_PROTOCOL_VERSION,
+      MCP_HEADER.LAST_EVENT_ID,
+      MCP_HEADER.WACHA_WORKER_ID,
     ],
-    exposeHeaders: ["mcp-session-id", "mcp-protocol-version"],
+    exposeHeaders: [MCP_HEADER.MCP_SESSION_ID, MCP_HEADER.MCP_PROTOCOL_VERSION],
   }),
 );
 
@@ -49,65 +45,64 @@ app.post("/project/:projectId/task/:taskId/delete", PageController.deleteTask);
 
 // MCP Route
 app.all("/mcp", async (c) => {
-  const sessionId = c.req.header("mcp-session-id");
-  const workerId = c.req.header(managerGuardHeader)?.trim() || undefined;
+  // Postのみサポート
+  if (c.req.method !== "POST") throw new ValidationError(`Unsupported method: ${c.req.method}`);
 
+  // Sessionがある場合の処理
+  //-----------------------------------------------------------------------------
+  const sessionId = c.req.header(MCP_HEADER.MCP_SESSION_ID);
   if (sessionId) {
-    const session = getSession(sessionId);
-    if (!session) {
-      return c.json(
-        { jsonrpc: "2.0", error: { code: -32000, message: "Invalid session ID" }, id: null },
-        400,
-      );
-    }
-
-    if (workerId) {
-      setSessionWorkerId(sessionId, workerId);
-    }
-
+    const session = getSessionBySessionId(sessionId);
+    if (!session) throw new ValidationError("Invalid session ID");
     return session.transport.handleRequest(c.req.raw);
   }
 
-  if (c.req.method !== "POST") {
-    return c.json(
-      { jsonrpc: "2.0", error: { code: -32000, message: "Initialization required" }, id: null },
-      400,
-    );
-  }
-
+  // Sessionがない場合の処理
+  //-----------------------------------------------------------------------------
   const parsedBody = await c.req.raw
     .clone()
     .json()
     .catch(() => null);
-  if (!isInitializeRequest(parsedBody)) {
-    return c.json(
-      { jsonrpc: "2.0", error: { code: -32000, message: "Initialization required" }, id: null },
-      400,
-    );
-  }
+  if (!parsedBody) throw new ValidationError("Invalid JSON body");
+  if (!isInitializeRequest(parsedBody)) throw new ValidationError("Initialization required");
 
+  const workerId = c.req.header(MCP_HEADER.WACHA_WORKER_ID)?.trim();
+  if (!workerId) throw new ValidationError(`Missing ${MCP_HEADER.WACHA_WORKER_ID} header`);
+
+  const server = createMcpServer({ workerId });
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: () => crypto.randomUUID(),
     onsessioninitialized: (initializedSessionId) => {
-      registerSession(initializedSessionId, { server, transport, workerId });
+      registerSession(initializedSessionId, { server, transport, workerId, sessionId: initializedSessionId });
     },
     onsessionclosed: (closedSessionId) => {
       removeSession(closedSessionId);
     },
   });
-  const server = createMcpServer();
-  await server.connect(transport);
 
+  await server.connect(transport);
   return transport.handleRequest(c.req.raw, { parsedBody });
 });
 
-// Mcp Routes
-app.get("/health", (c) =>
-  c.json({
-    status: "ok",
-    service: "wacha-mcp",
-  }),
-);
+app.get("/health", (c) => c.json({ status: "ok", service: "wacha-mcp" }));
+
+// app error handling
+app.onError((err, c) => {
+  console.error("Unexpected error:", err);
+  const status = err instanceof ValidationError ? 400 : 500;
+
+  return c.json(
+    {
+      jsonrpc: "2.0",
+      error: {
+        code: -32000,
+        message: err.message || "Internal Server Error",
+      },
+      id: null,
+    },
+    status,
+  );
+});
 
 serve({ fetch: app.fetch, port: Number(process.env.PORT) || 3000 }, (info) => {
   console.log(`Server running at ${info.address}:${info.port}`);

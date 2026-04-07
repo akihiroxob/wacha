@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { cancelStoryUseCase } from "@container";
-import { toTextResult } from "@utils/mcpUtils.ts";
+import { toTextResult } from "@mcp/utils/mcpUtils.ts";
 
 type CancelStoryInput = {
   storyId: string;
