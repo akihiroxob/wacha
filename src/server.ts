@@ -13,6 +13,7 @@ import { registerSession, getSessionBySessionId, removeSession } from "@mcp/sess
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import PageController from "@controller/PageController.ts";
 import { ValidationError } from "@application/error/ValidationError.ts";
+import { resolveWorkerId } from "@mcp/resolveWorkerId.ts";
 
 const app = new Hono();
 app.use(logger());
@@ -46,7 +47,7 @@ app.post("/project/:projectId/task/:taskId/delete", PageController.deleteTask);
 // MCP Route
 app.all("/mcp", async (c) => {
   // Postのみサポート
-  if (c.req.method !== "POST") throw new ValidationError(`Unsupported method: ${c.req.method}`);
+  // if (c.req.method !== "POST") throw new ValidationError(`Unsupported method: ${c.req.method}`);
 
   // Sessionがある場合の処理
   //-----------------------------------------------------------------------------
@@ -66,14 +67,23 @@ app.all("/mcp", async (c) => {
   if (!parsedBody) throw new ValidationError("Invalid JSON body");
   if (!isInitializeRequest(parsedBody)) throw new ValidationError("Initialization required");
 
-  const workerId = c.req.header(MCP_HEADER.WACHA_WORKER_ID)?.trim();
-  if (!workerId) throw new ValidationError(`Missing ${MCP_HEADER.WACHA_WORKER_ID} header`);
+  const workerId = resolveWorkerId(c.req.header(MCP_HEADER.WACHA_WORKER_ID));
 
   const server = createMcpServer({ workerId });
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: () => crypto.randomUUID(),
     onsessioninitialized: (initializedSessionId) => {
-      registerSession(initializedSessionId, { server, transport, workerId, sessionId: initializedSessionId });
+      if (!c.req.header(MCP_HEADER.WACHA_WORKER_ID)?.trim()) {
+        console.info(
+          `Assigned automatic worker id ${workerId} for session ${initializedSessionId}`,
+        );
+      }
+      registerSession(initializedSessionId, {
+        server,
+        transport,
+        workerId,
+        sessionId: initializedSessionId,
+      });
     },
     onsessionclosed: (closedSessionId) => {
       removeSession(closedSessionId);

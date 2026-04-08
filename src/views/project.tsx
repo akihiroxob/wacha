@@ -1,4 +1,5 @@
 import type { FC } from "hono/jsx";
+import type { ProjectAgent } from "@application/usecase/project/ListProjectAgentsUseCase.ts";
 import { StoryStatus } from "@constants/StoryStatus.ts";
 import { type TaskStatus as TaskStatusValue } from "@constants/TaskStatus.ts";
 import type { Task } from "@domain/model/Task.ts";
@@ -18,9 +19,22 @@ type ProjectProps = {
   tasks: Task[];
   stories: Story[];
   project: Project;
+  agents: ProjectAgent[];
+  agentSummary: {
+    total: number;
+    online: number;
+    offline: number;
+  };
 };
 
-export const ProjectPage: FC<ProjectProps> = ({ summary, tasks, stories, project }) => {
+export const ProjectPage: FC<ProjectProps> = ({
+  summary,
+  tasks,
+  stories,
+  project,
+  agents,
+  agentSummary,
+}) => {
   const tasksByStoryId = new Map<string, Task[]>();
 
   for (const task of tasks) {
@@ -58,6 +72,90 @@ export const ProjectPage: FC<ProjectProps> = ({ summary, tasks, stories, project
               <Button text="+ 新しいStoryを作成" />
             </a>
           </div>
+        </section>
+
+        <section className="flex flex-col gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-stone-900">Agents</h2>
+              <p className="text-sm text-stone-500">
+                project に参加している agent と現在の接続状況
+              </p>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-stone-500">
+              <span className="rounded-full bg-emerald-50 px-3 py-1 text-emerald-700">
+                Online {agentSummary.online}
+              </span>
+              <span className="rounded-full bg-stone-100 px-3 py-1 text-stone-600">
+                Offline {agentSummary.offline}
+              </span>
+            </div>
+          </div>
+          {agents.length > 0 ? (
+            <div className="overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-sm">
+              <div className="overflow-x-auto">
+                <table className="min-w-full border-collapse">
+                  <thead className="bg-stone-50 text-left text-xs uppercase tracking-[0.18em] text-stone-400">
+                    <tr>
+                      <th className="px-5 py-4 font-medium">Worker</th>
+                      <th className="px-5 py-4 font-medium">Role</th>
+                      <th className="px-5 py-4 font-medium">Status</th>
+                      <th className="px-5 py-4 font-medium">Session</th>
+                      <th className="px-5 py-4 font-medium">Heartbeat</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {agents.map((agent) => (
+                      <tr key={agent.membershipId} className="border-t border-stone-100 align-top">
+                        <td className="px-5 py-4">
+                          <div className="flex flex-col gap-1">
+                            <span className="font-medium text-stone-900">{agent.workerId}</span>
+                            <span className="text-xs text-stone-400">{agent.membershipId}</span>
+                          </div>
+                        </td>
+                        <td className="px-5 py-4">
+                          <span className="rounded-full bg-amber-50 px-3 py-1 text-sm font-medium text-amber-700">
+                            {agent.role}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4">
+                          <span
+                            className={
+                              agent.online
+                                ? "rounded-full bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-700"
+                                : "rounded-full bg-stone-100 px-3 py-1 text-sm font-medium text-stone-600"
+                            }
+                          >
+                            {agent.online ? "online" : "offline"}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4 text-sm text-stone-600">
+                          {agent.sessionId ? (
+                            <code className="rounded bg-stone-100 px-2 py-1 text-xs text-stone-700">
+                              {agent.sessionId}
+                            </code>
+                          ) : (
+                            <span className="text-stone-400">not connected</span>
+                          )}
+                        </td>
+                        <td className="px-5 py-4 text-sm text-stone-600">
+                          {agent.lastHeartbeatAt ? (
+                            new Date(agent.lastHeartbeatAt).toLocaleString()
+                          ) : (
+                            <span className="text-stone-400">no heartbeat</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-3xl border border-dashed border-stone-200 bg-white px-6 py-8 text-sm text-stone-500">
+              この project に参加している agent はまだいません。
+            </div>
+          )}
         </section>
 
         <section className="flex flex-col gap-4">

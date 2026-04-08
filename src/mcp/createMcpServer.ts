@@ -7,6 +7,7 @@ import {
   withManagerRoleGuard,
 } from "@mcp/managerGuard.ts";
 import { ListProjectTool } from "@mcp/tool/ListProjectTool.ts";
+import { ListProjectAgentsTool } from "@mcp/tool/ListProjectAgentsTool.ts";
 import { ListStoryTool } from "@mcp/tool/ListStoryTool.ts";
 import { IssueStoryTool } from "@mcp/tool/IssueStoryTool.ts";
 import { ClaimStoryTool } from "@mcp/tool/ClaimStoryTool.ts";
@@ -30,6 +31,11 @@ export const createMcpServer = (context: ToolContext) => {
   const server = new McpServer({ name, version }, { instructions });
   // tool for project
   server.registerTool("list_projects", ListProjectTool.config, ListProjectTool.execute);
+  server.registerTool(
+    "list_project_agents",
+    ListProjectAgentsTool.config,
+    ListProjectAgentsTool.execute,
+  );
 
   // tool for story
   server.registerTool("list_stories", ListStoryTool.config, ListStoryTool.execute);

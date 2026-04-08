@@ -11,6 +11,7 @@ import { RoleAssignmentService } from "@domain/service/RoleAssignmentService.ts"
 import { AssignProjectRoleUseCase } from "@application/usecase/AssignProjectRoleUseCase.ts";
 // project usecases[]
 import { GetProjectUseCase } from "@application/usecase/project/GetProjectUseCase.ts";
+import { ListProjectAgentsUseCase } from "@application/usecase/project/ListProjectAgentsUseCase.ts";
 import { ListProjectUseCase } from "@application/usecase/project/ListProjectUseCase.ts";
 // task usecases
 import { ListTaskUseCase } from "@application/usecase/tasks/ListTaskUseCase.ts";
@@ -26,6 +27,7 @@ import { DeleteStoryUseCase } from "@application/usecase/stories/DeleteStoryUseC
 import { ClaimStoryUseCase } from "@application/usecase/stories/ClaimStoryUseCase.ts";
 import { CompleteStoryUseCase } from "@application/usecase/stories/CompleteStoryUseCase.ts";
 import { CancelStoryUseCase } from "@application/usecase/stories/CancelStoryUseCase.ts";
+import { getSessionIdByWorkerId } from "@mcp/sessionRegistry.ts";
 
 // repositoriesのインスタンスを作成
 const taskRepository = new SQLiteTaskRepository();
@@ -55,3 +57,7 @@ export const assignProjectRoleUseCase = new AssignProjectRoleUseCase(
 );
 export const listProjectUseCase = new ListProjectUseCase(projectRepository);
 export const getProjectUseCase = new GetProjectUseCase(projectRepository);
+export const listProjectAgentsUseCase = new ListProjectAgentsUseCase(
+  projectMembershipRepository,
+  getSessionIdByWorkerId,
+);

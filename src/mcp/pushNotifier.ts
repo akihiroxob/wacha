@@ -16,7 +16,7 @@ const defaultDeps: PushNotifierDeps = {
   taskRepository: new SQLiteTaskRepository(),
 };
 
-class PushNotifier {
+export class PushNotifier {
   constructor(private deps: PushNotifierDeps = defaultDeps) {}
 
   async notifyManagersStoryCreated(story: Story): Promise<void> {
@@ -92,15 +92,20 @@ class PushNotifier {
     const uniqueWorkerIds = [...new Set(workerIds)];
 
     await Promise.all(
-      uniqueWorkerIds.flatMap((workerId) =>
-        getSessionByWorkerId(workerId)?.mapcancel_storycancel_story(async (session) => {
-          try {
-            await session.server.sendLoggingMessage(params, session.transport.sessionId);
-          } catch (error) {
-            console.error("Failed to send MCP push notification", error);
-          }
-        }),
-      ),
+      uniqueWorkerIds.flatMap((workerId) => {
+        const session = getSessionByWorkerId(workerId);
+        if (!session) return [];
+
+        return [
+          (async () => {
+            try {
+              await session.server.sendLoggingMessage(params, session.transport.sessionId);
+            } catch (error) {
+              console.error("Failed to send MCP push notification", error);
+            }
+          })(),
+        ];
+      }),
     );
   }
 }
