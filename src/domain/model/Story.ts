@@ -32,16 +32,25 @@ export class Story {
   }
 
   claim() {
+    if (this.status !== StoryStatus.TODO) {
+      throw new Error("story is not in todo status");
+    }
     this.status = StoryStatus.DOING;
     this.updatedAt = Date.now();
   }
 
   complete() {
+    if (this.status !== StoryStatus.DOING) {
+      throw new Error("story is not in doing status");
+    }
     this.status = StoryStatus.DONE;
     this.updatedAt = Date.now();
   }
 
   cancel() {
+    if (this.status !== StoryStatus.DOING) {
+      throw new Error("story is not in doing status");
+    }
     this.status = StoryStatus.CANCELED;
     this.updatedAt = Date.now();
   }

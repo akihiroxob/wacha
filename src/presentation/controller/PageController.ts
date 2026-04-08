@@ -1,4 +1,5 @@
 import { Context } from "hono";
+import { pushNotifier } from "@mcp/pushNotifier.ts";
 import { Index } from "@views/index.tsx";
 import { ProjectPage } from "@views/project.tsx";
 import { AddStoryPage } from "@views/add-story.tsx";
@@ -7,6 +8,7 @@ import {
   listTaskUseCase,
   listProjectUseCase,
   getProjectUseCase,
+  listProjectAgentsUseCase,
   listStoryUseCase,
   issueStoryUseCase,
   deleteStoryUseCase,
@@ -32,11 +34,14 @@ export class PageController {
 
     const taskResult = await listTaskUseCase.execute(projectId);
     const storyResult = await listStoryUseCase.execute(projectId);
+    const agentResult = await listProjectAgentsUseCase.execute(projectId);
     const page = ProjectPage({
       project,
       summary: taskResult.summary,
       tasks: taskResult.tasks,
       stories: storyResult.stories,
+      agents: agentResult.agents,
+      agentSummary: agentResult.summary,
     });
     return c.html(`<!doctype html>${renderToString(page ?? "")}`);
   }
@@ -78,7 +83,8 @@ export class PageController {
       return c.html(`<!doctype html>${renderToString(page ?? "")}`, 400);
     }
 
-    await issueStoryUseCase.execute(projectId, title, description || null);
+    const story = await issueStoryUseCase.execute(projectId, title, description || null);
+    await pushNotifier.notifyManagersStoryCreated(story);
     return c.redirect(`/project/${projectId}`, 303);
   }
 

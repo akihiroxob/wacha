@@ -17,7 +17,7 @@
   "scripts": {
     "start": "tsx src/server.ts",
     "prestart": "postcss src/views/css/style.css -o public/css/style.css",
-    "test": "mkdir -p .tmp && rm -f .tmp/wacha-test.db && WACHA_DB_PATH=.tmp/wacha-test.db node --import tsx --test --test-concurrency=1 test/**/*.test.ts",
+    "test": "mkdir -p .tmp && rm -f .tmp/wacha-test.db && WACHA_DB_PATH=.tmp/wacha-test.db node --import tsx --test --test-concurrency=1 \"test/**/*.test.ts\"",
     "dev": "npm-run-all --parallel dev:server dev:css",
     "dev:server": "tsx watch src/server.ts",
     "dev:css": "postcss src/views/css/style.css -o public/css/style.css --watch"

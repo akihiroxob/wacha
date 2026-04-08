@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { assignProjectRoleUseCase } from "@container";
 import { ProjectRole } from "@constants/ProjectRole.ts";
-import { toTextResult } from "@utils/mcpUtils.ts";
+import { toTextResult } from "@mcp/utils/mcpUtils.ts";
 
 type AssignToolInput = {
   baseDir: string;
@@ -27,7 +27,13 @@ export const AssignTool = {
         .describe("Optional requested role"),
     },
   },
-  execute: async ({ baseDir, projectName, description, workerId, requestedRole }: AssignToolInput) => {
+  execute: async ({
+    baseDir,
+    projectName,
+    description,
+    workerId,
+    requestedRole,
+  }: AssignToolInput) => {
     const result = await assignProjectRoleUseCase.execute({
       baseDir,
       projectName,

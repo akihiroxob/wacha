@@ -17,6 +17,40 @@ test("Story belongs to a project and can be completed", () => {
   assert.equal(story.status, StoryStatus.DONE);
 });
 
+test("Story.claim changes status from todo to doing", () => {
+  const story = createStory(StoryStatus.TODO);
+
+  story.claim();
+
+  assert.equal(story.status, StoryStatus.DOING);
+});
+
+test("Story.cancel changes status from doing to canceled", () => {
+  const story = createStory(StoryStatus.DOING);
+
+  story.cancel();
+
+  assert.equal(story.status, StoryStatus.CANCELED);
+});
+
+test("Story.claim throws when status is not todo", () => {
+  const story = createStory(StoryStatus.DOING);
+
+  assert.throws(() => story.claim(), /todo status/);
+});
+
+test("Story.complete throws when status is not doing", () => {
+  const story = createStory(StoryStatus.TODO);
+
+  assert.throws(() => story.complete(), /doing status/);
+});
+
+test("Story.cancel throws when status is not doing", () => {
+  const story = createStory(StoryStatus.TODO);
+
+  assert.throws(() => story.cancel(), /doing status/);
+});
+
 test("Story can clear its description", () => {
   const story = createStory();
 

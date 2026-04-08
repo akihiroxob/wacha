@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { toTextResult } from "@utils/mcpUtils.ts";
+import { toTextResult } from "@mcp/utils/mcpUtils.ts";
 import { claimTaskUseCase } from "@container";
 
 type ClaimTaskInput = {
