@@ -3,15 +3,20 @@ import { SQLiteTaskRepository } from "@repository/SQLiteTaskRepository.ts";
 import { SQLiteProjectRepository } from "@repository/SQLiteProjectRepository.ts";
 import { SQLiteProjectMembershipRepository } from "@repository/SQLiteProjectMembershipRepository.ts";
 import { SQLiteStoryRepository } from "@repository/SQLiteStoryRepository.ts";
+import { InMemorySessionRepository } from "@repository/InMemorySessionRepository.ts";
+// application services
+import { SessionService } from "@application/service/SessionService.ts";
+
 // domain service
 import { RoleAssignmentService } from "@domain/service/RoleAssignmentService.ts";
+import { MembershipService } from "@application/service/MembershipService.ts";
 
 // usecases
 // project role assignment
-import { AssignProjectRoleUseCase } from "@application/usecase/AssignProjectRoleUseCase.ts";
+import { AssignProjectRoleUseCase } from "@application/usecase/membership/AssignProjectRoleUseCase.ts";
+import { ListProjectAgentsUseCase } from "@application/usecase/membership/ListProjectAgentsUseCase.ts";
 // project usecases[]
 import { GetProjectUseCase } from "@application/usecase/project/GetProjectUseCase.ts";
-import { ListProjectAgentsUseCase } from "@application/usecase/project/ListProjectAgentsUseCase.ts";
 import { ListProjectUseCase } from "@application/usecase/project/ListProjectUseCase.ts";
 // task usecases
 import { ListTaskUseCase } from "@application/usecase/tasks/ListTaskUseCase.ts";
@@ -21,13 +26,13 @@ import { CompleteTaskUseCase } from "@application/usecase/tasks/CompleteTaskUseC
 import { AcceptTaskUseCase } from "@application/usecase/tasks/AcceptTaskUseCase.ts";
 import { RejectTaskUseCase } from "@application/usecase/tasks/RejectTaskUseCase.ts";
 import { DeleteTaskUseCase } from "@application/usecase/tasks/DeleteTaskUseCase.ts";
+// story usecases
 import { ListStoryUseCase } from "@application/usecase/stories/ListStoryUseCase.ts";
 import { IssueStoryUseCase } from "@application/usecase/stories/IssueStoryUseCase.ts";
 import { DeleteStoryUseCase } from "@application/usecase/stories/DeleteStoryUseCase.ts";
 import { ClaimStoryUseCase } from "@application/usecase/stories/ClaimStoryUseCase.ts";
 import { CompleteStoryUseCase } from "@application/usecase/stories/CompleteStoryUseCase.ts";
 import { CancelStoryUseCase } from "@application/usecase/stories/CancelStoryUseCase.ts";
-import { getSessionIdByWorkerId } from "@mcp/sessionRegistry.ts";
 
 // repositoriesのインスタンスを作成
 const taskRepository = new SQLiteTaskRepository();
@@ -35,8 +40,11 @@ const projectRepository = new SQLiteProjectRepository();
 const projectMembershipRepository = new SQLiteProjectMembershipRepository();
 const storyRepository = new SQLiteStoryRepository();
 const roleAssignmentService = new RoleAssignmentService();
+const sessionRepository = new InMemorySessionRepository();
 
 // 依存性を注入してユースケースのインスタンスを作成
+export const sessionService = new SessionService(sessionRepository);
+export const membershipService = new MembershipService(projectMembershipRepository);
 export const listTaskUseCase = new ListTaskUseCase(taskRepository);
 export const issueTaskUseCase = new IssueTaskUseCase(taskRepository);
 export const claimTaskUseCase = new ClaimTaskUseCase(taskRepository);
@@ -59,5 +67,13 @@ export const listProjectUseCase = new ListProjectUseCase(projectRepository);
 export const getProjectUseCase = new GetProjectUseCase(projectRepository);
 export const listProjectAgentsUseCase = new ListProjectAgentsUseCase(
   projectMembershipRepository,
-  getSessionIdByWorkerId,
+  sessionRepository,
+);
+
+// push notifier
+import { PushNotifier } from "@mcp/pushNotifier.ts";
+export const pushNotifier = new PushNotifier(
+  projectMembershipRepository,
+  taskRepository,
+  sessionRepository,
 );

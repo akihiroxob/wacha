@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { toTextResult } from "@mcp/utils/mcpUtils.ts";
-import { completeTaskUseCase } from "@container";
-import { pushNotifier } from "@mcp/pushNotifier.ts";
+import { completeTaskUseCase, pushNotifier } from "@container";
 
 type CompleteTaskInput = {
   taskId: string;

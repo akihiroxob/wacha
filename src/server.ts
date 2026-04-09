@@ -9,11 +9,10 @@ import { fileURLToPath } from "node:url";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { createMcpServer } from "@mcp/createMcpServer.ts";
 import { MCP_HEADER } from "@constants/McpHeader.ts";
-import { registerSession, getSessionBySessionId, removeSession } from "@mcp/sessionRegistry.ts";
+import { sessionService, membershipService } from "@container";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import PageController from "@controller/PageController.ts";
 import { ValidationError } from "@application/error/ValidationError.ts";
-import { resolveWorkerId } from "@mcp/resolveWorkerId.ts";
 
 const app = new Hono();
 app.use(logger());
@@ -53,7 +52,7 @@ app.all("/mcp", async (c) => {
   //-----------------------------------------------------------------------------
   const sessionId = c.req.header(MCP_HEADER.MCP_SESSION_ID);
   if (sessionId) {
-    const session = getSessionBySessionId(sessionId);
+    const session = sessionService.getSessionBySessionId(sessionId);
     if (!session) throw new ValidationError("Invalid session ID");
     return session.transport.handleRequest(c.req.raw);
   }
@@ -67,7 +66,7 @@ app.all("/mcp", async (c) => {
   if (!parsedBody) throw new ValidationError("Invalid JSON body");
   if (!isInitializeRequest(parsedBody)) throw new ValidationError("Initialization required");
 
-  const workerId = resolveWorkerId(c.req.header(MCP_HEADER.WACHA_WORKER_ID));
+  const workerId = c.req.header(MCP_HEADER.WACHA_WORKER_ID)?.trim() || crypto.randomUUID();
 
   const server = createMcpServer({ workerId });
   const transport = new WebStandardStreamableHTTPServerTransport({
@@ -78,7 +77,7 @@ app.all("/mcp", async (c) => {
           `Assigned automatic worker id ${workerId} for session ${initializedSessionId}`,
         );
       }
-      registerSession(initializedSessionId, {
+      sessionService.registerSession(initializedSessionId, {
         server,
         transport,
         workerId,
@@ -86,7 +85,14 @@ app.all("/mcp", async (c) => {
       });
     },
     onsessionclosed: (closedSessionId) => {
-      removeSession(closedSessionId);
+      sessionService.removeSessionBySessionId(closedSessionId);
+      membershipService.removeMembershipByWorkerId(workerId).catch((err) => {
+        console.error(
+          `Failed to remove project memberships for worker ${workerId} on session close`,
+          err,
+        );
+      });
+      console.info(`Session ${closedSessionId} closed and removed from session service`);
     },
   });
 

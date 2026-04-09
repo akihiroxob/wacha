@@ -4,6 +4,7 @@ import { ProjectMembership } from "@domain/model/ProjectMembership.ts";
 export interface ProjectMembershipRepository {
   findByProjectId(projectId: string): Promise<ProjectMembership[]>;
   findByProjectIdAndWorkerId(projectId: string, workerId: string): Promise<ProjectMembership[]>;
+  findByWorkerId(workerId: string): Promise<ProjectMembership[]>;
   findByProjectIdWorkerIdAndRole(
     projectId: string,
     workerId: string,
@@ -12,4 +13,6 @@ export interface ProjectMembershipRepository {
   create(projectId: string, workerId: string, role: ProjectRole): Promise<ProjectMembership>;
   save(projectMembership: ProjectMembership): Promise<void>;
   delete(projectMembershipId: string): Promise<void>;
+  deleteByWorkerId(workerId: string): Promise<void>;
+  clear(): Promise<void>;
 }

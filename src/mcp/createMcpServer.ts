@@ -1,11 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { ToolContext } from "./types/ToolContext.js";
-import {
-  resolveProjectIdFromProjectArgs,
-  resolveProjectIdFromStoryArgs,
-  resolveProjectIdFromTaskArgs,
-  withManagerRoleGuard,
-} from "@mcp/managerGuard.ts";
+import { ToolContext } from "../domain/model/ToolContext.js";
 import { ListProjectTool } from "@mcp/tool/ListProjectTool.ts";
 import { ListProjectAgentsTool } from "@mcp/tool/ListProjectAgentsTool.ts";
 import { ListStoryTool } from "@mcp/tool/ListStoryTool.ts";
@@ -20,7 +14,7 @@ import { RejectTaskTool } from "@mcp/tool/RejectTaskTool.ts";
 import { ClaimTaskTool } from "@mcp/tool/ClaimTaskTool.ts";
 import { CompleteTaskTool } from "@mcp/tool/CompleteTaskTool.ts";
 import { AssignTool } from "@mcp/tool/AssignTool.ts";
-import { withRoleGuard } from "./RoleGuard.ts";
+import { withRoleGuard } from "@mcp/middleware/RoleGuard.ts";
 import { ProjectRole } from "@constants/ProjectRole.ts";
 
 const name = "wacha";

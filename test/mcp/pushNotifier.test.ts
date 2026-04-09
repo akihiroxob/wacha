@@ -7,8 +7,8 @@ import { ProjectMembership } from "@domain/model/ProjectMembership.ts";
 import { Task } from "@domain/model/Task.ts";
 import { ProjectMembershipRepository } from "@domain/repository/ProjectMembershipRepository.ts";
 import { TaskRepository } from "@domain/repository/TaskRepository.ts";
-import { PushNotifier } from "@mcp/pushNotifier.ts";
-import { registerSession, removeSession } from "@mcp/sessionRegistry.ts";
+import { PushNotifier } from "@mcp/PushNotifier.ts";
+import { registerSession, removeSession } from "@repository/InMemorySessionRepository.ts";
 
 class InMemoryProjectMembershipRepository implements ProjectMembershipRepository {
   constructor(private memberships: ProjectMembership[]) {}
@@ -17,7 +17,14 @@ class InMemoryProjectMembershipRepository implements ProjectMembershipRepository
     return this.memberships.filter((membership) => membership.projectId === projectId);
   }
 
-  async findByProjectIdAndWorkerId(projectId: string, workerId: string): Promise<ProjectMembership[]> {
+  async findByWorkerId(workerId: string): Promise<ProjectMembership[]> {
+    return this.memberships.filter((membership) => membership.workerId === workerId);
+  }
+
+  async findByProjectIdAndWorkerId(
+    projectId: string,
+    workerId: string,
+  ): Promise<ProjectMembership[]> {
     return this.memberships.filter(
       (membership) => membership.projectId === projectId && membership.workerId === workerId,
     );
@@ -47,6 +54,10 @@ class InMemoryProjectMembershipRepository implements ProjectMembershipRepository
   }
 
   async delete(): Promise<void> {
+    throw new Error("not implemented");
+  }
+
+  async deleteByWorkerId(): Promise<void> {
     throw new Error("not implemented");
   }
 }

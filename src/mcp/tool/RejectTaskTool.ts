@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { toTextResult } from "@mcp/utils/mcpUtils.ts";
-import { rejectTaskUseCase } from "@container";
-import { pushNotifier } from "@mcp/pushNotifier.ts";
+import { rejectTaskUseCase, pushNotifier } from "@container";
 
 type RejectTaskInput = {
   taskId: string;

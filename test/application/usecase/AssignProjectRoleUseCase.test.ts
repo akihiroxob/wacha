@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { ProjectRole } from "@constants/ProjectRole.ts";
-import { AssignProjectRoleUseCase } from "@application/usecase/AssignProjectRoleUseCase.ts";
+import { AssignProjectRoleUseCase } from "@application/usecase/membership/AssignProjectRoleUseCase.ts";
 import { Project } from "@domain/model/Project.ts";
 import { ProjectMembership } from "@domain/model/ProjectMembership.ts";
 import { ProjectRepository } from "@domain/repository/ProjectRepository.ts";
@@ -25,7 +25,14 @@ class InMemoryProjectRepository implements ProjectRepository {
   }
 
   async create(name: string, description: string | null, baseDir: string): Promise<Project> {
-    const project = new Project(`project-${this.projects.size + 1}`, name, description, baseDir, 1000, 1000);
+    const project = new Project(
+      `project-${this.projects.size + 1}`,
+      name,
+      description,
+      baseDir,
+      1000,
+      1000,
+    );
     this.projects.set(project.id, project);
     return project;
   }
@@ -39,7 +46,15 @@ class InMemoryProjectMembershipRepository implements ProjectMembershipRepository
   private projectMemberships = new Map<string, ProjectMembership>();
 
   async findByProjectId(projectId: string): Promise<ProjectMembership[]> {
-    return [...this.projectMemberships.values()].filter((membership) => membership.projectId === projectId);
+    return [...this.projectMemberships.values()].filter(
+      (membership) => membership.projectId === projectId,
+    );
+  }
+
+  async findByWorkerId(workerId: string): Promise<ProjectMembership[]> {
+    return [...this.projectMemberships.values()].filter(
+      (membership) => membership.workerId === workerId,
+    );
   }
 
   async findByProjectIdAndWorkerId(
@@ -86,6 +101,14 @@ class InMemoryProjectMembershipRepository implements ProjectMembershipRepository
 
   async delete(projectMembershipId: string): Promise<void> {
     this.projectMemberships.delete(projectMembershipId);
+  }
+
+  async deleteByWorkerId(workerId: string): Promise<void> {
+    for (const [membershipId, membership] of this.projectMemberships.entries()) {
+      if (membership.workerId === workerId) {
+        this.projectMemberships.delete(membershipId);
+      }
+    }
   }
 }
 

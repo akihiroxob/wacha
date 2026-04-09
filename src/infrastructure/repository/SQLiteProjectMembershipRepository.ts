@@ -24,6 +24,26 @@ export class SQLiteProjectMembershipRepository implements ProjectMembershipRepos
     );
   }
 
+  async findByWorkerId(workerId: string): Promise<ProjectMembership[]> {
+    const rows = await DatabaseClient.selectFrom("project_membership")
+      .selectAll()
+      .where("worker_id", "=", workerId)
+      .execute();
+
+    return rows.map(
+      (row) =>
+        new ProjectMembership(
+          row.id,
+          row.project_id,
+          row.worker_id,
+          row.role as ProjectRole,
+          row.last_heartbeat_at,
+          row.created_at,
+          row.updated_at,
+        ),
+    );
+  }
+
   async findByProjectIdAndWorkerId(
     projectId: string,
     workerId: string,
@@ -122,5 +142,15 @@ export class SQLiteProjectMembershipRepository implements ProjectMembershipRepos
     await DatabaseClient.deleteFrom("project_membership")
       .where("id", "=", projectMembershipId)
       .execute();
+  }
+
+  async deleteByWorkerId(workerId: string): Promise<void> {
+    await DatabaseClient.deleteFrom("project_membership")
+      .where("worker_id", "=", workerId)
+      .execute();
+  }
+
+  async clear(): Promise<void> {
+    await DatabaseClient.deleteFrom("project_membership").execute();
   }
 }

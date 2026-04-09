@@ -41,6 +41,21 @@ test("SQLiteProjectMembershipRepository.findByProjectIdAndWorkerId filters membe
   assert.equal(memberships.length, 2);
 });
 
+test("SQLiteProjectMembershipRepository.deleteByWorkerId removes all memberships for worker", async () => {
+  const project = await projectRepository.create("Wacha", null, "repo/wacha");
+  await repository.create(project.id, "worker-1", ProjectRole.MANAGER);
+  await repository.create(project.id, "worker-1", ProjectRole.WORKER);
+  await repository.create(project.id, "worker-2", ProjectRole.WORKER);
+
+  await repository.deleteByWorkerId("worker-1");
+
+  const worker1Memberships = await repository.findByWorkerId("worker-1");
+  const worker2Memberships = await repository.findByWorkerId("worker-2");
+
+  assert.equal(worker1Memberships.length, 0);
+  assert.equal(worker2Memberships.length, 1);
+});
+
 test("SQLiteProjectMembershipRepository.save updates heartbeat", async () => {
   const project = await projectRepository.create("Wacha", null, "repo/wacha");
   const membership = await repository.create(project.id, "worker-1", ProjectRole.MANAGER);

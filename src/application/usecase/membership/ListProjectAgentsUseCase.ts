@@ -1,5 +1,6 @@
 import { ProjectRole } from "@constants/ProjectRole.ts";
 import { ProjectMembershipRepository } from "@domain/repository/ProjectMembershipRepository.ts";
+import { SessionRepository } from "@domain/repository/SessionRepository.ts";
 
 export interface ProjectAgent {
   membershipId: string;
@@ -26,14 +27,15 @@ interface ListProjectAgentsUseCaseResult {
 export class ListProjectAgentsUseCase {
   constructor(
     private projectMembershipRepository: ProjectMembershipRepository,
-    private getSessionIdByWorkerId: (workerId: string) => string | undefined,
+    private sessionRepository: SessionRepository,
   ) {}
 
   async execute(projectId: string): Promise<ListProjectAgentsUseCaseResult> {
     const memberships = await this.projectMembershipRepository.findByProjectId(projectId);
     const agents = memberships
       .map((membership) => {
-        const sessionId = this.getSessionIdByWorkerId(membership.workerId) ?? null;
+        const sessionId =
+          this.sessionRepository.getSessionIdByWorkerId(membership.workerId) ?? null;
 
         return {
           membershipId: membership.id,

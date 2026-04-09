@@ -1,5 +1,5 @@
 import type { FC } from "hono/jsx";
-import type { ProjectAgent } from "@application/usecase/project/ListProjectAgentsUseCase.ts";
+import type { ProjectAgent } from "@application/usecase/membership/ListProjectAgentsUseCase.ts";
 import { StoryStatus } from "@constants/StoryStatus.ts";
 import { type TaskStatus as TaskStatusValue } from "@constants/TaskStatus.ts";
 import type { Task } from "@domain/model/Task.ts";
@@ -58,8 +58,12 @@ export const ProjectPage: FC<ProjectProps> = ({
         <section className="rounded-[2rem] border border-stone-200 bg-white px-6 py-8 shadow-sm md:px-8">
           <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
             <div className="flex max-w-3xl flex-col gap-3">
-              <p className="text-sm font-medium uppercase tracking-[0.22em] text-stone-400">Project Detail</p>
-              <h1 className="text-4xl font-semibold tracking-tight text-stone-900">{project.name}</h1>
+              <p className="text-sm font-medium uppercase tracking-[0.22em] text-stone-400">
+                Project Detail
+              </p>
+              <h1 className="text-4xl font-semibold tracking-tight text-stone-900">
+                {project.name}
+              </h1>
               <p className="text-sm leading-7 text-stone-600">
                 {project.description ?? "プロジェクトの説明はまだ設定されていません。"}
               </p>

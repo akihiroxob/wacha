@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { ProjectRole } from "@constants/ProjectRole.ts";
-import { ListProjectAgentsUseCase } from "@application/usecase/project/ListProjectAgentsUseCase.ts";
+import { ListProjectAgentsUseCase } from "@application/usecase/membership/ListProjectAgentsUseCase.ts";
 import { ProjectMembership } from "@domain/model/ProjectMembership.ts";
 import { ProjectMembershipRepository } from "@domain/repository/ProjectMembershipRepository.ts";
 
@@ -13,7 +13,14 @@ class InMemoryProjectMembershipRepository implements ProjectMembershipRepository
     return this.memberships.filter((membership) => membership.projectId === projectId);
   }
 
-  async findByProjectIdAndWorkerId(projectId: string, workerId: string): Promise<ProjectMembership[]> {
+  async findByWorkerId(workerId: string): Promise<ProjectMembership[]> {
+    return this.memberships.filter((membership) => membership.workerId === workerId);
+  }
+
+  async findByProjectIdAndWorkerId(
+    projectId: string,
+    workerId: string,
+  ): Promise<ProjectMembership[]> {
     return this.memberships.filter(
       (membership) => membership.projectId === projectId && membership.workerId === workerId,
     );
@@ -43,6 +50,10 @@ class InMemoryProjectMembershipRepository implements ProjectMembershipRepository
   }
 
   async delete(): Promise<void> {
+    throw new Error("not implemented");
+  }
+
+  async deleteByWorkerId(): Promise<void> {
     throw new Error("not implemented");
   }
 }

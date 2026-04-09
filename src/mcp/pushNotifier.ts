@@ -1,28 +1,18 @@
 import { ProjectRole } from "@constants/ProjectRole.ts";
-import { ProjectMembershipRepository } from "@domain/repository/ProjectMembershipRepository.ts";
 import { Story } from "@domain/model/Story.ts";
+import { ProjectMembershipRepository } from "@domain/repository/ProjectMembershipRepository.ts";
 import { TaskRepository } from "@domain/repository/TaskRepository.ts";
-import { SQLiteProjectMembershipRepository } from "@repository/SQLiteProjectMembershipRepository.ts";
-import { SQLiteTaskRepository } from "@repository/SQLiteTaskRepository.ts";
-import { getSessionByWorkerId } from "@mcp/sessionRegistry.ts";
-
-type PushNotifierDeps = {
-  projectMembershipRepository: ProjectMembershipRepository;
-  taskRepository: TaskRepository;
-};
-
-const defaultDeps: PushNotifierDeps = {
-  projectMembershipRepository: new SQLiteProjectMembershipRepository(),
-  taskRepository: new SQLiteTaskRepository(),
-};
+import { SessionRepository } from "@domain/repository/SessionRepository.ts";
 
 export class PushNotifier {
-  constructor(private deps: PushNotifierDeps = defaultDeps) {}
+  constructor(
+    private projectMembershipRepository: ProjectMembershipRepository,
+    private taskRepository: TaskRepository,
+    private sessionRepository: SessionRepository,
+  ) {}
 
   async notifyManagersStoryCreated(story: Story): Promise<void> {
-    const memberships = await this.deps.projectMembershipRepository.findByProjectId(
-      story.projectId,
-    );
+    const memberships = await this.projectMembershipRepository.findByProjectId(story.projectId);
     const managerWorkerIds = memberships
       .filter((membership) => membership.role === ProjectRole.MANAGER)
       .map((membership) => membership.workerId);
@@ -42,10 +32,10 @@ export class PushNotifier {
   }
 
   async notifyReviewersTaskInReview(taskId: string): Promise<void> {
-    const task = await this.deps.taskRepository.findById(taskId);
+    const task = await this.taskRepository.findById(taskId);
     if (!task) return;
 
-    const memberships = await this.deps.projectMembershipRepository.findByProjectId(task.projectId);
+    const memberships = await this.projectMembershipRepository.findByProjectId(task.projectId);
     const reviewerWorkerIds = memberships
       .filter((membership) => membership.role === ProjectRole.REVIEWER)
       .map((membership) => membership.workerId);
@@ -66,7 +56,7 @@ export class PushNotifier {
   }
 
   async notifyWorkerTaskRejected(taskId: string): Promise<void> {
-    const task = await this.deps.taskRepository.findById(taskId);
+    const task = await this.taskRepository.findById(taskId);
     if (!task?.assignee) return;
 
     await this.sendToWorkers([task.assignee], {
@@ -93,7 +83,7 @@ export class PushNotifier {
 
     await Promise.all(
       uniqueWorkerIds.flatMap((workerId) => {
-        const session = getSessionByWorkerId(workerId);
+        const session = this.sessionRepository.getSessionByWorkerId(workerId);
         if (!session) return [];
 
         return [
@@ -109,5 +99,3 @@ export class PushNotifier {
     );
   }
 }
-
-export const pushNotifier = new PushNotifier();

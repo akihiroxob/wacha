@@ -1,5 +1,4 @@
 import { Context } from "hono";
-import { pushNotifier } from "@mcp/pushNotifier.ts";
 import { Index } from "@views/index.tsx";
 import { ProjectPage } from "@views/project.tsx";
 import { AddStoryPage } from "@views/add-story.tsx";
@@ -13,6 +12,7 @@ import {
   issueStoryUseCase,
   deleteStoryUseCase,
   deleteTaskUseCase,
+  pushNotifier,
 } from "@container";
 
 export class PageController {
