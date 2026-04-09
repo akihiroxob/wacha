@@ -24,13 +24,13 @@ export class Task {
     }
   }
 
-  claim(workerId: string) {
+  claim(sessionId: string) {
     if (this.status !== TaskStatus.TODO && this.status !== TaskStatus.REJECTED) {
       throw new Error(`the task(${this.id}) is already claimed`);
     }
     this.resumeSourceStatus = this.status;
     this.status = TaskStatus.DOING;
-    this.assignee = workerId;
+    this.assignee = sessionId;
     this.updatedAt = Date.now();
   }
 

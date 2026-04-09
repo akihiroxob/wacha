@@ -7,7 +7,7 @@ type AssignToolInput = {
   baseDir: string;
   projectName: string;
   description?: string;
-  workerId: string;
+  sessionId: string;
   requestedRole?: ProjectRole;
 };
 
@@ -20,7 +20,6 @@ export const AssignTool = {
       baseDir: z.string().min(1).describe("Project base directory"),
       projectName: z.string().min(1).describe("Project name"),
       description: z.string().optional().describe("Optional project description"),
-      workerId: z.string().min(1).describe("Worker identifier"),
       requestedRole: z
         .enum([ProjectRole.MANAGER, ProjectRole.REVIEWER, ProjectRole.WORKER])
         .optional()
@@ -31,14 +30,14 @@ export const AssignTool = {
     baseDir,
     projectName,
     description,
-    workerId,
     requestedRole,
+    sessionId,
   }: AssignToolInput) => {
     const result = await assignProjectRoleUseCase.execute({
       baseDir,
       projectName,
       description: description ?? null,
-      workerId,
+      sessionId,
       requestedRole,
     });
 

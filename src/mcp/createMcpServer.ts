@@ -16,6 +16,7 @@ import { CompleteTaskTool } from "@mcp/tool/CompleteTaskTool.ts";
 import { AssignTool } from "@mcp/tool/AssignTool.ts";
 import { withRoleGuard } from "@mcp/middleware/RoleGuard.ts";
 import { ProjectRole } from "@constants/ProjectRole.ts";
+import { ar } from "zod/locales";
 
 const name = "wacha";
 const version = "1.0.0";
@@ -61,15 +62,20 @@ export const createMcpServer = (context: ToolContext) => {
     IssueTaskTool.config,
     withRoleGuard([ProjectRole.MANAGER], context, IssueTaskTool.execute),
   );
-  server.registerTool("claim_task", ClaimTaskTool.config, ClaimTaskTool.execute);
+  server.registerTool("claim_task", ClaimTaskTool.config, (args) =>
+    ClaimTaskTool.execute({ ...args, sessionId: context.sessionId }),
+  );
   server.registerTool("complete_task", CompleteTaskTool.config, CompleteTaskTool.execute);
+
   server.registerTool(
     "accept_task",
     AcceptTaskTool.config,
     withRoleGuard([ProjectRole.MANAGER], context, AcceptTaskTool.execute),
   );
   server.registerTool("reject_task", RejectTaskTool.config, RejectTaskTool.execute);
-  server.registerTool("assign_project_role", AssignTool.config, AssignTool.execute);
+  server.registerTool("assign_project_role", AssignTool.config, (args) =>
+    AssignTool.execute({ ...args, sessionId: context.sessionId }),
+  );
 
   return server;
 };

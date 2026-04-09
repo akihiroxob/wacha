@@ -9,7 +9,7 @@ type ListProjectAgentsInput = {
 export const ListProjectAgentsTool = {
   config: {
     title: "List Project Agents",
-    description: "List project agents with worker, role, and current MCP session status.",
+    description: "List project agents with worker, role.",
     inputSchema: {
       projectId: z.string().min(1).describe("Project ID"),
     },
@@ -18,7 +18,7 @@ export const ListProjectAgentsTool = {
     const result = await listProjectAgentsUseCase.execute(projectId);
     return toTextResult(
       result,
-      `Returned ${result.summary.total} project agents (${result.summary.online} online).`,
+      `Returned ${result.summary.total} project agent${result.summary.total !== 1 ? "s" : ""}.`,
     );
   },
 };

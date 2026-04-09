@@ -26,7 +26,6 @@ app.use(
       MCP_HEADER.MCP_SESSION_ID,
       MCP_HEADER.MCP_PROTOCOL_VERSION,
       MCP_HEADER.LAST_EVENT_ID,
-      MCP_HEADER.WACHA_WORKER_ID,
     ],
     exposeHeaders: [MCP_HEADER.MCP_SESSION_ID, MCP_HEADER.MCP_PROTOCOL_VERSION],
   }),
@@ -66,32 +65,23 @@ app.all("/mcp", async (c) => {
   if (!parsedBody) throw new ValidationError("Invalid JSON body");
   if (!isInitializeRequest(parsedBody)) throw new ValidationError("Initialization required");
 
-  const workerId = c.req.header(MCP_HEADER.WACHA_WORKER_ID)?.trim() || crypto.randomUUID();
-
-  const server = createMcpServer({ workerId });
+  const initialSessionId = crypto.randomUUID();
+  const server = createMcpServer({ sessionId: initialSessionId });
   const transport = new WebStandardStreamableHTTPServerTransport({
-    sessionIdGenerator: () => crypto.randomUUID(),
+    sessionIdGenerator: () => initialSessionId,
     onsessioninitialized: (initializedSessionId) => {
-      if (!c.req.header(MCP_HEADER.WACHA_WORKER_ID)?.trim()) {
-        console.info(
-          `Assigned automatic worker id ${workerId} for session ${initializedSessionId}`,
-        );
-      }
       sessionService.registerSession(initializedSessionId, {
         server,
         transport,
-        workerId,
         sessionId: initializedSessionId,
       });
     },
     onsessionclosed: (closedSessionId) => {
       sessionService.removeSessionBySessionId(closedSessionId);
-      membershipService.removeMembershipByWorkerId(workerId).catch((err) => {
-        console.error(
-          `Failed to remove project memberships for worker ${workerId} on session close`,
-          err,
-        );
+      membershipService.removeMembershipBySessionId(closedSessionId).catch((error) => {
+        console.error(`Failed to remove project memberships for session ${closedSessionId}`, error);
       });
+
       console.info(`Session ${closedSessionId} closed and removed from session service`);
     },
   });

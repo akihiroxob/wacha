@@ -8,13 +8,13 @@ export class MembershipService {
     return await this.projectMembershipRepository.findByProjectId(projectId);
   }
 
-  async getRolesByWorkerId(workerId: string): Promise<ProjectRole[]> {
-    const memberships = await this.projectMembershipRepository.findByWorkerId(workerId);
+  async getRolesBySessionId(sessionId: string): Promise<ProjectRole[]> {
+    const memberships = await this.projectMembershipRepository.findBySessionId(sessionId);
     return memberships.map((membership) => membership.role);
   }
 
-  async removeMembershipByWorkerId(workerId: string): Promise<void> {
-    await this.projectMembershipRepository.deleteByWorkerId(workerId);
+  async removeMembershipBySessionId(sessionId: string): Promise<void> {
+    await this.projectMembershipRepository.deleteBySessionId(sessionId);
   }
 
   async clear(): Promise<void> {

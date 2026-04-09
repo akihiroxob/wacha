@@ -9,7 +9,7 @@ type AssignProjectRoleInput = {
   baseDir: string;
   projectName: string;
   description?: string | null;
-  workerId: string;
+  sessionId: string;
   requestedRole?: ProjectRole;
 };
 
@@ -41,16 +41,17 @@ export class AssignProjectRoleUseCase {
     const role = input.requestedRole
       ? this.roleAssignmentService.resolveRequestedRole(
           projectMemberships,
-          input.workerId,
+          input.sessionId,
           input.requestedRole,
         )
-      : this.roleAssignmentService.suggestRole(projectMemberships, input.workerId);
+      : this.roleAssignmentService.suggestRole(projectMemberships, input.sessionId);
 
-    const existingMembership = await this.projectMembershipRepository.findByProjectIdWorkerIdAndRole(
-      project.id,
-      input.workerId,
-      role,
-    );
+    const existingMembership =
+      await this.projectMembershipRepository.findByProjectIdSessionIdAndRole(
+        project.id,
+        input.sessionId,
+        role,
+      );
 
     if (existingMembership) {
       return {
@@ -63,7 +64,7 @@ export class AssignProjectRoleUseCase {
 
     const projectMembership = await this.projectMembershipRepository.create(
       project.id,
-      input.workerId,
+      input.sessionId,
       role,
     );
 

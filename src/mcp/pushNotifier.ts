@@ -13,11 +13,11 @@ export class PushNotifier {
 
   async notifyManagersStoryCreated(story: Story): Promise<void> {
     const memberships = await this.projectMembershipRepository.findByProjectId(story.projectId);
-    const managerWorkerIds = memberships
+    const managerSessionIds = memberships
       .filter((membership) => membership.role === ProjectRole.MANAGER)
-      .map((membership) => membership.workerId);
+      .map((membership) => membership.sessionId);
 
-    await this.sendToWorkers(managerWorkerIds, {
+    await this.sendToWorkers(managerSessionIds, {
       level: "info",
       logger: "wacha.push",
       data: {
@@ -36,11 +36,11 @@ export class PushNotifier {
     if (!task) return;
 
     const memberships = await this.projectMembershipRepository.findByProjectId(task.projectId);
-    const reviewerWorkerIds = memberships
+    const reviewerSessionIds = memberships
       .filter((membership) => membership.role === ProjectRole.REVIEWER)
-      .map((membership) => membership.workerId);
+      .map((membership) => membership.sessionId);
 
-    await this.sendToWorkers(reviewerWorkerIds, {
+    await this.sendToWorkers(reviewerSessionIds, {
       level: "info",
       logger: "wacha.push",
       data: {
@@ -76,14 +76,14 @@ export class PushNotifier {
   }
 
   private async sendToWorkers(
-    workerIds: string[],
+    sessionIds: string[],
     params: { level: "info" | "warning"; logger: string; data: Record<string, unknown> },
   ): Promise<void> {
-    const uniqueWorkerIds = [...new Set(workerIds)];
+    const uniqueSessionIds = [...new Set(sessionIds)];
 
     await Promise.all(
-      uniqueWorkerIds.flatMap((workerId) => {
-        const session = this.sessionRepository.getSessionByWorkerId(workerId);
+      uniqueSessionIds.flatMap((sessionId) => {
+        const session = this.sessionRepository.getSessionBySessionId(sessionId);
         if (!session) return [];
 
         return [

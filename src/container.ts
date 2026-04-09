@@ -65,10 +65,7 @@ export const assignProjectRoleUseCase = new AssignProjectRoleUseCase(
 );
 export const listProjectUseCase = new ListProjectUseCase(projectRepository);
 export const getProjectUseCase = new GetProjectUseCase(projectRepository);
-export const listProjectAgentsUseCase = new ListProjectAgentsUseCase(
-  projectMembershipRepository,
-  sessionRepository,
-);
+export const listProjectAgentsUseCase = new ListProjectAgentsUseCase(projectMembershipRepository);
 
 // push notifier
 import { PushNotifier } from "@mcp/pushNotifier.ts";

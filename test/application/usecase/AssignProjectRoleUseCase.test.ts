@@ -51,41 +51,45 @@ class InMemoryProjectMembershipRepository implements ProjectMembershipRepository
     );
   }
 
-  async findByWorkerId(workerId: string): Promise<ProjectMembership[]> {
+  async findBySessionId(sessionId: string): Promise<ProjectMembership[]> {
     return [...this.projectMemberships.values()].filter(
-      (membership) => membership.workerId === workerId,
+      (membership) => membership.sessionId === sessionId,
     );
   }
 
-  async findByProjectIdAndWorkerId(
+  async findByProjectIdAndSessionId(
     projectId: string,
-    workerId: string,
+    sessionId: string,
   ): Promise<ProjectMembership[]> {
     return [...this.projectMemberships.values()].filter(
-      (membership) => membership.projectId === projectId && membership.workerId === workerId,
+      (membership) => membership.projectId === projectId && membership.sessionId === sessionId,
     );
   }
 
-  async findByProjectIdWorkerIdAndRole(
+  async findByProjectIdSessionIdAndRole(
     projectId: string,
-    workerId: string,
+    sessionId: string,
     role: ProjectRole,
   ): Promise<ProjectMembership | null> {
     return (
       [...this.projectMemberships.values()].find(
         (membership) =>
           membership.projectId === projectId &&
-          membership.workerId === workerId &&
+          membership.sessionId === sessionId &&
           membership.role === role,
       ) ?? null
     );
   }
 
-  async create(projectId: string, workerId: string, role: ProjectRole): Promise<ProjectMembership> {
+  async create(
+    projectId: string,
+    sessionId: string,
+    role: ProjectRole,
+  ): Promise<ProjectMembership> {
     const membership = new ProjectMembership(
       `membership-${this.projectMemberships.size + 1}`,
       projectId,
-      workerId,
+      sessionId,
       role,
       1000,
       1000,
@@ -103,12 +107,15 @@ class InMemoryProjectMembershipRepository implements ProjectMembershipRepository
     this.projectMemberships.delete(projectMembershipId);
   }
 
-  async deleteByWorkerId(workerId: string): Promise<void> {
+  async deleteBySessionId(sessionId: string): Promise<void> {
     for (const [membershipId, membership] of this.projectMemberships.entries()) {
-      if (membership.workerId === workerId) {
+      if (membership.sessionId === sessionId) {
         this.projectMemberships.delete(membershipId);
       }
     }
+  }
+  async clear(): Promise<void> {
+    this.projectMemberships.clear();
   }
 }
 
@@ -122,7 +129,7 @@ test("AssignProjectRoleUseCase creates project and assigns recommended manager r
   const result = await useCase.execute({
     baseDir: "repo/wacha",
     projectName: "Wacha",
-    workerId: "worker-1",
+    sessionId: "session-1",
   });
 
   assert.equal(result.project.baseDir, "repo/wacha");
@@ -144,14 +151,14 @@ test("AssignProjectRoleUseCase reuses existing membership for same worker and ro
   const first = await useCase.execute({
     baseDir: "repo/wacha",
     projectName: "Wacha",
-    workerId: "worker-1",
+    sessionId: "session-1",
     requestedRole: ProjectRole.MANAGER,
   });
 
   const second = await useCase.execute({
     baseDir: "repo/wacha",
     projectName: "Wacha",
-    workerId: "worker-1",
+    sessionId: "session-1",
     requestedRole: ProjectRole.MANAGER,
   });
 
@@ -174,13 +181,13 @@ test("AssignProjectRoleUseCase assigns next available recommended role", async (
   await useCase.execute({
     baseDir: "repo/wacha",
     projectName: "Wacha",
-    workerId: "worker-1",
+    sessionId: "session-1",
   });
 
   const result = await useCase.execute({
     baseDir: "repo/wacha",
     projectName: "Wacha",
-    workerId: "worker-2",
+    sessionId: "session-2",
   });
 
   assert.equal(result.projectMembership.role, ProjectRole.REVIEWER);
@@ -196,7 +203,7 @@ test("AssignProjectRoleUseCase respects requested worker role", async () => {
   const result = await useCase.execute({
     baseDir: "repo/wacha",
     projectName: "Wacha",
-    workerId: "worker-1",
+    sessionId: "session-1",
     requestedRole: ProjectRole.WORKER,
   });
 

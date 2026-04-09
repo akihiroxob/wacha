@@ -4,7 +4,7 @@ import type { ProjectRole } from "@constants/ProjectRole.ts";
 export interface ProjectMembershipTable {
   id: string;
   project_id: string;
-  worker_id: string;
+  session_id: string;
   role: ProjectRole;
   last_heartbeat_at: number | null;
   created_at: Generated<number>;

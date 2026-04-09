@@ -15,7 +15,7 @@ export class SQLiteProjectMembershipRepository implements ProjectMembershipRepos
         new ProjectMembership(
           row.id,
           row.project_id,
-          row.worker_id,
+          row.session_id,
           row.role as ProjectRole,
           row.last_heartbeat_at,
           row.created_at,
@@ -24,10 +24,10 @@ export class SQLiteProjectMembershipRepository implements ProjectMembershipRepos
     );
   }
 
-  async findByWorkerId(workerId: string): Promise<ProjectMembership[]> {
+  async findBySessionId(sessionId: string): Promise<ProjectMembership[]> {
     const rows = await DatabaseClient.selectFrom("project_membership")
       .selectAll()
-      .where("worker_id", "=", workerId)
+      .where("session_id", "=", sessionId)
       .execute();
 
     return rows.map(
@@ -35,7 +35,7 @@ export class SQLiteProjectMembershipRepository implements ProjectMembershipRepos
         new ProjectMembership(
           row.id,
           row.project_id,
-          row.worker_id,
+          row.session_id,
           row.role as ProjectRole,
           row.last_heartbeat_at,
           row.created_at,
@@ -44,14 +44,14 @@ export class SQLiteProjectMembershipRepository implements ProjectMembershipRepos
     );
   }
 
-  async findByProjectIdAndWorkerId(
+  async findByProjectIdAndSessionId(
     projectId: string,
-    workerId: string,
+    sessionId: string,
   ): Promise<ProjectMembership[]> {
     const rows = await DatabaseClient.selectFrom("project_membership")
       .selectAll()
       .where("project_id", "=", projectId)
-      .where("worker_id", "=", workerId)
+      .where("session_id", "=", sessionId)
       .execute();
 
     return rows.map(
@@ -59,7 +59,7 @@ export class SQLiteProjectMembershipRepository implements ProjectMembershipRepos
         new ProjectMembership(
           row.id,
           row.project_id,
-          row.worker_id,
+          row.session_id,
           row.role as ProjectRole,
           row.last_heartbeat_at,
           row.created_at,
@@ -68,15 +68,15 @@ export class SQLiteProjectMembershipRepository implements ProjectMembershipRepos
     );
   }
 
-  async findByProjectIdWorkerIdAndRole(
+  async findByProjectIdSessionIdAndRole(
     projectId: string,
-    workerId: string,
+    sessionId: string,
     role: ProjectRole,
   ): Promise<ProjectMembership | null> {
     const row = await DatabaseClient.selectFrom("project_membership")
       .selectAll()
       .where("project_id", "=", projectId)
-      .where("worker_id", "=", workerId)
+      .where("session_id", "=", sessionId)
       .where("role", "=", role)
       .executeTakeFirst();
 
@@ -85,7 +85,7 @@ export class SQLiteProjectMembershipRepository implements ProjectMembershipRepos
     return new ProjectMembership(
       row.id,
       row.project_id,
-      row.worker_id,
+      row.session_id,
       row.role as ProjectRole,
       row.last_heartbeat_at,
       row.created_at,
@@ -93,7 +93,11 @@ export class SQLiteProjectMembershipRepository implements ProjectMembershipRepos
     );
   }
 
-  async create(projectId: string, workerId: string, role: ProjectRole): Promise<ProjectMembership> {
+  async create(
+    projectId: string,
+    sessionId: string,
+    role: ProjectRole,
+  ): Promise<ProjectMembership> {
     const id = crypto.randomUUID();
     const now = Date.now();
 
@@ -101,7 +105,7 @@ export class SQLiteProjectMembershipRepository implements ProjectMembershipRepos
       .values({
         id,
         project_id: projectId,
-        worker_id: workerId,
+        session_id: sessionId,
         role,
         last_heartbeat_at: now,
         created_at: now,
@@ -113,7 +117,7 @@ export class SQLiteProjectMembershipRepository implements ProjectMembershipRepos
     return new ProjectMembership(
       projectMembership.id,
       projectMembership.project_id,
-      projectMembership.worker_id,
+      projectMembership.session_id,
       projectMembership.role as ProjectRole,
       projectMembership.last_heartbeat_at,
       projectMembership.created_at,
@@ -122,9 +126,9 @@ export class SQLiteProjectMembershipRepository implements ProjectMembershipRepos
   }
 
   async save(projectMembership: ProjectMembership): Promise<void> {
-    const existingProjectMembership = await this.findByProjectIdWorkerIdAndRole(
+    const existingProjectMembership = await this.findByProjectIdSessionIdAndRole(
       projectMembership.projectId,
-      projectMembership.workerId,
+      projectMembership.sessionId,
       projectMembership.role,
     );
     if (!existingProjectMembership) throw new Error("ProjectMembership not found");
@@ -144,9 +148,9 @@ export class SQLiteProjectMembershipRepository implements ProjectMembershipRepos
       .execute();
   }
 
-  async deleteByWorkerId(workerId: string): Promise<void> {
+  async deleteBySessionId(sessionId: string): Promise<void> {
     await DatabaseClient.deleteFrom("project_membership")
-      .where("worker_id", "=", workerId)
+      .where("session_id", "=", sessionId)
       .execute();
   }
 

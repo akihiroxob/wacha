@@ -8,11 +8,11 @@ export const withRoleGuard = <TArgs>(
   execute: any,
 ) => {
   return async (args: TArgs) => {
-    const { workerId, sessionId } = context;
-    if (!workerId || !sessionId) {
-      throw new Error("Unauthorized: No workerId or sessionId in context");
+    const { sessionId } = context;
+    if (!sessionId) {
+      throw new Error("Unauthorized: No sessionId in context");
     }
-    const roles = await membershipService.getRolesByWorkerId(workerId);
+    const roles = await membershipService.getRolesBySessionId(sessionId);
     const hasRole = roles.some((role) => allowRoles.includes(role));
     if (!hasRole) {
       throw new Error("Forbidden: Agent does not have required role");
