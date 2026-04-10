@@ -16,7 +16,6 @@ import { CompleteTaskTool } from "@mcp/tool/CompleteTaskTool.ts";
 import { AssignTool } from "@mcp/tool/AssignTool.ts";
 import { withRoleGuard } from "@mcp/middleware/RoleGuard.ts";
 import { ProjectRole } from "@constants/ProjectRole.ts";
-import { ar } from "zod/locales";
 
 const name = "wacha";
 const version = "1.0.0";
