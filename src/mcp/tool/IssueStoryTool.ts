@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { issueStoryUseCase, pushNotifier } from "@container";
+import { issueStoryUseCase } from "@container";
 import { toTextResult } from "@mcp/utils/mcpUtils.ts";
 
 type IssueStoryInput = {
@@ -20,7 +20,6 @@ export const IssueStoryTool = {
   },
   execute: async ({ projectId, title, description }: IssueStoryInput) => {
     const story = await issueStoryUseCase.execute(projectId, title, description ?? null);
-    await pushNotifier.notifyManagersStoryCreated(story);
     return toTextResult(story, `Created story ${story.id}.`);
   },
 };

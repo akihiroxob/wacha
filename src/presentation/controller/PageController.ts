@@ -12,7 +12,6 @@ import {
   issueStoryUseCase,
   deleteStoryUseCase,
   deleteTaskUseCase,
-  pushNotifier,
 } from "@container";
 
 export class PageController {
@@ -84,7 +83,6 @@ export class PageController {
     }
 
     const story = await issueStoryUseCase.execute(projectId, title, description || null);
-    await pushNotifier.notifyManagersStoryCreated(story);
     return c.redirect(`/project/${projectId}`, 303);
   }
 
