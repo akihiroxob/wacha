@@ -1,5 +1,4 @@
 import type { FC } from "hono/jsx";
-import type { ProjectAgent } from "@application/usecase/project/ListProjectAgentsUseCase.ts";
 import { StoryStatus } from "@constants/StoryStatus.ts";
 import { type TaskStatus as TaskStatusValue } from "@constants/TaskStatus.ts";
 import type { Task } from "@domain/model/Task.ts";
@@ -9,6 +8,7 @@ import { Layout } from "./layout/Layout.tsx";
 import { Button } from "./components/button.tsx";
 import { StoryCard } from "./components/story-card.tsx";
 import { TaskRow } from "./components/task-row.tsx";
+import { ProjectMembership } from "@domain/model/ProjectMembership.ts";
 
 type ProjectProps = {
   summary: {
@@ -19,11 +19,9 @@ type ProjectProps = {
   tasks: Task[];
   stories: Story[];
   project: Project;
-  agents: ProjectAgent[];
+  agents: ProjectMembership[];
   agentSummary: {
     total: number;
-    online: number;
-    offline: number;
   };
 };
 
@@ -58,8 +56,12 @@ export const ProjectPage: FC<ProjectProps> = ({
         <section className="rounded-[2rem] border border-stone-200 bg-white px-6 py-8 shadow-sm md:px-8">
           <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
             <div className="flex max-w-3xl flex-col gap-3">
-              <p className="text-sm font-medium uppercase tracking-[0.22em] text-stone-400">Project Detail</p>
-              <h1 className="text-4xl font-semibold tracking-tight text-stone-900">{project.name}</h1>
+              <p className="text-sm font-medium uppercase tracking-[0.22em] text-stone-400">
+                Project Detail
+              </p>
+              <h1 className="text-4xl font-semibold tracking-tight text-stone-900">
+                {project.name}
+              </h1>
               <p className="text-sm leading-7 text-stone-600">
                 {project.description ?? "プロジェクトの説明はまだ設定されていません。"}
               </p>
@@ -82,14 +84,6 @@ export const ProjectPage: FC<ProjectProps> = ({
                 project に参加している agent と現在の接続状況
               </p>
             </div>
-            <div className="flex items-center gap-2 text-sm text-stone-500">
-              <span className="rounded-full bg-emerald-50 px-3 py-1 text-emerald-700">
-                Online {agentSummary.online}
-              </span>
-              <span className="rounded-full bg-stone-100 px-3 py-1 text-stone-600">
-                Offline {agentSummary.offline}
-              </span>
-            </div>
           </div>
           {agents.length > 0 ? (
             <div className="overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-sm">
@@ -99,34 +93,22 @@ export const ProjectPage: FC<ProjectProps> = ({
                     <tr>
                       <th className="px-5 py-4 font-medium">Worker</th>
                       <th className="px-5 py-4 font-medium">Role</th>
-                      <th className="px-5 py-4 font-medium">Status</th>
                       <th className="px-5 py-4 font-medium">Session</th>
                       <th className="px-5 py-4 font-medium">Heartbeat</th>
                     </tr>
                   </thead>
                   <tbody>
                     {agents.map((agent) => (
-                      <tr key={agent.membershipId} className="border-t border-stone-100 align-top">
+                      <tr key={agent.id} className="border-t border-stone-100 align-top">
                         <td className="px-5 py-4">
                           <div className="flex flex-col gap-1">
-                            <span className="font-medium text-stone-900">{agent.workerId}</span>
-                            <span className="text-xs text-stone-400">{agent.membershipId}</span>
+                            <span className="font-medium text-stone-900">{agent.sessionId}</span>
+                            <span className="text-xs text-stone-400">{agent.id}</span>
                           </div>
                         </td>
                         <td className="px-5 py-4">
                           <span className="rounded-full bg-amber-50 px-3 py-1 text-sm font-medium text-amber-700">
                             {agent.role}
-                          </span>
-                        </td>
-                        <td className="px-5 py-4">
-                          <span
-                            className={
-                              agent.online
-                                ? "rounded-full bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-700"
-                                : "rounded-full bg-stone-100 px-3 py-1 text-sm font-medium text-stone-600"
-                            }
-                          >
-                            {agent.online ? "online" : "offline"}
                           </span>
                         </td>
                         <td className="px-5 py-4 text-sm text-stone-600">

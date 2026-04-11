@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { ProjectRole } from "@constants/ProjectRole.ts";
-import { AssignProjectRoleUseCase } from "@application/usecase/AssignProjectRoleUseCase.ts";
+import { AssignProjectRoleUseCase } from "@application/usecase/membership/AssignProjectRoleUseCase.ts";
 import { Project } from "@domain/model/Project.ts";
 import { ProjectMembership } from "@domain/model/ProjectMembership.ts";
 import { ProjectRepository } from "@domain/repository/ProjectRepository.ts";
@@ -25,7 +25,14 @@ class InMemoryProjectRepository implements ProjectRepository {
   }
 
   async create(name: string, description: string | null, baseDir: string): Promise<Project> {
-    const project = new Project(`project-${this.projects.size + 1}`, name, description, baseDir, 1000, 1000);
+    const project = new Project(
+      `project-${this.projects.size + 1}`,
+      name,
+      description,
+      baseDir,
+      1000,
+      1000,
+    );
     this.projects.set(project.id, project);
     return project;
   }
@@ -39,38 +46,50 @@ class InMemoryProjectMembershipRepository implements ProjectMembershipRepository
   private projectMemberships = new Map<string, ProjectMembership>();
 
   async findByProjectId(projectId: string): Promise<ProjectMembership[]> {
-    return [...this.projectMemberships.values()].filter((membership) => membership.projectId === projectId);
-  }
-
-  async findByProjectIdAndWorkerId(
-    projectId: string,
-    workerId: string,
-  ): Promise<ProjectMembership[]> {
     return [...this.projectMemberships.values()].filter(
-      (membership) => membership.projectId === projectId && membership.workerId === workerId,
+      (membership) => membership.projectId === projectId,
     );
   }
 
-  async findByProjectIdWorkerIdAndRole(
+  async findBySessionId(sessionId: string): Promise<ProjectMembership[]> {
+    return [...this.projectMemberships.values()].filter(
+      (membership) => membership.sessionId === sessionId,
+    );
+  }
+
+  async findByProjectIdAndSessionId(
     projectId: string,
-    workerId: string,
+    sessionId: string,
+  ): Promise<ProjectMembership[]> {
+    return [...this.projectMemberships.values()].filter(
+      (membership) => membership.projectId === projectId && membership.sessionId === sessionId,
+    );
+  }
+
+  async findByProjectIdSessionIdAndRole(
+    projectId: string,
+    sessionId: string,
     role: ProjectRole,
   ): Promise<ProjectMembership | null> {
     return (
       [...this.projectMemberships.values()].find(
         (membership) =>
           membership.projectId === projectId &&
-          membership.workerId === workerId &&
+          membership.sessionId === sessionId &&
           membership.role === role,
       ) ?? null
     );
   }
 
-  async create(projectId: string, workerId: string, role: ProjectRole): Promise<ProjectMembership> {
+  async create(
+    projectId: string,
+    sessionId: string,
+    role: ProjectRole,
+  ): Promise<ProjectMembership> {
     const membership = new ProjectMembership(
       `membership-${this.projectMemberships.size + 1}`,
       projectId,
-      workerId,
+      sessionId,
       role,
       1000,
       1000,
@@ -87,6 +106,17 @@ class InMemoryProjectMembershipRepository implements ProjectMembershipRepository
   async delete(projectMembershipId: string): Promise<void> {
     this.projectMemberships.delete(projectMembershipId);
   }
+
+  async deleteBySessionId(sessionId: string): Promise<void> {
+    for (const [membershipId, membership] of this.projectMemberships.entries()) {
+      if (membership.sessionId === sessionId) {
+        this.projectMemberships.delete(membershipId);
+      }
+    }
+  }
+  async clear(): Promise<void> {
+    this.projectMemberships.clear();
+  }
 }
 
 test("AssignProjectRoleUseCase creates project and assigns recommended manager role", async () => {
@@ -99,7 +129,7 @@ test("AssignProjectRoleUseCase creates project and assigns recommended manager r
   const result = await useCase.execute({
     baseDir: "repo/wacha",
     projectName: "Wacha",
-    workerId: "worker-1",
+    sessionId: "session-1",
   });
 
   assert.equal(result.project.baseDir, "repo/wacha");
@@ -121,14 +151,14 @@ test("AssignProjectRoleUseCase reuses existing membership for same worker and ro
   const first = await useCase.execute({
     baseDir: "repo/wacha",
     projectName: "Wacha",
-    workerId: "worker-1",
+    sessionId: "session-1",
     requestedRole: ProjectRole.MANAGER,
   });
 
   const second = await useCase.execute({
     baseDir: "repo/wacha",
     projectName: "Wacha",
-    workerId: "worker-1",
+    sessionId: "session-1",
     requestedRole: ProjectRole.MANAGER,
   });
 
@@ -151,13 +181,13 @@ test("AssignProjectRoleUseCase assigns next available recommended role", async (
   await useCase.execute({
     baseDir: "repo/wacha",
     projectName: "Wacha",
-    workerId: "worker-1",
+    sessionId: "session-1",
   });
 
   const result = await useCase.execute({
     baseDir: "repo/wacha",
     projectName: "Wacha",
-    workerId: "worker-2",
+    sessionId: "session-2",
   });
 
   assert.equal(result.projectMembership.role, ProjectRole.REVIEWER);
@@ -173,7 +203,7 @@ test("AssignProjectRoleUseCase respects requested worker role", async () => {
   const result = await useCase.execute({
     baseDir: "repo/wacha",
     projectName: "Wacha",
-    workerId: "worker-1",
+    sessionId: "session-1",
     requestedRole: ProjectRole.WORKER,
   });
 

@@ -9,9 +9,9 @@ const RECOMMENDED_ROLE_ORDER: ProjectRole[] = [
 ];
 
 export class RoleAssignmentService {
-  suggestRole(projectMemberships: ProjectMembership[], workerId: string): ProjectRole {
+  suggestRole(projectMemberships: ProjectMembership[], sessionId: string): ProjectRole {
     for (const role of RECOMMENDED_ROLE_ORDER) {
-      if (this.workerAlreadyHasRole(projectMemberships, workerId, role)) {
+      if (this.workerAlreadyHasRole(projectMemberships, sessionId, role)) {
         continue;
       }
       if (this.isRoleAvailable(projectMemberships, role)) {
@@ -19,20 +19,22 @@ export class RoleAssignmentService {
       }
     }
 
-    throw new Error("No available role for worker");
+    throw new Error("No available role for sessionId: " + sessionId);
   }
 
   resolveRequestedRole(
     projectMemberships: ProjectMembership[],
-    workerId: string,
+    sessionId: string,
     requestedRole: ProjectRole,
   ): ProjectRole {
-    if (this.workerAlreadyHasRole(projectMemberships, workerId, requestedRole)) {
+    if (this.workerAlreadyHasRole(projectMemberships, sessionId, requestedRole)) {
       return requestedRole;
     }
 
     if (!this.isRoleAvailable(projectMemberships, requestedRole)) {
-      throw new Error(`Requested role(${requestedRole}) is not available`);
+      throw new Error(
+        `Requested role(${requestedRole}) is not available for sessionId: ${sessionId}`,
+      );
     }
 
     return requestedRole;
@@ -40,19 +42,16 @@ export class RoleAssignmentService {
 
   private workerAlreadyHasRole(
     projectMemberships: ProjectMembership[],
-    workerId: string,
+    sessionId: string,
     role: ProjectRole,
   ): boolean {
     return projectMemberships.some(
       (projectMembership) =>
-        projectMembership.workerId === workerId && projectMembership.role === role,
+        projectMembership.sessionId === sessionId && projectMembership.role === role,
     );
   }
 
-  private isRoleAvailable(
-    projectMemberships: ProjectMembership[],
-    role: ProjectRole,
-  ): boolean {
+  private isRoleAvailable(projectMemberships: ProjectMembership[], role: ProjectRole): boolean {
     if (!SINGLE_ASSIGNMENT_ROLES.includes(role)) {
       return true;
     }

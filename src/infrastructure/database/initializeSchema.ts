@@ -37,7 +37,7 @@ export function initializeSchema(): Promise<void> {
       .ifNotExists()
       .addColumn("id", "text", (col) => col.primaryKey())
       .addColumn("project_id", "text", (col) => col.notNull())
-      .addColumn("worker_id", "text", (col) => col.notNull())
+      .addColumn("session_id", "text", (col) => col.notNull())
       .addColumn("role", "text", (col) => col.notNull())
       .addColumn("last_heartbeat_at", "integer")
       .addColumn("created_at", "integer", (col) => col.notNull())
@@ -78,18 +78,18 @@ export function initializeSchema(): Promise<void> {
       .execute();
 
     await DatabaseClient.schema
-      .createIndex("idx_project_membership_worker_id")
+      .createIndex("idx_project_membership_session_id")
       .ifNotExists()
       .on("project_membership")
-      .column("worker_id")
+      .column("session_id")
       .execute();
 
     await DatabaseClient.schema
-      .createIndex("uq_project_membership_project_worker_role")
+      .createIndex("uq_project_membership_project_session_role")
       .ifNotExists()
       .unique()
       .on("project_membership")
-      .columns(["project_id", "worker_id", "role"])
+      .columns(["project_id", "session_id", "role"])
       .execute();
 
     await DatabaseClient.schema

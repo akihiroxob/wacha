@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { ProjectRole } from "@constants/ProjectRole.ts";
-import { ListProjectAgentsUseCase } from "@application/usecase/project/ListProjectAgentsUseCase.ts";
+import { ListProjectAgentsUseCase } from "@application/usecase/membership/ListProjectAgentsUseCase.ts";
 import { ProjectMembership } from "@domain/model/ProjectMembership.ts";
 import { ProjectMembershipRepository } from "@domain/repository/ProjectMembershipRepository.ts";
 
@@ -13,22 +13,29 @@ class InMemoryProjectMembershipRepository implements ProjectMembershipRepository
     return this.memberships.filter((membership) => membership.projectId === projectId);
   }
 
-  async findByProjectIdAndWorkerId(projectId: string, workerId: string): Promise<ProjectMembership[]> {
+  async findBySessionId(sessionId: string): Promise<ProjectMembership[]> {
+    return this.memberships.filter((membership) => membership.sessionId === sessionId);
+  }
+
+  async findByProjectIdAndSessionId(
+    projectId: string,
+    sessionId: string,
+  ): Promise<ProjectMembership[]> {
     return this.memberships.filter(
-      (membership) => membership.projectId === projectId && membership.workerId === workerId,
+      (membership) => membership.projectId === projectId && membership.sessionId === sessionId,
     );
   }
 
-  async findByProjectIdWorkerIdAndRole(
+  async findByProjectIdSessionIdAndRole(
     projectId: string,
-    workerId: string,
+    sessionId: string,
     role: ProjectRole,
   ): Promise<ProjectMembership | null> {
     return (
       this.memberships.find(
         (membership) =>
           membership.projectId === projectId &&
-          membership.workerId === workerId &&
+          membership.sessionId === sessionId &&
           membership.role === role,
       ) ?? null
     );
@@ -45,15 +52,23 @@ class InMemoryProjectMembershipRepository implements ProjectMembershipRepository
   async delete(): Promise<void> {
     throw new Error("not implemented");
   }
+
+  async deleteBySessionId(): Promise<void> {
+    throw new Error("not implemented");
+  }
+
+  async clear(): Promise<void> {
+    throw new Error("not implemented");
+  }
 }
 
-test("ListProjectAgentsUseCase merges memberships with current session state", async () => {
+test("ListProjectAgentsUseCase returns sorted memberships for project", async () => {
   const useCase = new ListProjectAgentsUseCase(
     new InMemoryProjectMembershipRepository([
       new ProjectMembership(
         "membership-1",
         "project-1",
-        "worker-2",
+        "session-2",
         ProjectRole.WORKER,
         2000,
         1000,
@@ -62,7 +77,7 @@ test("ListProjectAgentsUseCase merges memberships with current session state", a
       new ProjectMembership(
         "membership-2",
         "project-1",
-        "worker-1",
+        "session-1",
         ProjectRole.MANAGER,
         3000,
         1000,
@@ -71,45 +86,20 @@ test("ListProjectAgentsUseCase merges memberships with current session state", a
       new ProjectMembership(
         "membership-3",
         "project-2",
-        "worker-9",
+        "session-9",
         ProjectRole.REVIEWER,
         4000,
         1000,
         4000,
       ),
     ]),
-    (workerId) => (workerId === "worker-1" ? "session-1" : undefined),
   );
 
   const result = await useCase.execute("project-1");
 
-  assert.deepEqual(result.summary, {
-    total: 2,
-    online: 1,
-    offline: 1,
-  });
+  assert.deepEqual(result.summary, { total: 2 });
   assert.deepEqual(result.agents, [
-    {
-      membershipId: "membership-2",
-      projectId: "project-1",
-      workerId: "worker-1",
-      role: ProjectRole.MANAGER,
-      sessionId: "session-1",
-      online: true,
-      lastHeartbeatAt: 3000,
-      createdAt: 1000,
-      updatedAt: 3000,
-    },
-    {
-      membershipId: "membership-1",
-      projectId: "project-1",
-      workerId: "worker-2",
-      role: ProjectRole.WORKER,
-      sessionId: null,
-      online: false,
-      lastHeartbeatAt: 2000,
-      createdAt: 1000,
-      updatedAt: 2000,
-    },
+    new ProjectMembership("membership-2", "project-1", "session-1", ProjectRole.MANAGER, 3000, 1000, 3000),
+    new ProjectMembership("membership-1", "project-1", "session-2", ProjectRole.WORKER, 2000, 1000, 2000),
   ]);
 });

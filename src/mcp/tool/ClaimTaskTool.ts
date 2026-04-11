@@ -4,7 +4,7 @@ import { claimTaskUseCase } from "@container";
 
 type ClaimTaskInput = {
   taskId: string;
-  workerId: string;
+  sessionId: string;
 };
 
 export const ClaimTaskTool = {
@@ -13,11 +13,10 @@ export const ClaimTaskTool = {
     description: "Assign a todo task to a worker and move it to doing.",
     inputSchema: {
       taskId: z.string().min(1).describe("Task ID"),
-      workerId: z.string().min(1).describe("Worker ID"),
     },
   },
-  execute: async ({ taskId, workerId }: ClaimTaskInput) => {
-    await claimTaskUseCase.execute(taskId, workerId);
-    return toTextResult({ taskId, workerId, status: "doing" }, `Claimed task ${taskId}.`);
+  execute: async ({ taskId, sessionId }: ClaimTaskInput) => {
+    await claimTaskUseCase.execute(taskId, sessionId);
+    return toTextResult({ taskId, sessionId, status: "doing" }, `Claimed task ${taskId}.`);
   },
 };

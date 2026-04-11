@@ -9,11 +9,10 @@ import { fileURLToPath } from "node:url";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { createMcpServer } from "@mcp/createMcpServer.ts";
 import { MCP_HEADER } from "@constants/McpHeader.ts";
-import { registerSession, getSessionBySessionId, removeSession } from "@mcp/sessionRegistry.ts";
+import { sessionService, membershipService } from "@container";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import PageController from "@controller/PageController.ts";
 import { ValidationError } from "@application/error/ValidationError.ts";
-import { resolveWorkerId } from "@mcp/resolveWorkerId.ts";
 
 const app = new Hono();
 app.use(logger());
@@ -27,7 +26,6 @@ app.use(
       MCP_HEADER.MCP_SESSION_ID,
       MCP_HEADER.MCP_PROTOCOL_VERSION,
       MCP_HEADER.LAST_EVENT_ID,
-      MCP_HEADER.WACHA_WORKER_ID,
     ],
     exposeHeaders: [MCP_HEADER.MCP_SESSION_ID, MCP_HEADER.MCP_PROTOCOL_VERSION],
   }),
@@ -53,7 +51,7 @@ app.all("/mcp", async (c) => {
   //-----------------------------------------------------------------------------
   const sessionId = c.req.header(MCP_HEADER.MCP_SESSION_ID);
   if (sessionId) {
-    const session = getSessionBySessionId(sessionId);
+    const session = sessionService.getSessionBySessionId(sessionId);
     if (!session) throw new ValidationError("Invalid session ID");
     return session.transport.handleRequest(c.req.raw);
   }
@@ -67,26 +65,24 @@ app.all("/mcp", async (c) => {
   if (!parsedBody) throw new ValidationError("Invalid JSON body");
   if (!isInitializeRequest(parsedBody)) throw new ValidationError("Initialization required");
 
-  const workerId = resolveWorkerId(c.req.header(MCP_HEADER.WACHA_WORKER_ID));
-
-  const server = createMcpServer({ workerId });
+  const initialSessionId = crypto.randomUUID();
+  const server = createMcpServer({ sessionId: initialSessionId });
   const transport = new WebStandardStreamableHTTPServerTransport({
-    sessionIdGenerator: () => crypto.randomUUID(),
+    sessionIdGenerator: () => initialSessionId,
     onsessioninitialized: (initializedSessionId) => {
-      if (!c.req.header(MCP_HEADER.WACHA_WORKER_ID)?.trim()) {
-        console.info(
-          `Assigned automatic worker id ${workerId} for session ${initializedSessionId}`,
-        );
-      }
-      registerSession(initializedSessionId, {
+      sessionService.registerSession(initializedSessionId, {
         server,
         transport,
-        workerId,
         sessionId: initializedSessionId,
       });
     },
     onsessionclosed: (closedSessionId) => {
-      removeSession(closedSessionId);
+      sessionService.removeSessionBySessionId(closedSessionId);
+      membershipService.removeMembershipBySessionId(closedSessionId).catch((error) => {
+        console.error(`Failed to remove project memberships for session ${closedSessionId}`, error);
+      });
+
+      console.info(`Session ${closedSessionId} closed and removed from session service`);
     },
   });
 
@@ -112,6 +108,10 @@ app.onError((err, c) => {
     },
     status,
   );
+});
+
+membershipService.clear().catch((error) => {
+  console.error("Failed to clear project memberships on server start", error);
 });
 
 serve({ fetch: app.fetch, port: Number(process.env.PORT) || 3000 }, (info) => {

@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { toTextResult } from "@mcp/utils/mcpUtils.ts";
 import { rejectTaskUseCase } from "@container";
-import { pushNotifier } from "@mcp/pushNotifier.ts";
 
 type RejectTaskInput = {
   taskId: string;
@@ -19,7 +18,6 @@ export const RejectTaskTool = {
   },
   execute: async ({ taskId, reason }: RejectTaskInput) => {
     await rejectTaskUseCase.execute(taskId, reason);
-    await pushNotifier.notifyWorkerTaskRejected(taskId);
     return toTextResult(
       { taskId, status: "rejected", rejectReason: reason },
       `Rejected task ${taskId}.`,

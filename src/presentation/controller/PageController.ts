@@ -1,5 +1,4 @@
 import { Context } from "hono";
-import { pushNotifier } from "@mcp/pushNotifier.ts";
 import { Index } from "@views/index.tsx";
 import { ProjectPage } from "@views/project.tsx";
 import { AddStoryPage } from "@views/add-story.tsx";
@@ -84,7 +83,6 @@ export class PageController {
     }
 
     const story = await issueStoryUseCase.execute(projectId, title, description || null);
-    await pushNotifier.notifyManagersStoryCreated(story);
     return c.redirect(`/project/${projectId}`, 303);
   }
 

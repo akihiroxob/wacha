@@ -1,11 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { ToolContext } from "./types/ToolContext.js";
-import {
-  resolveProjectIdFromProjectArgs,
-  resolveProjectIdFromStoryArgs,
-  resolveProjectIdFromTaskArgs,
-  withManagerRoleGuard,
-} from "@mcp/managerGuard.ts";
+import { ToolContext } from "../domain/model/ToolContext.js";
 import { ListProjectTool } from "@mcp/tool/ListProjectTool.ts";
 import { ListProjectAgentsTool } from "@mcp/tool/ListProjectAgentsTool.ts";
 import { ListStoryTool } from "@mcp/tool/ListStoryTool.ts";
@@ -20,7 +14,8 @@ import { RejectTaskTool } from "@mcp/tool/RejectTaskTool.ts";
 import { ClaimTaskTool } from "@mcp/tool/ClaimTaskTool.ts";
 import { CompleteTaskTool } from "@mcp/tool/CompleteTaskTool.ts";
 import { AssignTool } from "@mcp/tool/AssignTool.ts";
-import { withRoleGuard } from "./RoleGuard.ts";
+import { GetRoleInstructionsTool } from "./tool/GetRoleInstructionsTool.ts";
+import { withRoleGuard } from "@mcp/middleware/RoleGuard.ts";
 import { ProjectRole } from "@constants/ProjectRole.ts";
 
 const name = "wacha";
@@ -67,15 +62,25 @@ export const createMcpServer = (context: ToolContext) => {
     IssueTaskTool.config,
     withRoleGuard([ProjectRole.MANAGER], context, IssueTaskTool.execute),
   );
-  server.registerTool("claim_task", ClaimTaskTool.config, ClaimTaskTool.execute);
+  server.registerTool("claim_task", ClaimTaskTool.config, (args) =>
+    ClaimTaskTool.execute({ ...args, sessionId: context.sessionId }),
+  );
   server.registerTool("complete_task", CompleteTaskTool.config, CompleteTaskTool.execute);
+
   server.registerTool(
     "accept_task",
     AcceptTaskTool.config,
     withRoleGuard([ProjectRole.MANAGER], context, AcceptTaskTool.execute),
   );
   server.registerTool("reject_task", RejectTaskTool.config, RejectTaskTool.execute);
-  server.registerTool("assign_project_role", AssignTool.config, AssignTool.execute);
+  server.registerTool("assign_project_role", AssignTool.config, (args) =>
+    AssignTool.execute({ ...args, sessionId: context.sessionId }),
+  );
+  server.registerTool(
+    "get_role_instructions",
+    GetRoleInstructionsTool.config,
+    GetRoleInstructionsTool.execute,
+  );
 
   return server;
 };
