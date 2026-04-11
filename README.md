@@ -6,7 +6,9 @@ Worker Aggregation and Control Hub for Agents
 
 `wacha` は Streamable HTTP で MCP を提供する、プロジェクト / Story / Task 管理サーバです。
 
-## Start
+## Run
+
+### Local
 
 依存関係を入れたうえで、次のコマンドで起動します。
 
@@ -33,10 +35,33 @@ DB パスを変える場合は `WACHA_DB_PATH` を指定します。
 WACHA_DB_PATH=.tmp/wacha.db npm run start
 ```
 
+### Docker Compose
+
+```bash
+docker compose up --build
+```
+
+バックグラウンドで起動する場合:
+
+```bash
+docker compose up --build -d
+```
+
+停止:
+
+```bash
+docker compose down
+```
+
+volume も削除する場合:
+
+```bash
+docker compose down -v
+```
+
 ## MCP Registration
 
 このサーバは Streamable HTTP で接続します。
-`x-wacha-worker-id` header は任意です。
 
 登録例:
 
@@ -46,10 +71,7 @@ WACHA_DB_PATH=.tmp/wacha.db npm run start
     "wacha": {
       "transport": {
         "type": "streamable_http",
-        "url": "http://localhost:3000/mcp",
-        "headers": {
-          "x-wacha-worker-id": "worker-1"
-        }
+        "url": "http://localhost:3000/mcp"
       }
     }
   }
@@ -63,10 +85,7 @@ WACHA_DB_PATH=.tmp/wacha.db npm run start
   "mcpServers": {
     "wacha": {
       "type": "streamable_http",
-      "url": "http://localhost:3000/mcp",
-      "headers": {
-        "x-wacha-worker-id": "worker-1"
-      }
+      "url": "http://localhost:3000/mcp"
     }
   }
 }
@@ -74,9 +93,9 @@ WACHA_DB_PATH=.tmp/wacha.db npm run start
 
 補足:
 
-- `x-wacha-worker-id` を省略した場合、サーバ側で `auto:<uuid>` 形式の workerId をセッション単位で自動採番します
-- 自動採番された workerId は接続ごとに変わるため、再接続後も同じ worker として扱いたい場合は `x-wacha-worker-id` を固定で渡してください
-- `issue_story`, `issue_task`, `accept_task` など role 制御付き tool は、header だけではなく project membership 側の role も必要です
+- サーバ側の識別子は MCP の `sessionId` ベースです
+- `claim_task` の担当者や project membership も `sessionId` に紐づきます
+- role 制御付き tool の実行には project membership 側の role が必要です
 - 接続確認は `http://localhost:3000/health` と MCP client 側の initialize で行ってください
 
 ## Available Tools
@@ -95,19 +114,59 @@ WACHA_DB_PATH=.tmp/wacha.db npm run start
 - `accept_task`
 - `reject_task`
 - `assign_project_role`
+- `get_role_instructions`
 
 ## Docker
 
-現状、このリポジトリには `Dockerfile` や `compose.yaml` はありません。
+ベースイメージは `node:22-bookworm-slim` です。
+`better-sqlite3` を使うため、Debian slim 系を使います。
 
-運用の観点では、Docker 化したほうが扱いやすいです。特に次のケースでは Docker の恩恵が大きいです。
+### Docker Build
 
-- 常駐させたい
-- 複数人が同じ手順で起動したい
-- MCP client から安定した URL で叩きたい
-- SQLite ファイルの保存場所を volume で固定したい
+```bash
+docker build -t wacha .
+```
 
-逆に、手元で一人で触るだけなら、今の `npm run start` でも十分です。
+### Docker Run
+
+```bash
+docker run --rm \
+  -p 3000:3000 \
+  -e PORT=3000 \
+  -e WACHA_DB_PATH=/data/wacha.db \
+  -v wacha-data:/data \
+  wacha
+```
+
+### Docker Compose
+
+```bash
+docker compose up --build
+```
+
+バックグラウンド実行:
+
+```bash
+docker compose up --build -d
+```
+
+Compose の設定内容:
+
+- app port: `3000:3000`
+- DB path: `/data/wacha.db`
+- named volume: `wacha-data`
+
+停止:
+
+```bash
+docker compose down
+```
+
+volume も削除する場合:
+
+```bash
+docker compose down -v
+```
 
 ## Health Check
 

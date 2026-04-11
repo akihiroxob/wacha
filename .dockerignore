@@ -1,0 +1,8 @@
+node_modules
+.git
+.tmp
+coverage
+npm-debug.log
+wacha.db
+.env
+compose.override.yaml
