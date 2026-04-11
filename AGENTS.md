@@ -19,12 +19,16 @@
 
 ## 起動方法
 
-- MCP サーバを起動する: `npm run start`
+- ローカルで起動する: `npm install && npm run start`
+- Docker Compose で起動する: `docker compose up --build`
 - デフォルトの接続先: `http://localhost:3000/mcp`
 - ヘルスチェック: `http://localhost:3000/health`
-- `manager` 専用 tool を呼ぶ場合は HTTP header `x-wacha-worker-id` を付与する
+- 永続化する SQLite ファイルのデフォルトパス: `wacha.db`
+- Docker Compose では SQLite ファイルは volume 経由で `/data/wacha.db` に保存される
+- 識別子や membership は MCP の `sessionId` ベースで扱われる
 
 `PORT` を指定すると待ち受けポートを変更できます。
+`WACHA_DB_PATH` を指定すると SQLite の保存先を変更できます。
 
 ## 使うタイミング
 
@@ -36,12 +40,12 @@
 
 ## 利用可能な MCP Tools
 
-- `list_tasks`
-  - 用途: 指定したプロジェクトのタスク一覧とステータス集計を取得する
-  - Arguments: `{ "projectId": string }`
 - `list_projects`
   - 用途: プロジェクト一覧を取得する
   - Arguments: `{}`
+- `list_project_agents`
+  - 用途: 指定したプロジェクトの agent 一覧を取得する
+  - Arguments: `{ "projectId": string }`
 - `list_stories`
   - 用途: 指定したプロジェクトの Story 一覧を取得する
   - Arguments: `{ "projectId": string, "status"?: "todo" | "doing" | "done" | "canceled" }`
@@ -64,8 +68,8 @@
   - 用途: 新しいタスクを作成する
   - Arguments: `{ "title": string, "description"?: string, "projectId": string, "storyId"?: string }`
 - `claim_task`
-  - 用途: `todo` のタスクを担当者に割り当て、`doing` に進める
-  - Arguments: `{ "taskId": string, "workerId": string }`
+  - 用途: `todo` または `rejected` のタスクを現在の session に割り当て、`doing` に進める
+  - Arguments: `{ "taskId": string }`
 - `complete_task`
   - 用途: `doing` のタスクを `in_review` に進める
   - Arguments: `{ "taskId": string }`
@@ -77,7 +81,10 @@
   - Arguments: `{ "taskId": string, "reason": string }`
 - `assign_project_role`
   - 用途: プロジェクトに対するメンバーの役割を割り当てる
-  - Arguments: 実装に従う
+  - Arguments: `{ "baseDir": string, "projectName": string, "description"?: string, "requestedRole"?: "manager" | "reviewer" | "worker" }`
+- `get_role_instructions`
+  - 用途: role ごとの運用ルールを取得する
+  - Arguments: `{ "role": "manager" | "reviewer" | "worker", "includeShared"?: boolean }`
 
 ## レスポンス
 
