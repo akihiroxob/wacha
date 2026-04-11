@@ -6,10 +6,11 @@ import { SQLiteStoryRepository } from "@repository/SQLiteStoryRepository.ts";
 import { InMemorySessionRepository } from "@repository/InMemorySessionRepository.ts";
 // application services
 import { SessionService } from "@application/service/SessionService.ts";
+import { MembershipService } from "@application/service/MembershipService.ts";
+import { InstructionService } from "@application/service/InstructionService.ts";
 
 // domain service
 import { RoleAssignmentService } from "@domain/service/RoleAssignmentService.ts";
-import { MembershipService } from "@application/service/MembershipService.ts";
 
 // usecases
 // project role assignment
@@ -45,6 +46,7 @@ const sessionRepository = new InMemorySessionRepository();
 // 依存性を注入してユースケースのインスタンスを作成
 export const sessionService = new SessionService(sessionRepository);
 export const membershipService = new MembershipService(projectMembershipRepository);
+export const instructionService = new InstructionService();
 export const listTaskUseCase = new ListTaskUseCase(taskRepository);
 export const issueTaskUseCase = new IssueTaskUseCase(taskRepository);
 export const claimTaskUseCase = new ClaimTaskUseCase(taskRepository);

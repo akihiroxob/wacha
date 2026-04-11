@@ -47,6 +47,11 @@ export const AssignTool = {
       role: result.projectMembership.role,
       createdProject: result.createdProject,
       createdProjectMembership: result.createdProjectMembership,
+      requiredNextTool: "get_role_instructions",
+      requiredNextArgs: {
+        role: result.projectMembership.role,
+        includeShared: true,
+      },
     });
   },
 };

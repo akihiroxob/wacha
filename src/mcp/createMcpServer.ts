@@ -14,6 +14,7 @@ import { RejectTaskTool } from "@mcp/tool/RejectTaskTool.ts";
 import { ClaimTaskTool } from "@mcp/tool/ClaimTaskTool.ts";
 import { CompleteTaskTool } from "@mcp/tool/CompleteTaskTool.ts";
 import { AssignTool } from "@mcp/tool/AssignTool.ts";
+import { GetRoleInstructionsTool } from "./tool/GetRoleInstructionsTool.ts";
 import { withRoleGuard } from "@mcp/middleware/RoleGuard.ts";
 import { ProjectRole } from "@constants/ProjectRole.ts";
 
@@ -74,6 +75,11 @@ export const createMcpServer = (context: ToolContext) => {
   server.registerTool("reject_task", RejectTaskTool.config, RejectTaskTool.execute);
   server.registerTool("assign_project_role", AssignTool.config, (args) =>
     AssignTool.execute({ ...args, sessionId: context.sessionId }),
+  );
+  server.registerTool(
+    "get_role_instructions",
+    GetRoleInstructionsTool.config,
+    GetRoleInstructionsTool.execute,
   );
 
   return server;
