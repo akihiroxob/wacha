@@ -34,6 +34,26 @@ export const ProjectPage: FC<ProjectProps> = ({
   agentSummary,
 }) => {
   const tasksByStoryId = new Map<string, Task[]>();
+  const taskStatusCards: { label: string; value: number; tone: string }[] = [
+    { label: "Todo", value: summary.byStatus[TaskStatusValue.TODO], tone: "text-stone-700 bg-stone-100" },
+    { label: "Doing", value: summary.byStatus[TaskStatusValue.DOING], tone: "text-blue-700 bg-blue-100" },
+    {
+      label: "InReview",
+      value: summary.byStatus[TaskStatusValue.IN_REVIEW],
+      tone: "text-purple-700 bg-purple-100",
+    },
+    {
+      label: "WaitAccept",
+      value: summary.byStatus[TaskStatusValue.WAIT_ACCEPT],
+      tone: "text-amber-700 bg-amber-100",
+    },
+    {
+      label: "Accepted",
+      value: summary.byStatus[TaskStatusValue.ACCEPTED],
+      tone: "text-green-700 bg-green-100",
+    },
+    { label: "Rejected", value: summary.byStatus[TaskStatusValue.REJECTED], tone: "text-red-700 bg-red-100" },
+  ];
 
   for (const task of tasks) {
     if (!task.storyId) continue;
@@ -138,6 +158,26 @@ export const ProjectPage: FC<ProjectProps> = ({
               この project に参加している agent はまだいません。
             </div>
           )}
+        </section>
+
+        <section className="flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-stone-900">Task Summary</h2>
+              <p className="text-sm text-stone-500">現在の task 状態集計</p>
+            </div>
+            <p className="text-sm text-stone-400">{summary.total} total</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+            {taskStatusCards.map((card) => (
+              <div key={card.label} className="rounded-[1.5rem] border border-stone-200 bg-white px-5 py-4 shadow-sm">
+                <div className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${card.tone}`}>
+                  {card.label}
+                </div>
+                <p className="mt-4 text-3xl font-semibold tracking-tight text-stone-900">{card.value}</p>
+              </div>
+            ))}
+          </div>
         </section>
 
         <section className="flex flex-col gap-4">

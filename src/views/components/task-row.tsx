@@ -1,6 +1,13 @@
 import { FC } from "hono/jsx";
 import { TaskStatus } from "@constants/TaskStatus.ts";
-import { TodoBadge, DoingBadge, InReviewBadge, AcceptedBadge, RejectedBadge } from "./badge.tsx";
+import {
+  TodoBadge,
+  DoingBadge,
+  InReviewBadge,
+  WaitAcceptBadge,
+  AcceptedBadge,
+  RejectedBadge,
+} from "./badge.tsx";
 
 type TaskRowProps = {
   projectId: string;
@@ -30,6 +37,7 @@ export const TaskRow: FC<TaskRowProps> = ({ projectId, id, title, description, s
               {status === TaskStatus.TODO && <TodoBadge />}
               {status === TaskStatus.DOING && <DoingBadge />}
               {status === TaskStatus.IN_REVIEW && <InReviewBadge />}
+              {status === TaskStatus.WAIT_ACCEPT && <WaitAcceptBadge />}
               {status === TaskStatus.ACCEPTED && <AcceptedBadge />}
               {status === TaskStatus.REJECTED && <RejectedBadge />}
             </div>
@@ -74,6 +82,7 @@ export const TaskRow: FC<TaskRowProps> = ({ projectId, id, title, description, s
               {status === TaskStatus.TODO && <TodoBadge />}
               {status === TaskStatus.DOING && <DoingBadge />}
               {status === TaskStatus.IN_REVIEW && <InReviewBadge />}
+              {status === TaskStatus.WAIT_ACCEPT && <WaitAcceptBadge />}
               {status === TaskStatus.ACCEPTED && <AcceptedBadge />}
               {status === TaskStatus.REJECTED && <RejectedBadge />}
               <p class="text-sm text-stone-500">{id}</p>
