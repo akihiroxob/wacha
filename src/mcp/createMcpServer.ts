@@ -22,7 +22,7 @@ import { ProjectRole } from "@constants/ProjectRole.ts";
 const name = "wacha";
 const version = "1.0.0";
 const instructions =
-  "Project, story, and task management server for listing, issuing, claiming, completing, accepting, and rejecting work.";
+  "Project, story, and task management server for listing work, moving tasks through todo, doing, in_review, wait_accept, accepted, and rejected, and managing role-based operations.";
 export const createMcpServer = (context: ToolContext) => {
   const server = new McpServer({ name, version }, { instructions });
   // tool for project
