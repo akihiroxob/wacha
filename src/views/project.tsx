@@ -1,6 +1,6 @@
 import type { FC } from "hono/jsx";
 import { StoryStatus } from "@constants/StoryStatus.ts";
-import { type TaskStatus as TaskStatusValue } from "@constants/TaskStatus.ts";
+import { TaskStatus, type TaskStatus as TaskStatusValue } from "@constants/TaskStatus.ts";
 import type { Task } from "@domain/model/Task.ts";
 import type { Project } from "@domain/model/Project.ts";
 import type { Story } from "@domain/model/Story.ts";
@@ -35,24 +35,24 @@ export const ProjectPage: FC<ProjectProps> = ({
 }) => {
   const tasksByStoryId = new Map<string, Task[]>();
   const taskStatusCards: { label: string; value: number; tone: string }[] = [
-    { label: "Todo", value: summary.byStatus[TaskStatusValue.TODO], tone: "text-stone-700 bg-stone-100" },
-    { label: "Doing", value: summary.byStatus[TaskStatusValue.DOING], tone: "text-blue-700 bg-blue-100" },
+    { label: "Todo", value: summary.byStatus[TaskStatus.TODO], tone: "text-stone-700 bg-stone-100" },
+    { label: "Doing", value: summary.byStatus[TaskStatus.DOING], tone: "text-blue-700 bg-blue-100" },
     {
       label: "InReview",
-      value: summary.byStatus[TaskStatusValue.IN_REVIEW],
+      value: summary.byStatus[TaskStatus.IN_REVIEW],
       tone: "text-purple-700 bg-purple-100",
     },
     {
       label: "WaitAccept",
-      value: summary.byStatus[TaskStatusValue.WAIT_ACCEPT],
+      value: summary.byStatus[TaskStatus.WAIT_ACCEPT],
       tone: "text-amber-700 bg-amber-100",
     },
     {
       label: "Accepted",
-      value: summary.byStatus[TaskStatusValue.ACCEPTED],
+      value: summary.byStatus[TaskStatus.ACCEPTED],
       tone: "text-green-700 bg-green-100",
     },
-    { label: "Rejected", value: summary.byStatus[TaskStatusValue.REJECTED], tone: "text-red-700 bg-red-100" },
+    { label: "Rejected", value: summary.byStatus[TaskStatus.REJECTED], tone: "text-red-700 bg-red-100" },
   ];
 
   for (const task of tasks) {
@@ -225,6 +225,7 @@ export const ProjectPage: FC<ProjectProps> = ({
                               title={task.title}
                               description={task.description}
                               status={task.status}
+                              rejectReason={task.rejectReason}
                               updatedAt={task.updatedAt}
                             />
                           ))}
@@ -262,6 +263,7 @@ export const ProjectPage: FC<ProjectProps> = ({
                     title={task.title}
                     description={task.description}
                     status={task.status}
+                    rejectReason={task.rejectReason}
                     updatedAt={task.updatedAt}
                   />
                 );

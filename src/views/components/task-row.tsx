@@ -15,13 +15,24 @@ type TaskRowProps = {
   title: string;
   description: string | null;
   status: string;
+  rejectReason: string | null;
   updatedAt: number;
 };
 
-export const TaskRow: FC<TaskRowProps> = ({ projectId, id, title, description, status, updatedAt }) => {
+export const TaskRow: FC<TaskRowProps> = ({
+  projectId,
+  id,
+  title,
+  description,
+  status,
+  rejectReason,
+  updatedAt,
+}) => {
   const detailId = `task-detail-${id}`;
   const formattedUpdatedAt = new Date(updatedAt).toLocaleString();
   const canDelete = status === TaskStatus.TODO;
+  const canAccept = status === TaskStatus.WAIT_ACCEPT;
+  const canReject = status === TaskStatus.IN_REVIEW || status === TaskStatus.WAIT_ACCEPT;
 
   return (
     <>
@@ -107,10 +118,53 @@ export const TaskRow: FC<TaskRowProps> = ({ projectId, id, title, description, s
               {description?.trim() ? description : "Description は未設定です。"}
             </p>
           </div>
+          {rejectReason?.trim() && (
+            <div>
+              <p class="text-sm font-medium text-stone-500">Reject Reason</p>
+              <p class="mt-1 whitespace-pre-wrap text-base text-stone-800">{rejectReason}</p>
+            </div>
+          )}
           <div>
             <p class="text-sm font-medium text-stone-500">Updated At</p>
             <p class="mt-1 text-base text-stone-800">{formattedUpdatedAt}</p>
           </div>
+          {(canAccept || canReject) && (
+            <div class="rounded-2xl border border-stone-200 bg-stone-50 p-4">
+              <p class="text-sm font-medium text-stone-700">Task Actions</p>
+              <div class="mt-3 flex flex-col gap-3">
+                {canAccept && (
+                  <form method="post" action={`/project/${projectId}/task/${id}/accept`}>
+                    <button
+                      type="submit"
+                      class="inline-flex items-center justify-center rounded-xl bg-stone-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-stone-700"
+                    >
+                      Accept
+                    </button>
+                  </form>
+                )}
+                {canReject && (
+                  <form method="post" action={`/project/${projectId}/task/${id}/reject`} class="flex flex-col gap-3">
+                    <label class="flex flex-col gap-2">
+                      <span class="text-sm font-medium text-stone-700">Reject reason</span>
+                      <textarea
+                        name="reason"
+                        rows={3}
+                        required
+                        placeholder="差し戻し理由を入力してください"
+                        class="rounded-2xl border border-stone-200 px-4 py-3 text-sm leading-6 text-stone-900 outline-none transition focus:border-stone-400"
+                      />
+                    </label>
+                    <button
+                      type="submit"
+                      class="inline-flex items-center justify-center rounded-xl border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
+                    >
+                      Reject
+                    </button>
+                  </form>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </>

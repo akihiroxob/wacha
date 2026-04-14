@@ -3,6 +3,7 @@ import { Index } from "@views/index.tsx";
 import { ProjectPage } from "@views/project.tsx";
 import { AddStoryPage } from "@views/add-story.tsx";
 import { renderToString } from "hono/jsx/dom/server";
+import { ValidationError } from "@application/error/ValidationError.ts";
 import {
   listTaskUseCase,
   listProjectUseCase,
@@ -12,6 +13,8 @@ import {
   issueStoryUseCase,
   deleteStoryUseCase,
   deleteTaskUseCase,
+  acceptTaskUseCase,
+  rejectTaskUseCase,
 } from "@container";
 
 export class PageController {
@@ -113,6 +116,55 @@ export class PageController {
     if (!project) return c.json({ error: "Project not found" }, 404);
 
     await deleteTaskUseCase.execute(taskId);
+    return c.redirect(`/project/${projectId}`, 303);
+  }
+
+  async acceptTask(c: Context) {
+    const projectId = c.req.param("projectId");
+    const taskId = c.req.param("taskId");
+
+    if (!projectId || !taskId) {
+      return c.json({ error: "projectId and taskId are required" }, 400);
+    }
+
+    const project = await getProjectUseCase.execute(projectId);
+    if (!project) return c.json({ error: "Project not found" }, 404);
+
+    try {
+      await acceptTaskUseCase.execute(taskId);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to accept task";
+      throw new ValidationError(message);
+    }
+
+    return c.redirect(`/project/${projectId}`, 303);
+  }
+
+  async rejectTask(c: Context) {
+    const projectId = c.req.param("projectId");
+    const taskId = c.req.param("taskId");
+
+    if (!projectId || !taskId) {
+      return c.json({ error: "projectId and taskId are required" }, 400);
+    }
+
+    const project = await getProjectUseCase.execute(projectId);
+    if (!project) return c.json({ error: "Project not found" }, 404);
+
+    const formData = await c.req.formData();
+    const reason = String(formData.get("reason") ?? "").trim();
+
+    if (reason === "") {
+      throw new ValidationError("Reject reason is required");
+    }
+
+    try {
+      await rejectTaskUseCase.execute(taskId, reason);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to reject task";
+      throw new ValidationError(message);
+    }
+
     return c.redirect(`/project/${projectId}`, 303);
   }
 }
