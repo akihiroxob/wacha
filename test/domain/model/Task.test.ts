@@ -36,14 +36,22 @@ test("Task.complete changes status from doing to in_review", () => {
   assert.equal(task.status, TaskStatus.IN_REVIEW);
 });
 
-test("Task.accept changes status from in_review to accepted", () => {
+test("Task.reviewed changes status from in_review to wait_accept", () => {
+  const task = createTask(TaskStatus.IN_REVIEW);
+
+  task.reviewed();
+
+  assert.equal(task.status, TaskStatus.WAIT_ACCEPT);
+});
+
+test("Task.accept changes status from wait_accept to accepted", () => {
   const task = new Task(
     "task-1",
     "project-1",
     null,
     "Sample Task",
     "desc",
-    TaskStatus.IN_REVIEW,
+    TaskStatus.WAIT_ACCEPT,
     null,
     "Need tests",
     TaskStatus.REJECTED,
@@ -68,6 +76,16 @@ test("Task.reject changes status from in_review to rejected", () => {
   assert.equal(task.resumeSourceStatus, null);
 });
 
+test("Task.reject changes status from wait_accept to rejected", () => {
+  const task = createTask(TaskStatus.WAIT_ACCEPT);
+
+  task.reject("Need final adjustment");
+
+  assert.equal(task.status, TaskStatus.REJECTED);
+  assert.equal(task.rejectReason, "Need final adjustment");
+  assert.equal(task.resumeSourceStatus, null);
+});
+
 test("Task.claim throws when status is not todo", () => {
   const task = createTask(TaskStatus.DOING);
 
@@ -80,16 +98,22 @@ test("Task.complete throws when status is not doing", () => {
   assert.throws(() => task.complete(), /not in doing status/);
 });
 
-test("Task.accept throws when status is not in_review", () => {
+test("Task.reviewed throws when status is not in_review", () => {
   const task = createTask(TaskStatus.DOING);
 
-  assert.throws(() => task.accept(), /not in in_review status/);
+  assert.throws(() => task.reviewed(), /not in in_review status/);
 });
 
-test("Task.reject throws when status is not in_review", () => {
+test("Task.accept throws when status is not in wait_accept", () => {
   const task = createTask(TaskStatus.DOING);
 
-  assert.throws(() => task.reject("Need tests"), /not in in_review status/);
+  assert.throws(() => task.accept(), /not in wait_accept status/);
+});
+
+test("Task.reject throws when status is neither in_review nor wait_accept", () => {
+  const task = createTask(TaskStatus.DOING);
+
+  assert.throws(() => task.reject("Need tests"), /not in reviewable status/);
 });
 
 test("Task.reject throws when reason is empty", () => {

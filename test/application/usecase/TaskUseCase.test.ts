@@ -8,6 +8,7 @@ import { ListTaskUseCase } from "@application/usecase/tasks/ListTaskUseCase.ts";
 import { IssueTaskUseCase } from "@application/usecase/tasks/IssueTaskUseCase.ts";
 import { ClaimTaskUseCase } from "@application/usecase/tasks/ClaimTaskUseCase.ts";
 import { CompleteTaskUseCase } from "@application/usecase/tasks/CompleteTaskUseCase.ts";
+import { ReviewedTaskUseCase } from "@application/usecase/tasks/ReviewedTaskUseCase.ts";
 import { AcceptTaskUseCase } from "@application/usecase/tasks/AcceptTaskUseCase.ts";
 import { RejectTaskUseCase } from "@application/usecase/tasks/RejectTaskUseCase.ts";
 
@@ -108,7 +109,7 @@ test("ListTaskUseCase returns tasks for the specified project", async () => {
       null,
       "Task 3",
       null,
-      TaskStatus.ACCEPTED,
+      TaskStatus.WAIT_ACCEPT,
       null,
       null,
       null,
@@ -122,6 +123,7 @@ test("ListTaskUseCase returns tasks for the specified project", async () => {
   assert.equal(result.summary.total, 2);
   assert.equal(result.summary.byStatus[TaskStatus.TODO], 1);
   assert.equal(result.summary.byStatus[TaskStatus.DOING], 1);
+  assert.equal(result.summary.byStatus[TaskStatus.WAIT_ACCEPT], 0);
   assert.equal(result.summary.lastUpdatedAt, 2000);
   assert.equal(result.tasks.length, 2);
   assert.equal(result.tasks[0]?.id, "task-2");
@@ -160,14 +162,24 @@ test("CompleteTaskUseCase completes a doing task", async () => {
   assert.equal(savedTask?.status, TaskStatus.IN_REVIEW);
 });
 
-test("AcceptTaskUseCase accepts an in_review task", async () => {
+test("ReviewedTaskUseCase moves an in_review task to wait_accept", async () => {
+  const task = createTask(TaskStatus.IN_REVIEW);
+  const repo = new InMemoryTaskRepository([task]);
+
+  await new ReviewedTaskUseCase(repo).execute(task.id);
+
+  const savedTask = await repo.findById(task.id);
+  assert.equal(savedTask?.status, TaskStatus.WAIT_ACCEPT);
+});
+
+test("AcceptTaskUseCase accepts a wait_accept task", async () => {
   const task = new Task(
     "task-1",
     "project-1",
     null,
     "Sample Task",
     "desc",
-    TaskStatus.IN_REVIEW,
+    TaskStatus.WAIT_ACCEPT,
     null,
     "Need tests",
     TaskStatus.REJECTED,
@@ -191,6 +203,17 @@ test("RejectTaskUseCase rejects an in_review task", async () => {
   const savedTask = await repo.findById(task.id);
   assert.equal(savedTask?.status, TaskStatus.REJECTED);
   assert.equal(savedTask?.rejectReason, "Need tests");
+});
+
+test("RejectTaskUseCase rejects a wait_accept task", async () => {
+  const task = createTask(TaskStatus.WAIT_ACCEPT);
+  const repo = new InMemoryTaskRepository([task]);
+
+  await new RejectTaskUseCase(repo).execute(task.id, "Need manager follow-up");
+
+  const savedTask = await repo.findById(task.id);
+  assert.equal(savedTask?.status, TaskStatus.REJECTED);
+  assert.equal(savedTask?.rejectReason, "Need manager follow-up");
 });
 
 test("CompleteTaskUseCase throws when task is missing", async () => {
