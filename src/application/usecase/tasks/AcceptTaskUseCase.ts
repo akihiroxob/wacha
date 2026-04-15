@@ -18,8 +18,8 @@ export class AcceptTaskUseCase {
   async execute(taskId: string): Promise<void> {
     const task = await this.taskRepository.findById(taskId);
     if (!task) throw new Error(`the task(${taskId}) is not exists`);
-    if (task.status !== TaskStatus.WAIT_ACCEPT) {
-      throw new Error(`the task(${taskId}) is not in wait_accept status`);
+    if (task.status !== TaskStatus.IN_REVIEW && task.status !== TaskStatus.WAIT_ACCEPT) {
+      throw new Error(`the task(${taskId}) is not in acceptable review status`);
     }
 
     task.accept();

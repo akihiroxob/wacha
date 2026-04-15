@@ -66,6 +66,28 @@ test("Task.accept changes status from wait_accept to accepted", () => {
   assert.equal(task.resumeSourceStatus, null);
 });
 
+test("Task.accept changes status from in_review to accepted", () => {
+  const task = new Task(
+    "task-1",
+    "project-1",
+    null,
+    "Sample Task",
+    "desc",
+    TaskStatus.IN_REVIEW,
+    null,
+    "Need tests",
+    TaskStatus.REJECTED,
+    1000,
+    1000,
+  );
+
+  task.accept();
+
+  assert.equal(task.status, TaskStatus.ACCEPTED);
+  assert.equal(task.rejectReason, null);
+  assert.equal(task.resumeSourceStatus, null);
+});
+
 test("Task.reject changes status from in_review to rejected", () => {
   const task = createTask(TaskStatus.IN_REVIEW);
 
@@ -104,10 +126,10 @@ test("Task.reviewed throws when status is not in_review", () => {
   assert.throws(() => task.reviewed(), /not in in_review status/);
 });
 
-test("Task.accept throws when status is not in wait_accept", () => {
+test("Task.accept throws when status is neither in_review nor wait_accept", () => {
   const task = createTask(TaskStatus.DOING);
 
-  assert.throws(() => task.accept(), /not in wait_accept status/);
+  assert.throws(() => task.accept(), /not in acceptable review status/);
 });
 
 test("Task.reject throws when status is neither in_review nor wait_accept", () => {

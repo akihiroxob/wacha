@@ -122,7 +122,7 @@ Task flow:
 - `claim_task`: `todo` / `rejected` -> `doing`
 - `complete_task`: `doing` -> `in_review`
 - `reviewed_task`: `in_review` -> `wait_accept`
-- `accept_task`: `wait_accept` -> `accepted`
+- `accept_task`: `in_review` / `wait_accept` -> `accepted`
 - `reject_task`: `in_review` / `wait_accept` -> `rejected`
 
 ## Docker
