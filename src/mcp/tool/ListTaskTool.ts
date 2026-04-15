@@ -17,9 +17,6 @@ export const ListTaskTool = {
   },
   execute: async ({ projectId }: ListTaskToolInput) => {
     const result = await container.listTaskUseCase.execute(projectId);
-    return toTextResult(
-      result,
-      `Returned ${result.summary.total} tasks with summary including wait_accept.`,
-    );
+    return toTextResult(result, `Returned ${result.summary.total} tasks with summary.`);
   },
 };
