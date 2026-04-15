@@ -28,7 +28,8 @@ export const AddStoryPage: FC<AddStoryPageProps> = ({ project, values, error }) 
             <p class="text-sm font-medium uppercase tracking-[0.22em] text-stone-400">{project.name}</p>
             <h1 class="text-4xl font-semibold tracking-tight text-stone-900">新しい Story を作成</h1>
             <p class="max-w-2xl text-sm leading-7 text-stone-600">
-              作業のまとまりを Story として登録します。背景や目的を先に整理しておく前提の、少し余白のある入力画面です。
+              作業のまとまりを Story として登録します。Story は SMART を意識しつつ、背景、
+              達成したいこと、完了条件を短く整理してください。
             </p>
           </div>
         </section>
@@ -58,10 +59,13 @@ export const AddStoryPage: FC<AddStoryPageProps> = ({ project, values, error }) 
 
           <label class="flex flex-col gap-2">
             <span class="text-sm font-medium text-stone-700">Description</span>
+            <p class="text-sm leading-6 text-stone-500">
+              最小構成の目安: 背景 / 達成したいこと / 完了条件。制約や期限があれば最後に足してください。
+            </p>
             <textarea
               name="description"
               rows={7}
-              placeholder="背景、目的、完了条件など"
+              placeholder={"背景:\n- なぜやるか\n\n達成したいこと:\n- どうなればよいか\n\n完了条件:\n- 確認できる結果\n\n制約:\n- あれば書く"}
               class="rounded-2xl border border-stone-200 px-4 py-3 text-base leading-7 text-stone-900 outline-none transition focus:border-stone-400"
             >
               {values?.description ?? ""}

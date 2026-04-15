@@ -41,6 +41,8 @@ app.get("/project/:projectId/story/add", PageController.addStory);
 app.post("/project/:projectId/story", PageController.createStory);
 app.post("/project/:projectId/story/:storyId/delete", PageController.deleteStory);
 app.post("/project/:projectId/task/:taskId/delete", PageController.deleteTask);
+app.post("/project/:projectId/task/:taskId/accept", PageController.acceptTask);
+app.post("/project/:projectId/task/:taskId/reject", PageController.rejectTask);
 
 // MCP Route
 app.all("/mcp", async (c) => {

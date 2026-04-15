@@ -9,13 +9,16 @@ type AcceptTaskInput = {
 export const AcceptTaskTool = {
   config: {
     title: "Accept Task",
-    description: "Move an in_review task to accepted.",
+    description: "Move a wait_accept task to accepted as the final manager decision.",
     inputSchema: {
       taskId: z.string().min(1).describe("Task ID"),
     },
   },
   execute: async ({ taskId }: AcceptTaskInput) => {
     await acceptTaskUseCase.execute(taskId);
-    return toTextResult({ taskId, status: "accepted" }, `Accepted task ${taskId}.`);
+    return toTextResult(
+      { taskId, status: "accepted" },
+      `Accepted task ${taskId} as the final manager decision.`,
+    );
   },
 };

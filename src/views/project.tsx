@@ -1,6 +1,6 @@
 import type { FC } from "hono/jsx";
 import { StoryStatus } from "@constants/StoryStatus.ts";
-import { type TaskStatus as TaskStatusValue } from "@constants/TaskStatus.ts";
+import { TaskStatus, type TaskStatus as TaskStatusValue } from "@constants/TaskStatus.ts";
 import type { Task } from "@domain/model/Task.ts";
 import type { Project } from "@domain/model/Project.ts";
 import type { Story } from "@domain/model/Story.ts";
@@ -34,6 +34,26 @@ export const ProjectPage: FC<ProjectProps> = ({
   agentSummary,
 }) => {
   const tasksByStoryId = new Map<string, Task[]>();
+  const taskStatusCards: { label: string; value: number; tone: string }[] = [
+    { label: "Todo", value: summary.byStatus[TaskStatus.TODO], tone: "text-stone-700 bg-stone-100" },
+    { label: "Doing", value: summary.byStatus[TaskStatus.DOING], tone: "text-blue-700 bg-blue-100" },
+    {
+      label: "InReview",
+      value: summary.byStatus[TaskStatus.IN_REVIEW],
+      tone: "text-purple-700 bg-purple-100",
+    },
+    {
+      label: "WaitAccept",
+      value: summary.byStatus[TaskStatus.WAIT_ACCEPT],
+      tone: "text-amber-700 bg-amber-100",
+    },
+    {
+      label: "Accepted",
+      value: summary.byStatus[TaskStatus.ACCEPTED],
+      tone: "text-green-700 bg-green-100",
+    },
+    { label: "Rejected", value: summary.byStatus[TaskStatus.REJECTED], tone: "text-red-700 bg-red-100" },
+  ];
 
   for (const task of tasks) {
     if (!task.storyId) continue;
@@ -142,6 +162,26 @@ export const ProjectPage: FC<ProjectProps> = ({
 
         <section className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-stone-900">Task Summary</h2>
+              <p className="text-sm text-stone-500">現在の task 状態集計</p>
+            </div>
+            <p className="text-sm text-stone-400">{summary.total} total</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+            {taskStatusCards.map((card) => (
+              <div key={card.label} className="rounded-[1.5rem] border border-stone-200 bg-white px-5 py-4 shadow-sm">
+                <div className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${card.tone}`}>
+                  {card.label}
+                </div>
+                <p className="mt-4 text-3xl font-semibold tracking-tight text-stone-900">{card.value}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="flex flex-col gap-4">
+          <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-stone-900">Stories</h2>
             <p className="text-sm text-stone-400">{stories.length} items</p>
           </div>
@@ -185,6 +225,7 @@ export const ProjectPage: FC<ProjectProps> = ({
                               title={task.title}
                               description={task.description}
                               status={task.status}
+                              rejectReason={task.rejectReason}
                               updatedAt={task.updatedAt}
                             />
                           ))}
@@ -222,6 +263,7 @@ export const ProjectPage: FC<ProjectProps> = ({
                     title={task.title}
                     description={task.description}
                     status={task.status}
+                    rejectReason={task.rejectReason}
                     updatedAt={task.updatedAt}
                   />
                 );

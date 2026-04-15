@@ -43,9 +43,17 @@ export class Task {
     this.updatedAt = Date.now();
   }
 
-  accept() {
+  reviewed() {
     if (this.status !== TaskStatus.IN_REVIEW) {
       throw new Error(`the task(${this.id}) is not in in_review status`);
+    }
+    this.status = TaskStatus.WAIT_ACCEPT;
+    this.updatedAt = Date.now();
+  }
+
+  accept() {
+    if (this.status !== TaskStatus.WAIT_ACCEPT) {
+      throw new Error(`the task(${this.id}) is not in wait_accept status`);
     }
     this.status = TaskStatus.ACCEPTED;
     this.rejectReason = null;
@@ -54,8 +62,8 @@ export class Task {
   }
 
   reject(reason: string) {
-    if (this.status !== TaskStatus.IN_REVIEW) {
-      throw new Error(`the task(${this.id}) is not in in_review status`);
+    if (this.status !== TaskStatus.IN_REVIEW && this.status !== TaskStatus.WAIT_ACCEPT) {
+      throw new Error(`the task(${this.id}) is not in reviewable status`);
     }
     if (reason.trim() === "") {
       throw new Error(`the task(${this.id}) reject reason cannot be empty`);
