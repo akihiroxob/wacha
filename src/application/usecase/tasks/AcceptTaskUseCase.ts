@@ -1,8 +1,19 @@
 import { TaskStatus } from "@constants/TaskStatus.ts";
+import { StoryTaskSyncService } from "@application/service/StoryTaskSyncService.ts";
+import { StoryRepository } from "@domain/repository/StoryRepository.ts";
 import { TaskRepository } from "@domain/repository/TaskRepository.ts";
 
 export class AcceptTaskUseCase {
-  constructor(private taskRepository: TaskRepository) {}
+  private storyTaskSyncService: StoryTaskSyncService | null;
+
+  constructor(
+    private taskRepository: TaskRepository,
+    storyRepository?: StoryRepository,
+  ) {
+    this.storyTaskSyncService = storyRepository
+      ? new StoryTaskSyncService(taskRepository, storyRepository)
+      : null;
+  }
 
   async execute(taskId: string): Promise<void> {
     const task = await this.taskRepository.findById(taskId);
@@ -13,5 +24,6 @@ export class AcceptTaskUseCase {
 
     task.accept();
     await this.taskRepository.save(task);
+    await this.storyTaskSyncService?.syncByTask(task);
   }
 }

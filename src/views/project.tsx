@@ -23,6 +23,7 @@ type ProjectProps = {
   agentSummary: {
     total: number;
   };
+  storyStatusFilter: StoryStatus | "all";
 };
 
 export const ProjectPage: FC<ProjectProps> = ({
@@ -32,8 +33,16 @@ export const ProjectPage: FC<ProjectProps> = ({
   project,
   agents,
   agentSummary,
+  storyStatusFilter,
 }) => {
   const tasksByStoryId = new Map<string, Task[]>();
+  const storyStatusOptions: { label: string; value: StoryStatus | "all" }[] = [
+    { label: "All", value: "all" },
+    { label: "Todo", value: StoryStatus.TODO },
+    { label: "Doing", value: StoryStatus.DOING },
+    { label: "Done", value: StoryStatus.DONE },
+    { label: "Canceled", value: StoryStatus.CANCELED },
+  ];
   const taskStatusCards: { label: string; value: number; tone: string }[] = [
     { label: "Todo", value: summary.byStatus[TaskStatus.TODO], tone: "text-stone-700 bg-stone-100" },
     { label: "Doing", value: summary.byStatus[TaskStatus.DOING], tone: "text-blue-700 bg-blue-100" },
@@ -181,8 +190,36 @@ export const ProjectPage: FC<ProjectProps> = ({
         </section>
 
         <section className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-stone-900">Stories</h2>
+          <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-stone-900">Stories</h2>
+              <p className="text-sm text-stone-500">Story 単位で状態を絞り込みできます</p>
+            </div>
+            <form method="get" className="flex items-end gap-3">
+              <label className="flex flex-col gap-2 text-sm text-stone-600">
+                <span className="font-medium">Story Status</span>
+                <select
+                  name="storyStatus"
+                  className="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-900 outline-none transition focus:border-stone-400"
+                >
+                  {storyStatusOptions.map((option) => (
+                    <option
+                      key={option.value}
+                      value={option.value}
+                      selected={storyStatusFilter === option.value}
+                    >
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="submit"
+                className="rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
+              >
+                Apply
+              </button>
+            </form>
             <p className="text-sm text-stone-400">{stories.length} items</p>
           </div>
           {stories.length > 0 ? (
@@ -191,52 +228,92 @@ export const ProjectPage: FC<ProjectProps> = ({
                 const storyTasks = tasksByStoryId.get(story.id) ?? [];
 
                 return (
-                  <div
+                  <details
                     key={story.id}
-                    className="rounded-[2rem] border border-stone-200 bg-white px-6 py-5 shadow-sm"
+                    name="story-accordion"
+                    data-story-id={story.id}
+                    className="group rounded-[2rem] border border-stone-200 bg-white px-6 py-5 shadow-sm"
                   >
-                    <div className="flex items-start gap-3">
+                    <summary className="flex cursor-pointer list-none items-start justify-between gap-4 marker:content-none">
                       <div className="min-w-0 flex-1">
-                        <StoryCard story={story} taskCount={storyTasks.length} embedded />
+                        <div className="flex flex-wrap items-center gap-2">
+                          <div className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-500">
+                            {storyTasks.length} tasks
+                          </div>
+                          {story.status === StoryStatus.TODO && (
+                            <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-700">
+                              Todo
+                            </span>
+                          )}
+                          {story.status === StoryStatus.DOING && (
+                            <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700">
+                              Doing
+                            </span>
+                          )}
+                          {story.status === StoryStatus.DONE && (
+                            <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700">
+                              Done
+                            </span>
+                          )}
+                          {story.status === StoryStatus.CANCELED && (
+                            <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-700">
+                              Canceled
+                            </span>
+                          )}
+                        </div>
+                        <div className="mt-3 flex items-center gap-3">
+                          <h3 className="text-lg font-semibold text-stone-900">{story.title}</h3>
+                          <span className="text-xs text-stone-400">{story.id}</span>
+                        </div>
                       </div>
-                      {story.status === StoryStatus.TODO && (
-                        <form
-                          method="post"
-                          action={`/project/${project.id}/story/${story.id}/delete`}
-                          onsubmit={"return confirm('この Story と配下の Task を削除しますか？');"}
-                        >
-                          <button
-                            type="submit"
-                            className="rounded-xl border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
-                          >
-                            削除
-                          </button>
-                        </form>
-                      )}
-                    </div>
+                      <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-500 transition group-open:rotate-180">
+                        ↓
+                      </span>
+                    </summary>
                     <div className="mt-5 border-l border-stone-200 pl-6">
-                      {storyTasks.length > 0 ? (
-                        <div className="flex flex-col gap-2">
-                          {storyTasks.map((task) => (
-                            <TaskRow
-                              key={task.id}
-                              projectId={project.id}
-                              id={task.id}
-                              title={task.title}
-                              description={task.description}
-                              status={task.status}
-                              rejectReason={task.rejectReason}
-                              updatedAt={task.updatedAt}
-                            />
-                          ))}
+                      <div className="flex items-start gap-3">
+                        <div className="min-w-0 flex-1">
+                          <StoryCard story={story} taskCount={storyTasks.length} embedded />
                         </div>
-                      ) : (
-                        <div className="rounded-2xl border border-dashed border-stone-200 bg-stone-50 px-5 py-6 text-sm text-stone-500">
-                          この Story にはまだ Task がありません。
-                        </div>
-                      )}
+                        {story.status === StoryStatus.TODO && (
+                          <form
+                            method="post"
+                            action={`/project/${project.id}/story/${story.id}/delete`}
+                            onsubmit={"return confirm('この Story と配下の Task を削除しますか？');"}
+                          >
+                            <button
+                              type="submit"
+                              className="rounded-xl border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
+                            >
+                              削除
+                            </button>
+                          </form>
+                        )}
+                      </div>
+                      <div className="mt-5">
+                        {storyTasks.length > 0 ? (
+                          <div className="flex flex-col gap-2">
+                            {storyTasks.map((task) => (
+                              <TaskRow
+                                key={task.id}
+                                projectId={project.id}
+                                id={task.id}
+                                title={task.title}
+                                description={task.description}
+                                status={task.status}
+                                rejectReason={task.rejectReason}
+                                updatedAt={task.updatedAt}
+                              />
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="rounded-2xl border border-dashed border-stone-200 bg-stone-50 px-5 py-6 text-sm text-stone-500">
+                            この Story にはまだ Task がありません。
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  </details>
                 );
               })}
             </div>

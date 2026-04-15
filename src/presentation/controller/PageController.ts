@@ -4,6 +4,7 @@ import { ProjectPage } from "@views/project.tsx";
 import { AddStoryPage } from "@views/add-story.tsx";
 import { renderToString } from "hono/jsx/dom/server";
 import { ValidationError } from "@application/error/ValidationError.ts";
+import { StoryStatus } from "@constants/StoryStatus.ts";
 import {
   listTaskUseCase,
   listProjectUseCase,
@@ -26,16 +27,25 @@ export class PageController {
 
   async project(c: Context) {
     const projectId = c.req.param("projectId");
+    const storyStatus = c.req.query("storyStatus");
 
     if (!projectId) {
       return c.json({ error: "projectId is required" }, 400);
     }
 
+    const storyStatusFilter =
+      storyStatus && Object.values(StoryStatus).includes(storyStatus as (typeof StoryStatus)[keyof typeof StoryStatus])
+        ? (storyStatus as (typeof StoryStatus)[keyof typeof StoryStatus])
+        : "all";
+
     const project = await getProjectUseCase.execute(projectId);
     if (!project) return c.json({ error: "Project not found" }, 404);
 
     const taskResult = await listTaskUseCase.execute(projectId);
-    const storyResult = await listStoryUseCase.execute(projectId);
+    const storyResult = await listStoryUseCase.execute(
+      projectId,
+      storyStatusFilter === "all" ? undefined : storyStatusFilter,
+    );
     const agentResult = await listProjectAgentsUseCase.execute(projectId);
     const page = ProjectPage({
       project,
@@ -44,6 +54,7 @@ export class PageController {
       stories: storyResult.stories,
       agents: agentResult.agents,
       agentSummary: agentResult.summary,
+      storyStatusFilter,
     });
     return c.html(`<!doctype html>${renderToString(page ?? "")}`);
   }
