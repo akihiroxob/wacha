@@ -31,7 +31,7 @@ export const TaskRow: FC<TaskRowProps> = ({
   const detailId = `task-detail-${id}`;
   const formattedUpdatedAt = new Date(updatedAt).toLocaleString();
   const canDelete = status === TaskStatus.TODO;
-  const canAccept = status === TaskStatus.WAIT_ACCEPT;
+  const canAccept = status === TaskStatus.IN_REVIEW || status === TaskStatus.WAIT_ACCEPT;
   const canReject = status === TaskStatus.IN_REVIEW || status === TaskStatus.WAIT_ACCEPT;
 
   return (

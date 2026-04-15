@@ -58,6 +58,49 @@ test("ProjectPage renders accept and reject actions for wait_accept tasks", () =
   assert.match(html, /Reject reason/);
 });
 
+test("ProjectPage renders accept and reject actions for in_review tasks", () => {
+  const task = new Task(
+    "task-1",
+    "project-1",
+    "story-1",
+    "Task 1",
+    "desc",
+    TaskStatus.IN_REVIEW,
+    null,
+    null,
+    null,
+    1000,
+    2000,
+  );
+
+  const html = renderToString(
+    ProjectPage({
+      project,
+      summary: {
+        total: 1,
+        byStatus: {
+          [TaskStatus.TODO]: 0,
+          [TaskStatus.DOING]: 0,
+          [TaskStatus.IN_REVIEW]: 1,
+          [TaskStatus.WAIT_ACCEPT]: 0,
+          [TaskStatus.ACCEPTED]: 0,
+          [TaskStatus.REJECTED]: 0,
+        },
+        lastUpdatedAt: 2000,
+      },
+      tasks: [task],
+      stories: [story],
+      agents: [agent],
+      agentSummary: { total: 1 },
+      storyStatusFilter: "all",
+    }),
+  );
+
+  assert.match(html, /project\/project-1\/task\/task-1\/accept/);
+  assert.match(html, /project\/project-1\/task\/task-1\/reject/);
+  assert.match(html, /Reject reason/);
+});
+
 test("ProjectPage renders reject reason for rejected tasks", () => {
   const task = new Task(
     "task-2",

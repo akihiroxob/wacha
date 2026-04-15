@@ -289,6 +289,16 @@ test("AcceptTaskUseCase accepts a wait_accept task", async () => {
   assert.equal(savedTask?.status, TaskStatus.ACCEPTED);
 });
 
+test("AcceptTaskUseCase accepts an in_review task", async () => {
+  const task = createTask(TaskStatus.IN_REVIEW);
+  const repo = new InMemoryTaskRepository([task]);
+
+  await new AcceptTaskUseCase(repo).execute(task.id);
+
+  const savedTask = await repo.findById(task.id);
+  assert.equal(savedTask?.status, TaskStatus.ACCEPTED);
+});
+
 test("AcceptTaskUseCase completes the linked story when all story tasks are accepted", async () => {
   const acceptedTask = new Task(
     "task-1",

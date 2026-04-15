@@ -52,8 +52,8 @@ export class Task {
   }
 
   accept() {
-    if (this.status !== TaskStatus.WAIT_ACCEPT) {
-      throw new Error(`the task(${this.id}) is not in wait_accept status`);
+    if (this.status !== TaskStatus.IN_REVIEW && this.status !== TaskStatus.WAIT_ACCEPT) {
+      throw new Error(`the task(${this.id}) is not in acceptable review status`);
     }
     this.status = TaskStatus.ACCEPTED;
     this.rejectReason = null;
