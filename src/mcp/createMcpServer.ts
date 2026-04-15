@@ -16,8 +16,9 @@ import { CompleteTaskTool } from "@mcp/tool/CompleteTaskTool.ts";
 import { ReviewedTaskTool } from "@mcp/tool/ReviewedTaskTool.ts";
 import { AssignTool } from "@mcp/tool/AssignTool.ts";
 import { GetRoleInstructionsTool } from "./tool/GetRoleInstructionsTool.ts";
-import { withRoleGuard } from "@mcp/middleware/RoleGuard.ts";
+import { canIssueTask, withRoleGuard } from "@mcp/middleware/RoleGuard.ts";
 import { ProjectRole } from "@constants/ProjectRole.ts";
+import { membershipService } from "@container";
 
 const name = "wacha";
 const version = "1.0.0";
@@ -61,7 +62,19 @@ export const createMcpServer = (context: ToolContext) => {
   server.registerTool(
     "issue_task",
     IssueTaskTool.config,
-    withRoleGuard([ProjectRole.MANAGER], context, IssueTaskTool.execute),
+    async (args) => {
+      const { sessionId } = context;
+      if (!sessionId) {
+        throw new Error("Unauthorized: No sessionId in context");
+      }
+
+      const roles = await membershipService.getRolesBySessionId(sessionId);
+      if (!canIssueTask(roles, args.storyId)) {
+        throw new Error("Forbidden: Agent cannot issue story-linked tasks without manager role");
+      }
+
+      return IssueTaskTool.execute(args);
+    },
   );
   server.registerTool("claim_task", ClaimTaskTool.config, (args) =>
     ClaimTaskTool.execute({ ...args, sessionId: context.sessionId }),

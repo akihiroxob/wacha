@@ -1,6 +1,15 @@
 import type { ProjectRole } from "@constants/ProjectRole.ts";
 import type { ToolContext } from "@domain/model/ToolContext.js";
 import { membershipService } from "@container";
+import { ProjectRole as ProjectRoleEnum } from "@constants/ProjectRole.ts";
+
+export const canIssueTask = (roles: ProjectRole[], storyId?: string) => {
+  if (roles.includes(ProjectRoleEnum.MANAGER)) {
+    return true;
+  }
+
+  return !storyId && roles.includes(ProjectRoleEnum.REVIEWER);
+};
 
 export const withRoleGuard = <TArgs>(
   allowRoles: ProjectRole[],

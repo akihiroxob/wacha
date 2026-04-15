@@ -2,8 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { Task } from "@domain/model/Task.ts";
+import { Story } from "@domain/model/Story.ts";
 import { TaskRepository } from "@domain/repository/TaskRepository.ts";
+import { StoryRepository } from "@domain/repository/StoryRepository.ts";
 import { TaskStatus } from "@constants/TaskStatus.ts";
+import { StoryStatus } from "@constants/StoryStatus.ts";
 import { ListTaskUseCase } from "@application/usecase/tasks/ListTaskUseCase.ts";
 import { IssueTaskUseCase } from "@application/usecase/tasks/IssueTaskUseCase.ts";
 import { ClaimTaskUseCase } from "@application/usecase/tasks/ClaimTaskUseCase.ts";
@@ -59,6 +62,48 @@ class InMemoryTaskRepository implements TaskRepository {
   }
 }
 
+class InMemoryStoryRepository implements StoryRepository {
+  private stories = new Map<string, Story>();
+
+  constructor(seed: Story[] = []) {
+    seed.forEach((story) => this.stories.set(story.id, story));
+  }
+
+  async findAll(): Promise<Story[]> {
+    return [...this.stories.values()];
+  }
+
+  async findById(storyId: string): Promise<Story | null> {
+    return this.stories.get(storyId) ?? null;
+  }
+
+  async findByProjectId(projectId: string): Promise<Story[]> {
+    return [...this.stories.values()].filter((story) => story.projectId === projectId);
+  }
+
+  async create(projectId: string, title: string, description: string | null): Promise<Story> {
+    const story = new Story(
+      `story-${this.stories.size + 1}`,
+      projectId,
+      title,
+      description,
+      StoryStatus.TODO,
+      1000,
+      1000,
+    );
+    this.stories.set(story.id, story);
+    return story;
+  }
+
+  async save(story: Story): Promise<void> {
+    this.stories.set(story.id, story);
+  }
+
+  async delete(storyId: string): Promise<void> {
+    this.stories.delete(storyId);
+  }
+}
+
 function createTask(status: TaskStatus = TaskStatus.TODO) {
   return new Task(
     "task-1",
@@ -73,6 +118,10 @@ function createTask(status: TaskStatus = TaskStatus.TODO) {
     1000,
     1000,
   );
+}
+
+function createStory(status: StoryStatus = StoryStatus.TODO) {
+  return new Story("story-1", "project-1", "Story 1", "desc", status, 1000, 1000);
 }
 
 test("ListTaskUseCase returns tasks for the specified project", async () => {
@@ -152,6 +201,52 @@ test("ClaimTaskUseCase claims a todo task", async () => {
   assert.equal(savedTask?.resumeSourceStatus, TaskStatus.TODO);
 });
 
+test("ClaimTaskUseCase moves the linked story to doing on first claim", async () => {
+  const task = new Task(
+    "task-1",
+    "project-1",
+    "story-1",
+    "Task 1",
+    "desc",
+    TaskStatus.TODO,
+    null,
+    null,
+    null,
+    1000,
+    1000,
+  );
+  const taskRepo = new InMemoryTaskRepository([task]);
+  const storyRepo = new InMemoryStoryRepository([createStory(StoryStatus.TODO)]);
+
+  await new ClaimTaskUseCase(taskRepo, storyRepo).execute(task.id, "worker-1");
+
+  const savedStory = await storyRepo.findById("story-1");
+  assert.equal(savedStory?.status, StoryStatus.DOING);
+});
+
+test("ClaimTaskUseCase keeps a manually claimed story in doing", async () => {
+  const task = new Task(
+    "task-1",
+    "project-1",
+    "story-1",
+    "Task 1",
+    "desc",
+    TaskStatus.TODO,
+    null,
+    null,
+    null,
+    1000,
+    1000,
+  );
+  const taskRepo = new InMemoryTaskRepository([task]);
+  const storyRepo = new InMemoryStoryRepository([createStory(StoryStatus.DOING)]);
+
+  await new ClaimTaskUseCase(taskRepo, storyRepo).execute(task.id, "worker-1");
+
+  const savedStory = await storyRepo.findById("story-1");
+  assert.equal(savedStory?.status, StoryStatus.DOING);
+});
+
 test("CompleteTaskUseCase completes a doing task", async () => {
   const task = createTask(TaskStatus.DOING);
   const repo = new InMemoryTaskRepository([task]);
@@ -192,6 +287,78 @@ test("AcceptTaskUseCase accepts a wait_accept task", async () => {
 
   const savedTask = await repo.findById(task.id);
   assert.equal(savedTask?.status, TaskStatus.ACCEPTED);
+});
+
+test("AcceptTaskUseCase completes the linked story when all story tasks are accepted", async () => {
+  const acceptedTask = new Task(
+    "task-1",
+    "project-1",
+    "story-1",
+    "Task 1",
+    "desc",
+    TaskStatus.ACCEPTED,
+    null,
+    null,
+    null,
+    1000,
+    1000,
+  );
+  const reviewTask = new Task(
+    "task-2",
+    "project-1",
+    "story-1",
+    "Task 2",
+    "desc",
+    TaskStatus.WAIT_ACCEPT,
+    null,
+    null,
+    null,
+    1000,
+    1000,
+  );
+  const taskRepo = new InMemoryTaskRepository([acceptedTask, reviewTask]);
+  const storyRepo = new InMemoryStoryRepository([createStory(StoryStatus.DOING)]);
+
+  await new AcceptTaskUseCase(taskRepo, storyRepo).execute(reviewTask.id);
+
+  const savedStory = await storyRepo.findById("story-1");
+  assert.equal(savedStory?.status, StoryStatus.DONE);
+});
+
+test("AcceptTaskUseCase does not complete a story while another task is still waiting", async () => {
+  const doingTask = new Task(
+    "task-1",
+    "project-1",
+    "story-1",
+    "Task 1",
+    "desc",
+    TaskStatus.DOING,
+    null,
+    null,
+    null,
+    1000,
+    1000,
+  );
+  const reviewTask = new Task(
+    "task-2",
+    "project-1",
+    "story-1",
+    "Task 2",
+    "desc",
+    TaskStatus.WAIT_ACCEPT,
+    null,
+    null,
+    null,
+    1000,
+    1000,
+  );
+  const taskRepo = new InMemoryTaskRepository([doingTask, reviewTask]);
+  const storyRepo = new InMemoryStoryRepository([createStory(StoryStatus.DOING)]);
+
+  await new AcceptTaskUseCase(taskRepo, storyRepo).execute(reviewTask.id);
+
+  const savedStory = await storyRepo.findById("story-1");
+  assert.equal(savedStory?.status, StoryStatus.DOING);
 });
 
 test("RejectTaskUseCase rejects an in_review task", async () => {
