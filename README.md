@@ -96,6 +96,8 @@ docker compose down -v
 - サーバ側の識別子は MCP の `sessionId` ベースです
 - `claim_task` の担当者や project membership も `sessionId` に紐づきます
 - role 制御付き tool の実行には project membership 側の role が必要です
+- server 再起動後に旧 `sessionId` を送ると、MCP は `Session expired or server restarted; initialize again` を返します
+- client はそのエラーを受けたら `initialize` をやり直し、必要なら `assign_project_role` で role を取り直してください
 - 接続確認は `http://localhost:3000/health` と MCP client 側の initialize で行ってください
 
 ## Available Tools
