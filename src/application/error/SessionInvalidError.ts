@@ -1,6 +1,6 @@
 import { ValidationError } from "@application/error/ValidationError.ts";
 
-export class SessionReinitializeRequiredError extends ValidationError {
+export class SessionInvalidError extends ValidationError {
   readonly rpcCode = -32001;
   readonly rpcData = {
     reason: "session_not_found",

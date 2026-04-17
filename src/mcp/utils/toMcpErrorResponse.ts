@@ -1,5 +1,5 @@
 import { ValidationError } from "@application/error/ValidationError.ts";
-import { SessionReinitializeRequiredError } from "@application/error/SessionReinitializeRequiredError.ts";
+import { SessionInvalidError } from "@application/error/SessionInvalidError.ts";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 
 type McpErrorResponse = {
@@ -16,7 +16,7 @@ type McpErrorResponse = {
 };
 
 export const toMcpErrorResponse = (error: unknown): McpErrorResponse => {
-  if (error instanceof SessionReinitializeRequiredError) {
+  if (error instanceof SessionInvalidError) {
     return {
       status: 400,
       body: {

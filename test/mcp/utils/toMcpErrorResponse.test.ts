@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { ValidationError } from "@application/error/ValidationError.ts";
-import { SessionReinitializeRequiredError } from "@application/error/SessionReinitializeRequiredError.ts";
+import { SessionReinitializeRequiredError } from "@application/error/SessionInvalidError.ts";
 import { toMcpErrorResponse } from "@mcp/utils/toMcpErrorResponse.ts";
 
 test("toMcpErrorResponse returns reinitialize contract for missing session", () => {

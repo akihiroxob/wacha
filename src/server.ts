@@ -13,7 +13,7 @@ import { sessionService, membershipService } from "@container";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import PageController from "@controller/PageController.ts";
 import { ValidationError } from "@application/error/ValidationError.ts";
-import { SessionReinitializeRequiredError } from "@application/error/SessionReinitializeRequiredError.ts";
+import { SessionInvalidError } from "@application/error/SessionInvalidError.ts";
 import { toMcpErrorResponse } from "@mcp/utils/toMcpErrorResponse.ts";
 
 const app = new Hono();
@@ -56,7 +56,7 @@ app.all("/mcp", async (c) => {
   const sessionId = c.req.header(MCP_HEADER.MCP_SESSION_ID);
   if (sessionId) {
     const session = sessionService.getSessionBySessionId(sessionId);
-    if (!session) throw new SessionReinitializeRequiredError();
+    if (!session) throw new SessionInvalidError();
     return session.transport.handleRequest(c.req.raw);
   }
 
