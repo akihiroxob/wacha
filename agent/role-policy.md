@@ -15,6 +15,9 @@
 ## 基本方針
 
 - role は「誰がどのフェーズを担当するか」を固定するために使う
+- session の再確立と role の再取得は別の問題として扱う
+- server 再起動後に session が失われても role は自動継承しない
+- role が必要な操作で弾かれた時点で、client または agent は `assign_project_role` を再実行する
 - 当面は最小ブロック方針を採用する
 - 最小ブロック方針では、`manager` 専用であるべき操作だけを MCP レベルで拒否する
 - それ以外の操作は、しばらく運用ルールで制御する
@@ -132,6 +135,16 @@ role ごとに Push すべきイベントは次のとおり。
 
 - 自分が担当すべき Task が明示的に割り当てられた
 - 自分の Task が `reject_task` で差し戻された
+
+## Session 再初期化後の扱い
+
+server 再起動などで既存 session が失われた場合、client はまず `initialize` をやり直して新しい session を確立する。
+
+この時、以前の project membership や role を自動で引き継ぐ前提は置かない。
+
+role が必要な tool を呼ぶ時点で role 未取得により処理できないことが分かったら、必要に応じて `assign_project_role` を再実行する。
+
+この文書は WACHA の role 運用ルールを示すためのものであり、session 再初期化エラー自体に WACHA 固有の role 復旧手順を埋め込む前提は取らない。
 
 ## MCP レベルの拒否仕様
 

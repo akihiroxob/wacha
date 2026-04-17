@@ -13,6 +13,8 @@ import { sessionService, membershipService } from "@container";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import PageController from "@controller/PageController.ts";
 import { ValidationError } from "@application/error/ValidationError.ts";
+import { SessionInvalidError } from "@application/error/SessionInvalidError.ts";
+import { toMcpErrorResponse } from "@mcp/utils/toMcpErrorResponse.ts";
 
 const app = new Hono();
 app.use(logger());
@@ -54,7 +56,7 @@ app.all("/mcp", async (c) => {
   const sessionId = c.req.header(MCP_HEADER.MCP_SESSION_ID);
   if (sessionId) {
     const session = sessionService.getSessionBySessionId(sessionId);
-    if (!session) throw new ValidationError("Invalid session ID");
+    if (!session) throw new SessionInvalidError();
     return session.transport.handleRequest(c.req.raw);
   }
 
@@ -97,19 +99,8 @@ app.get("/health", (c) => c.json({ status: "ok", service: "wacha-mcp" }));
 // app error handling
 app.onError((err, c) => {
   console.error("Unexpected error:", err);
-  const status = err instanceof ValidationError ? 400 : 500;
-
-  return c.json(
-    {
-      jsonrpc: "2.0",
-      error: {
-        code: -32000,
-        message: err.message || "Internal Server Error",
-      },
-      id: null,
-    },
-    status,
-  );
+  const response = toMcpErrorResponse(err);
+  return c.json(response.body, response.status);
 });
 
 membershipService.clear().catch((error) => {
