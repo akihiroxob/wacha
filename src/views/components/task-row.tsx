@@ -59,7 +59,9 @@ export const TaskRow: FC<TaskRowProps> = ({
                   <h3 class="mt-1 truncate text-lg font-semibold text-stone-900">{title}</h3>
                 </div>
                 <div class="shrink-0 text-right">
-                  <p class="text-xs font-medium uppercase tracking-[0.18em] text-stone-400">Updated</p>
+                  <p class="text-xs font-medium uppercase tracking-[0.18em] text-stone-400">
+                    Updated
+                  </p>
                   <span class="mt-1 block text-sm text-stone-600">{formattedUpdatedAt}</span>
                 </div>
               </div>
@@ -85,7 +87,7 @@ export const TaskRow: FC<TaskRowProps> = ({
       <div
         id={detailId}
         popover="auto"
-        class="fixed inset-0 m-auto max-h-[min(80vh,40rem)] max-w-xl w-[min(90vw,36rem)] overflow-y-auto rounded-3xl border border-stone-200 bg-white p-6 shadow-xl backdrop:bg-black/20"
+        class="fixed inset-0 m-auto max-h-[min(80vh,40rem)] max-w-3xl w-[min(90vw,48rem)] overflow-y-auto rounded-3xl border border-stone-200 bg-white p-6 shadow-xl backdrop:bg-black/20"
       >
         <div class="flex items-start justify-between gap-4">
           <div class="flex flex-col gap-2">
@@ -143,7 +145,11 @@ export const TaskRow: FC<TaskRowProps> = ({
                   </form>
                 )}
                 {canReject && (
-                  <form method="post" action={`/project/${projectId}/task/${id}/reject`} class="flex flex-col gap-3">
+                  <form
+                    method="post"
+                    action={`/project/${projectId}/task/${id}/reject`}
+                    class="flex flex-col gap-3"
+                  >
                     <label class="flex flex-col gap-2">
                       <span class="text-sm font-medium text-stone-700">Reject reason</span>
                       <textarea

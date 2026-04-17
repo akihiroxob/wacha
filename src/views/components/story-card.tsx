@@ -16,21 +16,6 @@ export const StoryCard: FC<StoryCardProps> = ({ story, taskCount, embedded = fal
 
   return (
     <div className={containerClass}>
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          {story.status === StoryStatus.TODO && <TodoBadge />}
-          {story.status === StoryStatus.DOING && <DoingBadge />}
-          {story.status === StoryStatus.DONE && <DoneBadge />}
-          {story.status === StoryStatus.CANCELED && <CanceledBadge />}
-          {typeof taskCount === "number" && (
-            <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-500">
-              {taskCount} tasks
-            </span>
-          )}
-        </div>
-        <span className="text-xs text-stone-400">{story.id}</span>
-      </div>
-      <h3 className="mt-3 text-lg font-semibold text-stone-900">{story.title}</h3>
       <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-stone-600">
         {story.description ?? "Description は未設定です。"}
       </p>
