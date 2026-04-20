@@ -181,6 +181,8 @@ And 必要なら確認観点や非対象を書く
   - `status: "todo"` を使って未着手 Story を順に拾う
 - `issue_story`
   - 人からの直接依頼を Story 化する
+- `edit_story`
+  - 既存 Story の title と description を更新する
 - `claim_story`
   - Story 対応を開始する
 - `complete_story`
@@ -206,6 +208,7 @@ And 必要なら確認観点や非対象を書く
 - `list_projects`
 - `list_stories`
 - `issue_story`
+- `edit_story`
 - `claim_story`
 - `complete_story`
 - `cancel_story`

@@ -106,6 +106,7 @@ docker compose down -v
 - `list_project_agents`
 - `list_stories`
 - `issue_story`
+- `edit_story`
 - `claim_story`
 - `complete_story`
 - `cancel_story`

@@ -44,6 +44,7 @@
 以下の tool は `manager` 以外からの呼び出しを拒否する。
 
 - `issue_story`
+- `edit_story`
 - `claim_story`
 - `complete_story`
 - `cancel_story`
@@ -59,6 +60,7 @@
 | `list_projects`       | allow   | allow    | allow  | no               | 参照系                                  |
 | `list_stories`        | allow   | allow    | allow  | no               | 参照系                                  |
 | `issue_story`         | allow   | deny     | deny   | yes              | Story 作成は manager のみ               |
+| `edit_story`          | allow   | deny     | deny   | yes              | Story 編集は manager のみ               |
 | `claim_story`         | allow   | deny     | deny   | yes              | Story を処理対象にするのは manager のみ |
 | `complete_story`      | allow   | deny     | deny   | yes              | Story 完了は manager のみ               |
 | `cancel_story`        | allow   | deny     | deny   | yes              | Story 中止は manager のみ               |
