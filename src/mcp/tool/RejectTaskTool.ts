@@ -5,6 +5,7 @@ import { rejectTaskUseCase } from "@container";
 type RejectTaskInput = {
   taskId: string;
   reason: string;
+  author?: string | null;
 };
 
 export const RejectTaskTool = {
@@ -15,12 +16,13 @@ export const RejectTaskTool = {
     inputSchema: {
       taskId: z.string().min(1).describe("Task ID"),
       reason: z.string().min(1).describe("Reject reason"),
+      author: z.string().optional().describe("Reject author"),
     },
   },
-  execute: async ({ taskId, reason }: RejectTaskInput) => {
-    await rejectTaskUseCase.execute(taskId, reason);
+  execute: async ({ taskId, reason, author }: RejectTaskInput) => {
+    await rejectTaskUseCase.execute(taskId, reason, author ?? null);
     return toTextResult(
-      { taskId, status: "rejected", rejectReason: reason },
+      { taskId, status: "rejected", rejectReason: reason, author: author ?? null },
       `Rejected task ${taskId} with a reason for follow-up.`,
     );
   },

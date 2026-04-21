@@ -4,6 +4,7 @@ import { ListProjectTool } from "@mcp/tool/ListProjectTool.ts";
 import { ListProjectAgentsTool } from "@mcp/tool/ListProjectAgentsTool.ts";
 import { ListStoryTool } from "@mcp/tool/ListStoryTool.ts";
 import { IssueStoryTool } from "@mcp/tool/IssueStoryTool.ts";
+import { EditStoryTool } from "@mcp/tool/EditStoryTool.ts";
 import { ClaimStoryTool } from "@mcp/tool/ClaimStoryTool.ts";
 import { CompleteStoryTool } from "@mcp/tool/CompleteStoryTool.ts";
 import { CancelStoryTool } from "@mcp/tool/CancelStoryTool.ts";
@@ -11,6 +12,9 @@ import { ListTaskTool } from "@mcp/tool/ListTaskTool.ts";
 import { IssueTaskTool } from "@mcp/tool/IssueTaskTool.ts";
 import { AcceptTaskTool } from "@mcp/tool/AcceptTaskTool.ts";
 import { RejectTaskTool } from "@mcp/tool/RejectTaskTool.ts";
+import { AddTaskCommentTool } from "@mcp/tool/AddTaskCommentTool.ts";
+import { ListTaskCommentTool } from "@mcp/tool/ListTaskCommentTool.ts";
+import { ListTaskRejectTool } from "@mcp/tool/ListTaskRejectTool.ts";
 import { ClaimTaskTool } from "@mcp/tool/ClaimTaskTool.ts";
 import { CompleteTaskTool } from "@mcp/tool/CompleteTaskTool.ts";
 import { ReviewedTaskTool } from "@mcp/tool/ReviewedTaskTool.ts";
@@ -40,6 +44,11 @@ export const createMcpServer = (context: ToolContext) => {
     "issue_story",
     IssueStoryTool.config,
     withRoleGuard([ProjectRole.MANAGER], context, IssueStoryTool.execute),
+  );
+  server.registerTool(
+    "edit_story",
+    EditStoryTool.config,
+    withRoleGuard([ProjectRole.MANAGER], context, EditStoryTool.execute),
   );
   server.registerTool(
     "claim_story",
@@ -92,6 +101,11 @@ export const createMcpServer = (context: ToolContext) => {
     withRoleGuard([ProjectRole.MANAGER], context, AcceptTaskTool.execute),
   );
   server.registerTool("reject_task", RejectTaskTool.config, RejectTaskTool.execute);
+  server.registerTool("add_task_comment", AddTaskCommentTool.config, (args) =>
+    AddTaskCommentTool.execute({ ...args, author: args.author ?? context.sessionId ?? null }),
+  );
+  server.registerTool("list_task_comments", ListTaskCommentTool.config, ListTaskCommentTool.execute);
+  server.registerTool("list_task_rejects", ListTaskRejectTool.config, ListTaskRejectTool.execute);
   server.registerTool("assign_project_role", AssignTool.config, (args) =>
     AssignTool.execute({ ...args, sessionId: context.sessionId }),
   );

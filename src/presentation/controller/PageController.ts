@@ -2,6 +2,7 @@ import { Context } from "hono";
 import { Index } from "@views/index.tsx";
 import { ProjectPage } from "@views/project.tsx";
 import { AddStoryPage } from "@views/add-story.tsx";
+import { EditStoryPage } from "@views/edit-story.tsx";
 import { renderToString } from "hono/jsx/dom/server";
 import { ValidationError } from "@application/error/ValidationError.ts";
 import { StoryStatus } from "@constants/StoryStatus.ts";
@@ -12,13 +13,22 @@ import {
   listProjectAgentsUseCase,
   listStoryUseCase,
   issueStoryUseCase,
+  editStoryUseCase,
   deleteStoryUseCase,
   deleteTaskUseCase,
   acceptTaskUseCase,
   rejectTaskUseCase,
+  listTaskRejectUseCase,
+  listTaskCommentUseCase,
+  addTaskCommentUseCase,
 } from "@container";
 
 export class PageController {
+  private async findStoryInProject(projectId: string, storyId: string) {
+    const storyResult = await listStoryUseCase.execute(projectId);
+    return storyResult.stories.find((story) => story.id === storyId) ?? null;
+  }
+
   async index(c: Context) {
     const result = await listProjectUseCase.execute();
     const page = Index({ projects: result.projects });
@@ -34,7 +44,10 @@ export class PageController {
     }
 
     const storyStatusFilter =
-      storyStatus && Object.values(StoryStatus).includes(storyStatus as (typeof StoryStatus)[keyof typeof StoryStatus])
+      storyStatus &&
+      Object.values(StoryStatus).includes(
+        storyStatus as (typeof StoryStatus)[keyof typeof StoryStatus],
+      )
         ? (storyStatus as (typeof StoryStatus)[keyof typeof StoryStatus])
         : "all";
 
@@ -42,6 +55,12 @@ export class PageController {
     if (!project) return c.json({ error: "Project not found" }, 404);
 
     const taskResult = await listTaskUseCase.execute(projectId);
+    const commentsResult = await listTaskCommentUseCase.executeForTasks(
+      taskResult.tasks.map((task) => task.id),
+    );
+    const rejectsResult = await listTaskRejectUseCase.executeForTasks(
+      taskResult.tasks.map((task) => task.id),
+    );
     const storyResult = await listStoryUseCase.execute(
       projectId,
       storyStatusFilter === "all" ? undefined : storyStatusFilter,
@@ -51,6 +70,8 @@ export class PageController {
       project,
       summary: taskResult.summary,
       tasks: taskResult.tasks,
+      comments: commentsResult.comments,
+      taskRejects: rejectsResult.rejects,
       stories: storyResult.stories,
       agents: agentResult.agents,
       agentSummary: agentResult.summary,
@@ -70,6 +91,24 @@ export class PageController {
     if (!project) return c.json({ error: "Project not found" }, 404);
 
     const page = AddStoryPage({ project });
+    return c.html(`<!doctype html>${renderToString(page ?? "")}`);
+  }
+
+  async editStory(c: Context) {
+    const projectId = c.req.param("projectId");
+    const storyId = c.req.param("storyId");
+
+    if (!projectId || !storyId) {
+      return c.json({ error: "projectId and storyId are required" }, 400);
+    }
+
+    const project = await getProjectUseCase.execute(projectId);
+    if (!project) return c.json({ error: "Project not found" }, 404);
+
+    const story = await this.findStoryInProject(projectId, storyId);
+    if (!story) return c.json({ error: "Story not found" }, 404);
+
+    const page = EditStoryPage({ project, story });
     return c.html(`<!doctype html>${renderToString(page ?? "")}`);
   }
 
@@ -97,6 +136,50 @@ export class PageController {
     }
 
     const story = await issueStoryUseCase.execute(projectId, title, description || null);
+    return c.redirect(`/project/${projectId}`, 303);
+  }
+
+  async updateStory(c: Context) {
+    const projectId = c.req.param("projectId");
+    const storyId = c.req.param("storyId");
+
+    if (!projectId || !storyId) {
+      return c.json({ error: "projectId and storyId are required" }, 400);
+    }
+
+    const project = await getProjectUseCase.execute(projectId);
+    if (!project) return c.json({ error: "Project not found" }, 404);
+
+    const story = await this.findStoryInProject(projectId, storyId);
+    if (!story) return c.json({ error: "Story not found" }, 404);
+
+    const formData = await c.req.formData();
+    const title = String(formData.get("title") ?? "").trim();
+    const description = String(formData.get("description") ?? "").trim();
+
+    if (title === "") {
+      const page = EditStoryPage({
+        project,
+        story,
+        error: "Title は必須です。",
+        values: { title, description },
+      });
+      return c.html(`<!doctype html>${renderToString(page ?? "")}`, 400);
+    }
+
+    try {
+      await editStoryUseCase.execute(projectId, storyId, title, description || null);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to update story";
+      const page = EditStoryPage({
+        project,
+        story,
+        error: message,
+        values: { title, description },
+      });
+      return c.html(`<!doctype html>${renderToString(page ?? "")}`, 400);
+    }
+
     return c.redirect(`/project/${projectId}`, 303);
   }
 
@@ -170,12 +253,31 @@ export class PageController {
     }
 
     try {
-      await rejectTaskUseCase.execute(taskId, reason);
+      await rejectTaskUseCase.execute(taskId, reason, "human");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to reject task";
       throw new ValidationError(message);
     }
 
+    return c.redirect(`/project/${projectId}`, 303);
+  }
+
+  async addTaskComment(c: Context) {
+    const projectId = c.req.param("projectId");
+    const taskId = c.req.param("taskId");
+
+    if (!projectId || !taskId) {
+      return c.json({ error: "projectId and taskId are required" }, 400);
+    }
+
+    const project = await getProjectUseCase.execute(projectId);
+    if (!project) return c.json({ error: "Project not found" }, 404);
+
+    const formData = await c.req.formData();
+    const body = String(formData.get("body") ?? "").trim();
+    if (body === "") throw new ValidationError("Comment body is required");
+
+    await addTaskCommentUseCase.execute(taskId, body, "human");
     return c.redirect(`/project/${projectId}`, 303);
   }
 }

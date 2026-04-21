@@ -6,6 +6,7 @@ import { StoryRepository } from "@domain/repository/StoryRepository.ts";
 import { StoryStatus } from "@constants/StoryStatus.ts";
 import { ListStoryUseCase } from "@application/usecase/stories/ListStoryUseCase.ts";
 import { IssueStoryUseCase } from "@application/usecase/stories/IssueStoryUseCase.ts";
+import { EditStoryUseCase } from "@application/usecase/stories/EditStoryUseCase.ts";
 import { ClaimStoryUseCase } from "@application/usecase/stories/ClaimStoryUseCase.ts";
 import { CompleteStoryUseCase } from "@application/usecase/stories/CompleteStoryUseCase.ts";
 import { CancelStoryUseCase } from "@application/usecase/stories/CancelStoryUseCase.ts";
@@ -100,6 +101,17 @@ test("IssueStoryUseCase creates a todo story", async () => {
   assert.equal(story.status, StoryStatus.TODO);
 });
 
+test("EditStoryUseCase updates title and description", async () => {
+  const story = createStory("story-1", StoryStatus.TODO, 1000);
+  const repo = new InMemoryStoryRepository([story]);
+
+  const updated = await new EditStoryUseCase(repo).execute("project-1", story.id, "Updated Story", "new details");
+
+  assert.equal(updated.title, "Updated Story");
+  assert.equal(updated.description, "new details");
+  assert.ok(updated.updatedAt >= story.updatedAt);
+});
+
 test("ClaimStoryUseCase moves a todo story to doing", async () => {
   const story = createStory("story-1", StoryStatus.TODO, 1000);
   const repo = new InMemoryStoryRepository([story]);
@@ -134,6 +146,25 @@ test("ClaimStoryUseCase throws when story is missing", async () => {
   const repo = new InMemoryStoryRepository();
 
   await assert.rejects(() => new ClaimStoryUseCase(repo).execute("missing-story"), /Story not found/);
+});
+
+test("EditStoryUseCase throws when story is missing", async () => {
+  const repo = new InMemoryStoryRepository();
+
+  await assert.rejects(
+    () => new EditStoryUseCase(repo).execute("project-1", "missing-story", "Updated Story", "details"),
+    /Story not found/,
+  );
+});
+
+test("EditStoryUseCase throws when project does not match", async () => {
+  const story = createStory("story-1", StoryStatus.TODO, 1000, "project-2");
+  const repo = new InMemoryStoryRepository([story]);
+
+  await assert.rejects(
+    () => new EditStoryUseCase(repo).execute("project-1", story.id, "Updated Story", "details"),
+    /specified project/,
+  );
 });
 
 test("CompleteStoryUseCase throws when story is not doing", async () => {

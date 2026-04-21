@@ -187,6 +187,34 @@ test("ProjectPage renders story sections collapsed by default", () => {
   assert.match(html, /<summary[^>]*>/);
 });
 
+test("ProjectPage renders edit action for stories", () => {
+  const html = renderToString(
+    ProjectPage({
+      project,
+      summary: {
+        total: 0,
+        byStatus: {
+          [TaskStatus.TODO]: 0,
+          [TaskStatus.DOING]: 0,
+          [TaskStatus.IN_REVIEW]: 0,
+          [TaskStatus.WAIT_ACCEPT]: 0,
+          [TaskStatus.ACCEPTED]: 0,
+          [TaskStatus.REJECTED]: 0,
+        },
+        lastUpdatedAt: 2000,
+      },
+      tasks: [],
+      stories: [story],
+      agents: [agent],
+      agentSummary: { total: 1 },
+      storyStatusFilter: "all",
+    }),
+  );
+
+  assert.match(html, /project\/project-1\/story\/story-1\/edit/);
+  assert.match(html, /編集/);
+});
+
 test("ProjectPage groups story sections into a single-open accordion", () => {
   const secondStory = new Story("story-2", "project-1", "Story 2", "desc", StoryStatus.DOING, 1000, 2000);
 

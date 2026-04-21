@@ -2,11 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { ValidationError } from "@application/error/ValidationError.ts";
-import { SessionReinitializeRequiredError } from "@application/error/SessionInvalidError.ts";
+import { SessionInvalidError } from "@application/error/SessionInvalidError.ts";
 import { toMcpErrorResponse } from "@mcp/utils/toMcpErrorResponse.ts";
 
 test("toMcpErrorResponse returns reinitialize contract for missing session", () => {
-  const response = toMcpErrorResponse(new SessionReinitializeRequiredError());
+  const response = toMcpErrorResponse(new SessionInvalidError());
 
   assert.equal(response.status, 400);
   assert.deepEqual(response.body, {
