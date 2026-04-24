@@ -1,7 +1,5 @@
 "use client";
 import type { FC } from "hono/jsx";
-import { jsx } from "hono/jsx/dom";
-import { useState } from "hono/jsx";
 import { StoryStatus } from "@constants/StoryStatus.ts";
 import { TaskStatus, type TaskStatus as TaskStatusValue } from "@constants/TaskStatus.ts";
 import type { Task } from "@domain/model/Task.ts";
@@ -256,7 +254,8 @@ export const ProjectPage: FC<ProjectProps> = ({
                           >
                             編集
                           </a>
-                          {story.status === StoryStatus.TODO && (
+                          {(story.status === StoryStatus.TODO ||
+                            story.status === StoryStatus.CANCELED) && (
                             <form
                               method="post"
                               action={`/project/${project.id}/story/${story.id}/delete`}

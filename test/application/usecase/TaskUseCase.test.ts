@@ -15,6 +15,7 @@ import { CompleteTaskUseCase } from "@application/usecase/tasks/CompleteTaskUseC
 import { ReviewedTaskUseCase } from "@application/usecase/tasks/ReviewedTaskUseCase.ts";
 import { AcceptTaskUseCase } from "@application/usecase/tasks/AcceptTaskUseCase.ts";
 import { RejectTaskUseCase } from "@application/usecase/tasks/RejectTaskUseCase.ts";
+import { DeleteTaskUseCase } from "@application/usecase/tasks/DeleteTaskUseCase.ts";
 
 class InMemoryTaskRepository implements TaskRepository {
   private tasks = new Map<string, Task>();
@@ -429,4 +430,20 @@ test("CompleteTaskUseCase throws when task is missing", async () => {
   const repo = new InMemoryTaskRepository();
 
   await assert.rejects(() => new CompleteTaskUseCase(repo).execute("missing-task"), /not exists/);
+});
+
+test("DeleteTaskUseCase deletes a todo task", async () => {
+  const task = createTask(TaskStatus.TODO);
+  const repo = new InMemoryTaskRepository([task]);
+
+  await new DeleteTaskUseCase(repo).execute(task.id);
+
+  assert.equal(await repo.findById(task.id), null);
+});
+
+test("DeleteTaskUseCase rejects non-todo task deletion", async () => {
+  const task = createTask(TaskStatus.DOING);
+  const repo = new InMemoryTaskRepository([task]);
+
+  await assert.rejects(() => new DeleteTaskUseCase(repo).execute(task.id), /Only todo task can be deleted/);
 });

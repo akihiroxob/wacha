@@ -10,6 +10,11 @@ import { EditStoryUseCase } from "@application/usecase/stories/EditStoryUseCase.
 import { ClaimStoryUseCase } from "@application/usecase/stories/ClaimStoryUseCase.ts";
 import { CompleteStoryUseCase } from "@application/usecase/stories/CompleteStoryUseCase.ts";
 import { CancelStoryUseCase } from "@application/usecase/stories/CancelStoryUseCase.ts";
+import { DeleteStoryUseCase } from "@application/usecase/stories/DeleteStoryUseCase.ts";
+import { Task } from "@domain/model/Task.ts";
+import { TaskRepository } from "@domain/repository/TaskRepository.ts";
+import { TaskComment } from "@domain/model/TaskComment.ts";
+import { TaskStatus } from "@constants/TaskStatus.ts";
 
 class InMemoryStoryRepository implements StoryRepository {
   private stories = new Map<string, Story>();
@@ -50,6 +55,75 @@ class InMemoryStoryRepository implements StoryRepository {
 
   async delete(storyId: string): Promise<void> {
     this.stories.delete(storyId);
+  }
+}
+
+class InMemoryTaskRepository implements TaskRepository {
+  private tasks = new Map<string, Task>();
+
+  constructor(seed: Task[] = []) {
+    seed.forEach((task) => this.tasks.set(task.id, task));
+  }
+
+  async findByProjectId(projectId: string): Promise<Task[]> {
+    return [...this.tasks.values()].filter((task) => task.projectId === projectId);
+  }
+
+  async findByStatus(status: TaskStatus): Promise<Task[]> {
+    return [...this.tasks.values()].filter((task) => task.status === status);
+  }
+
+  async findById(taskId: string): Promise<Task | null> {
+    return this.tasks.get(taskId) ?? null;
+  }
+
+  async create(
+    title: string,
+    description: string | null,
+    projectId: string,
+    storyId?: string,
+  ): Promise<Task> {
+    const task = new Task(
+      `task-${this.tasks.size + 1}`,
+      projectId,
+      storyId ?? null,
+      title,
+      description,
+      TaskStatus.TODO,
+      null,
+      null,
+      null,
+      1000,
+      1000,
+    );
+    this.tasks.set(task.id, task);
+    return task;
+  }
+
+  async save(task: Task): Promise<void> {
+    this.tasks.set(task.id, task);
+  }
+
+  async addComment(taskId: string, body: string, author?: string | null): Promise<TaskComment> {
+    return new TaskComment("comment-1", taskId, body, author ?? null, 1000);
+  }
+
+  async findCommentsByTaskId(_taskId: string): Promise<TaskComment[]> {
+    return [];
+  }
+
+  async findCommentsByTaskIds(_taskIds: string[]): Promise<TaskComment[]> {
+    return [];
+  }
+
+  async delete(taskId: string): Promise<void> {
+    this.tasks.delete(taskId);
+  }
+
+  async deleteByStoryId(storyId: string): Promise<void> {
+    for (const task of this.tasks.values()) {
+      if (task.storyId === storyId) this.tasks.delete(task.id);
+    }
   }
 }
 
@@ -179,4 +253,38 @@ test("CancelStoryUseCase throws when story is not doing", async () => {
   const repo = new InMemoryStoryRepository([story]);
 
   await assert.rejects(() => new CancelStoryUseCase(repo).execute(story.id), /doing status/);
+});
+
+test("DeleteStoryUseCase deletes a todo story and its tasks", async () => {
+  const story = createStory("story-1", StoryStatus.TODO, 1000);
+  const storyRepo = new InMemoryStoryRepository([story]);
+  const taskRepo = new InMemoryTaskRepository([
+    new Task("task-1", "project-1", "story-1", "Task 1", "desc", TaskStatus.TODO, null, null, null, 1000, 1000),
+  ]);
+
+  await new DeleteStoryUseCase(storyRepo, taskRepo).execute(story.id);
+
+  assert.equal(await storyRepo.findById(story.id), null);
+  assert.equal(await taskRepo.findById("task-1"), null);
+});
+
+test("DeleteStoryUseCase deletes a canceled story", async () => {
+  const story = createStory("story-1", StoryStatus.CANCELED, 1000);
+  const storyRepo = new InMemoryStoryRepository([story]);
+  const taskRepo = new InMemoryTaskRepository();
+
+  await new DeleteStoryUseCase(storyRepo, taskRepo).execute(story.id);
+
+  assert.equal(await storyRepo.findById(story.id), null);
+});
+
+test("DeleteStoryUseCase rejects statuses other than todo or canceled", async () => {
+  const story = createStory("story-1", StoryStatus.DOING, 1000);
+  const storyRepo = new InMemoryStoryRepository([story]);
+  const taskRepo = new InMemoryTaskRepository();
+
+  await assert.rejects(
+    () => new DeleteStoryUseCase(storyRepo, taskRepo).execute(story.id),
+    /Only todo or canceled story can be deleted/,
+  );
 });

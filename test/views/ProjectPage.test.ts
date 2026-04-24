@@ -215,6 +215,76 @@ test("ProjectPage renders edit action for stories", () => {
   assert.match(html, /編集/);
 });
 
+test("ProjectPage renders delete action for canceled stories", () => {
+  const canceledStory = new Story("story-2", "project-1", "Story 2", "desc", StoryStatus.CANCELED, 1000, 2000);
+
+  const html = renderToString(
+    ProjectPage({
+      project,
+      summary: {
+        total: 0,
+        byStatus: {
+          [TaskStatus.TODO]: 0,
+          [TaskStatus.DOING]: 0,
+          [TaskStatus.IN_REVIEW]: 0,
+          [TaskStatus.WAIT_ACCEPT]: 0,
+          [TaskStatus.ACCEPTED]: 0,
+          [TaskStatus.REJECTED]: 0,
+        },
+        lastUpdatedAt: 2000,
+      },
+      tasks: [],
+      stories: [canceledStory],
+      agents: [agent],
+      agentSummary: { total: 1 },
+      storyStatusFilter: "all",
+    }),
+  );
+
+  assert.match(html, /project\/project-1\/story\/story-2\/delete/);
+});
+
+test("ProjectPage hides delete action for non-todo task", () => {
+  const task = new Task(
+    "task-1",
+    "project-1",
+    "story-1",
+    "Task 1",
+    "desc",
+    TaskStatus.DOING,
+    null,
+    null,
+    null,
+    1000,
+    2000,
+  );
+
+  const html = renderToString(
+    ProjectPage({
+      project,
+      summary: {
+        total: 1,
+        byStatus: {
+          [TaskStatus.TODO]: 0,
+          [TaskStatus.DOING]: 1,
+          [TaskStatus.IN_REVIEW]: 0,
+          [TaskStatus.WAIT_ACCEPT]: 0,
+          [TaskStatus.ACCEPTED]: 0,
+          [TaskStatus.REJECTED]: 0,
+        },
+        lastUpdatedAt: 2000,
+      },
+      tasks: [task],
+      stories: [new Story("story-1", "project-1", "Story 1", "desc", StoryStatus.TODO, 1000, 2000)],
+      agents: [agent],
+      agentSummary: { total: 1 },
+      storyStatusFilter: "active",
+    }),
+  );
+
+  assert.doesNotMatch(html, /project\/project-1\/task\/task-1\/delete/);
+});
+
 test("ProjectPage groups story sections into a single-open accordion", () => {
   const secondStory = new Story("story-2", "project-1", "Story 2", "desc", StoryStatus.DOING, 1000, 2000);
 
