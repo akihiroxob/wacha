@@ -1,6 +1,5 @@
 import { Task } from "@domain/model/Task.ts";
 import { TaskComment } from "@domain/model/TaskComment.ts";
-import { TaskReject } from "@domain/model/TaskReject.ts";
 import { TaskRepository } from "@domain/repository/TaskRepository.ts";
 
 import { DatabaseClient } from "@database/SQLiteClient.ts";
@@ -152,39 +151,12 @@ export class SQLiteTaskRepository implements TaskRepository {
       .where("task_id", "in", taskIds)
       .orderBy("created_at", "asc")
       .execute();
-    return rows.map((row) => new TaskComment(row.id, row.task_id, row.body, row.author, row.created_at));
-  }
-
-  async addReject(taskId: string, reason: string, author?: string | null): Promise<TaskReject> {
-    const row = await DatabaseClient.insertInto("task_reject")
-      .values({
-        id: crypto.randomUUID(),
-        task_id: taskId,
-        reason: reason.trim(),
-        author: author ?? null,
-        created_at: Date.now(),
-      })
-      .returningAll()
-      .executeTakeFirstOrThrow();
-    return new TaskReject(row.id, row.task_id, row.reason, row.author, row.created_at);
-  }
-
-  async findRejectsByTaskId(taskId: string): Promise<TaskReject[]> {
-    return this.findRejectsByTaskIds([taskId]);
-  }
-
-  async findRejectsByTaskIds(taskIds: string[]): Promise<TaskReject[]> {
-    if (taskIds.length === 0) return [];
-    const rows = await DatabaseClient.selectFrom("task_reject")
-      .selectAll()
-      .where("task_id", "in", taskIds)
-      .orderBy("created_at", "asc")
-      .execute();
-    return rows.map((row) => new TaskReject(row.id, row.task_id, row.reason, row.author, row.created_at));
+    return rows.map(
+      (row) => new TaskComment(row.id, row.task_id, row.body, row.author, row.created_at),
+    );
   }
 
   async delete(taskId: string) {
-    await DatabaseClient.deleteFrom("task_reject").where("task_id", "=", taskId).execute();
     await DatabaseClient.deleteFrom("task_comment").where("task_id", "=", taskId).execute();
     await DatabaseClient.deleteFrom("task").where("id", "=", taskId).execute();
   }

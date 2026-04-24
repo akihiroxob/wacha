@@ -28,7 +28,6 @@ import { ReviewedTaskUseCase } from "@application/usecase/tasks/ReviewedTaskUseC
 import { AcceptTaskUseCase } from "@application/usecase/tasks/AcceptTaskUseCase.ts";
 import { RejectTaskUseCase } from "@application/usecase/tasks/RejectTaskUseCase.ts";
 import { DeleteTaskUseCase } from "@application/usecase/tasks/DeleteTaskUseCase.ts";
-import { ListTaskRejectUseCase } from "@application/usecase/tasks/ListTaskRejectUseCase.ts";
 import { AddTaskCommentUseCase } from "@application/usecase/tasks/AddTaskCommentUseCase.ts";
 import { ListTaskCommentUseCase } from "@application/usecase/tasks/ListTaskCommentUseCase.ts";
 // story usecases
@@ -60,7 +59,6 @@ export const reviewedTaskUseCase = new ReviewedTaskUseCase(taskRepository);
 export const acceptTaskUseCase = new AcceptTaskUseCase(taskRepository, storyRepository);
 export const rejectTaskUseCase = new RejectTaskUseCase(taskRepository);
 export const deleteTaskUseCase = new DeleteTaskUseCase(taskRepository);
-export const listTaskRejectUseCase = new ListTaskRejectUseCase(taskRepository);
 export const addTaskCommentUseCase = new AddTaskCommentUseCase(taskRepository);
 export const listTaskCommentUseCase = new ListTaskCommentUseCase(taskRepository);
 export const listStoryUseCase = new ListStoryUseCase(storyRepository);

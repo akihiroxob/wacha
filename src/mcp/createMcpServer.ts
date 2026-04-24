@@ -14,7 +14,6 @@ import { AcceptTaskTool } from "@mcp/tool/AcceptTaskTool.ts";
 import { RejectTaskTool } from "@mcp/tool/RejectTaskTool.ts";
 import { AddTaskCommentTool } from "@mcp/tool/AddTaskCommentTool.ts";
 import { ListTaskCommentTool } from "@mcp/tool/ListTaskCommentTool.ts";
-import { ListTaskRejectTool } from "@mcp/tool/ListTaskRejectTool.ts";
 import { ClaimTaskTool } from "@mcp/tool/ClaimTaskTool.ts";
 import { CompleteTaskTool } from "@mcp/tool/CompleteTaskTool.ts";
 import { ReviewedTaskTool } from "@mcp/tool/ReviewedTaskTool.ts";
@@ -68,23 +67,19 @@ export const createMcpServer = (context: ToolContext) => {
 
   // tool for task
   server.registerTool("list_tasks", ListTaskTool.config, ListTaskTool.execute);
-  server.registerTool(
-    "issue_task",
-    IssueTaskTool.config,
-    async (args) => {
-      const { sessionId } = context;
-      if (!sessionId) {
-        throw new Error("Unauthorized: No sessionId in context");
-      }
+  server.registerTool("issue_task", IssueTaskTool.config, async (args) => {
+    const { sessionId } = context;
+    if (!sessionId) {
+      throw new Error("Unauthorized: No sessionId in context");
+    }
 
-      const roles = await membershipService.getRolesBySessionId(sessionId);
-      if (!canIssueTask(roles, args.storyId)) {
-        throw new Error("Forbidden: Agent cannot issue story-linked tasks without manager role");
-      }
+    const roles = await membershipService.getRolesBySessionId(sessionId);
+    if (!canIssueTask(roles, args.storyId)) {
+      throw new Error("Forbidden: Agent cannot issue story-linked tasks without manager role");
+    }
 
-      return IssueTaskTool.execute(args);
-    },
-  );
+    return IssueTaskTool.execute(args);
+  });
   server.registerTool("claim_task", ClaimTaskTool.config, (args) =>
     ClaimTaskTool.execute({ ...args, sessionId: context.sessionId }),
   );
@@ -104,8 +99,11 @@ export const createMcpServer = (context: ToolContext) => {
   server.registerTool("add_task_comment", AddTaskCommentTool.config, (args) =>
     AddTaskCommentTool.execute({ ...args, author: args.author ?? context.sessionId ?? null }),
   );
-  server.registerTool("list_task_comments", ListTaskCommentTool.config, ListTaskCommentTool.execute);
-  server.registerTool("list_task_rejects", ListTaskRejectTool.config, ListTaskRejectTool.execute);
+  server.registerTool(
+    "list_task_comments",
+    ListTaskCommentTool.config,
+    ListTaskCommentTool.execute,
+  );
   server.registerTool("assign_project_role", AssignTool.config, (args) =>
     AssignTool.execute({ ...args, sessionId: context.sessionId }),
   );

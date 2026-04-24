@@ -18,7 +18,6 @@ import {
   deleteTaskUseCase,
   acceptTaskUseCase,
   rejectTaskUseCase,
-  listTaskRejectUseCase,
   listTaskCommentUseCase,
   addTaskCommentUseCase,
 } from "@container";
@@ -58,9 +57,6 @@ export class PageController {
     const commentsResult = await listTaskCommentUseCase.executeForTasks(
       taskResult.tasks.map((task) => task.id),
     );
-    const rejectsResult = await listTaskRejectUseCase.executeForTasks(
-      taskResult.tasks.map((task) => task.id),
-    );
     const storyResult = await listStoryUseCase.execute(
       projectId,
       storyStatusFilter === "all" ? undefined : storyStatusFilter,
@@ -71,7 +67,6 @@ export class PageController {
       summary: taskResult.summary,
       tasks: taskResult.tasks,
       comments: commentsResult.comments,
-      taskRejects: rejectsResult.rejects,
       stories: storyResult.stories,
       agents: agentResult.agents,
       agentSummary: agentResult.summary,
@@ -253,7 +248,7 @@ export class PageController {
     }
 
     try {
-      await rejectTaskUseCase.execute(taskId, reason, "human");
+      await rejectTaskUseCase.execute(taskId, reason);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to reject task";
       throw new ValidationError(message);
@@ -277,7 +272,7 @@ export class PageController {
     const body = String(formData.get("body") ?? "").trim();
     if (body === "") throw new ValidationError("Comment body is required");
 
-    await addTaskCommentUseCase.execute(taskId, body, "human");
+    await addTaskCommentUseCase.execute(taskId, body);
     return c.redirect(`/project/${projectId}`, 303);
   }
 }

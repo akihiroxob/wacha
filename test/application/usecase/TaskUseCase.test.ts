@@ -5,7 +5,6 @@ import { Task } from "@domain/model/Task.ts";
 import { Story } from "@domain/model/Story.ts";
 import { TaskRepository } from "@domain/repository/TaskRepository.ts";
 import { TaskComment } from "@domain/model/TaskComment.ts";
-import { TaskReject } from "@domain/model/TaskReject.ts";
 import { StoryRepository } from "@domain/repository/StoryRepository.ts";
 import { TaskStatus } from "@constants/TaskStatus.ts";
 import { StoryStatus } from "@constants/StoryStatus.ts";
@@ -20,7 +19,6 @@ import { RejectTaskUseCase } from "@application/usecase/tasks/RejectTaskUseCase.
 class InMemoryTaskRepository implements TaskRepository {
   private tasks = new Map<string, Task>();
   comments: TaskComment[] = [];
-  rejects: TaskReject[] = [];
 
   constructor(seed: Task[] = []) {
     seed.forEach((task) => this.tasks.set(task.id, task));
@@ -83,26 +81,6 @@ class InMemoryTaskRepository implements TaskRepository {
 
   async findCommentsByTaskIds(taskIds: string[]): Promise<TaskComment[]> {
     return this.comments.filter((comment) => taskIds.includes(comment.taskId));
-  }
-
-  async addReject(taskId: string, reason: string, author?: string | null): Promise<TaskReject> {
-    const reject = new TaskReject(
-      `reject-${this.rejects.length + 1}`,
-      taskId,
-      reason,
-      author ?? null,
-      1000 + this.rejects.length,
-    );
-    this.rejects.push(reject);
-    return reject;
-  }
-
-  async findRejectsByTaskId(taskId: string): Promise<TaskReject[]> {
-    return this.rejects.filter((reject) => reject.taskId === taskId);
-  }
-
-  async findRejectsByTaskIds(taskIds: string[]): Promise<TaskReject[]> {
-    return this.rejects.filter((reject) => taskIds.includes(reject.taskId));
   }
 
   async delete(taskId: string): Promise<void> {
@@ -429,14 +407,11 @@ test("RejectTaskUseCase rejects an in_review task", async () => {
   const task = createTask(TaskStatus.IN_REVIEW);
   const repo = new InMemoryTaskRepository([task]);
 
-  await new RejectTaskUseCase(repo).execute(task.id, "Need tests", "reviewer-1");
+  await new RejectTaskUseCase(repo).execute(task.id, "Need tests");
 
   const savedTask = await repo.findById(task.id);
   assert.equal(savedTask?.status, TaskStatus.REJECTED);
   assert.equal(savedTask?.rejectReason, "Need tests");
-  assert.equal(repo.rejects.length, 1);
-  assert.equal(repo.rejects[0]?.reason, "Need tests");
-  assert.equal(repo.rejects[0]?.author, "reviewer-1");
 });
 
 test("RejectTaskUseCase rejects a wait_accept task", async () => {

@@ -64,17 +64,6 @@ export function initializeSchema(): Promise<void> {
       .execute();
 
     await DatabaseClient.schema
-      .createTable("task_reject")
-      .ifNotExists()
-      .addColumn("id", "text", (col) => col.primaryKey())
-      .addColumn("task_id", "text", (col) => col.notNull())
-      .addColumn("reason", "text", (col) => col.notNull())
-      .addColumn("author", "text")
-      .addColumn("created_at", "integer", (col) => col.notNull())
-      .addForeignKeyConstraint("task_reject_task_fk", ["task_id"], "task", ["id"])
-      .execute();
-
-    await DatabaseClient.schema
       .createTable("task_comment")
       .ifNotExists()
       .addColumn("id", "text", (col) => col.primaryKey())
@@ -126,13 +115,6 @@ export function initializeSchema(): Promise<void> {
       .ifNotExists()
       .on("task")
       .column("story_id")
-      .execute();
-
-    await DatabaseClient.schema
-      .createIndex("idx_task_reject_task_id")
-      .ifNotExists()
-      .on("task_reject")
-      .column("task_id")
       .execute();
 
     await DatabaseClient.schema

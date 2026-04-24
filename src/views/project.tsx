@@ -8,7 +8,6 @@ import type { Task } from "@domain/model/Task.ts";
 import type { Project } from "@domain/model/Project.ts";
 import type { Story } from "@domain/model/Story.ts";
 import type { TaskComment } from "@domain/model/TaskComment.ts";
-import type { TaskReject } from "@domain/model/TaskReject.ts";
 import { Layout } from "./layout/Layout.tsx";
 import { Button } from "./components/button.tsx";
 import { StoryCard } from "./components/story-card.tsx";
@@ -23,7 +22,6 @@ type ProjectProps = {
   };
   tasks: Task[];
   comments?: TaskComment[];
-  taskRejects?: TaskReject[];
   stories: Story[];
   project: Project;
   agents: ProjectMembership[];
@@ -37,7 +35,6 @@ export const ProjectPage: FC<ProjectProps> = ({
   summary,
   tasks,
   comments = [],
-  taskRejects = [],
   stories,
   project,
   agents,
@@ -46,7 +43,6 @@ export const ProjectPage: FC<ProjectProps> = ({
 }) => {
   const tasksByStoryId = new Map<string, Task[]>();
   const commentsByTaskId = new Map<string, TaskComment[]>();
-  const rejectsByTaskId = new Map<string, TaskReject[]>();
   const storyStatusOptions: { label: string; value: StoryStatus | "all" }[] = [
     { label: "すべて表示", value: "all" },
     { label: "Todo", value: StoryStatus.TODO },
@@ -65,11 +61,6 @@ export const ProjectPage: FC<ProjectProps> = ({
     const taskComments = commentsByTaskId.get(comment.taskId) ?? [];
     taskComments.push(comment);
     commentsByTaskId.set(comment.taskId, taskComments);
-  }
-  for (const reject of taskRejects) {
-    const targetRejects = rejectsByTaskId.get(reject.taskId) ?? [];
-    targetRejects.push(reject);
-    rejectsByTaskId.set(reject.taskId, targetRejects);
   }
 
   const unassignedTasks = tasks.filter((task) => !task.storyId);
@@ -294,7 +285,6 @@ export const ProjectPage: FC<ProjectProps> = ({
                                 description={task.description}
                                 status={task.status}
                                 rejectReason={task.rejectReason}
-                                rejects={rejectsByTaskId.get(task.id) ?? []}
                                 comments={commentsByTaskId.get(task.id) ?? []}
                                 updatedAt={task.updatedAt}
                               />
@@ -335,7 +325,6 @@ export const ProjectPage: FC<ProjectProps> = ({
                     description={task.description}
                     status={task.status}
                     rejectReason={task.rejectReason}
-                    rejects={rejectsByTaskId.get(task.id) ?? []}
                     comments={commentsByTaskId.get(task.id) ?? []}
                     updatedAt={task.updatedAt}
                   />
