@@ -117,6 +117,8 @@ docker compose down -v
 - `reviewed_task`
 - `accept_task`
 - `reject_task`
+- `add_task_comment`
+- `list_task_comments`
 - `assign_project_role`
 - `get_role_instructions`
 
@@ -127,6 +129,14 @@ Task flow:
 - `reviewed_task`: `in_review` -> `wait_accept`
 - `accept_task`: `in_review` / `wait_accept` -> `accepted`
 - `reject_task`: `in_review` / `wait_accept` -> `rejected`
+
+Role-related notes:
+
+- `issue_story`, `edit_story`, `claim_story`, `complete_story`, `cancel_story`, `accept_task` は manager 向けです
+- `issue_task` は manager なら常に実行でき、reviewer は Story 非紐付け task のみ作成できます
+- `reviewed_task` は reviewer 向けです
+- `add_task_comment` は reviewer / worker が使えます
+- 詳細な運用ルールは `agent/role-policy.md` を参照してください
 
 ## Docker
 
