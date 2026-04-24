@@ -23,6 +23,10 @@ import {
 } from "@container";
 
 export class PageController {
+  private isActiveStoryStatus(status: StoryStatus) {
+    return status !== StoryStatus.DONE && status !== StoryStatus.CANCELED;
+  }
+
   private async findStoryInProject(projectId: string, storyId: string) {
     const storyResult = await listStoryUseCase.execute(projectId);
     return storyResult.stories.find((story) => story.id === storyId) ?? null;
@@ -42,13 +46,7 @@ export class PageController {
       return c.json({ error: "projectId is required" }, 400);
     }
 
-    const storyStatusFilter =
-      storyStatus &&
-      Object.values(StoryStatus).includes(
-        storyStatus as (typeof StoryStatus)[keyof typeof StoryStatus],
-      )
-        ? (storyStatus as (typeof StoryStatus)[keyof typeof StoryStatus])
-        : "all";
+    const storyStatusFilter = storyStatus === "all" ? "all" : "active";
 
     const project = await getProjectUseCase.execute(projectId);
     if (!project) return c.json({ error: "Project not found" }, 404);
@@ -57,17 +55,17 @@ export class PageController {
     const commentsResult = await listTaskCommentUseCase.executeForTasks(
       taskResult.tasks.map((task) => task.id),
     );
-    const storyResult = await listStoryUseCase.execute(
-      projectId,
-      storyStatusFilter === "all" ? undefined : storyStatusFilter,
-    );
+    const storyResult = await listStoryUseCase.execute(projectId);
     const agentResult = await listProjectAgentsUseCase.execute(projectId);
     const page = ProjectPage({
       project,
       summary: taskResult.summary,
       tasks: taskResult.tasks,
       comments: commentsResult.comments,
-      stories: storyResult.stories,
+      stories:
+        storyStatusFilter === "all"
+          ? storyResult.stories
+          : storyResult.stories.filter((story) => this.isActiveStoryStatus(story.status)),
       agents: agentResult.agents,
       agentSummary: agentResult.summary,
       storyStatusFilter,

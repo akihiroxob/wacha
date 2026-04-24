@@ -28,7 +28,7 @@ type ProjectProps = {
   agentSummary: {
     total: number;
   };
-  storyStatusFilter: StoryStatus | "all";
+  storyStatusFilter: "all" | "active";
 };
 
 export const ProjectPage: FC<ProjectProps> = ({
@@ -41,14 +41,13 @@ export const ProjectPage: FC<ProjectProps> = ({
   agentSummary,
   storyStatusFilter,
 }) => {
+  const isActiveTask = (status: TaskStatusValue) =>
+    status !== TaskStatus.ACCEPTED && status !== TaskStatus.REJECTED;
   const tasksByStoryId = new Map<string, Task[]>();
   const commentsByTaskId = new Map<string, TaskComment[]>();
-  const storyStatusOptions: { label: string; value: StoryStatus | "all" }[] = [
+  const storyStatusOptions: { label: string; value: "all" | "active" }[] = [
+    { label: "Done / Canceled 以外", value: "active" },
     { label: "すべて表示", value: "all" },
-    { label: "Todo", value: StoryStatus.TODO },
-    { label: "Doing", value: StoryStatus.DOING },
-    { label: "Done", value: StoryStatus.DONE },
-    { label: "Canceled", value: StoryStatus.CANCELED },
   ];
 
   for (const task of tasks) {
@@ -63,7 +62,9 @@ export const ProjectPage: FC<ProjectProps> = ({
     commentsByTaskId.set(comment.taskId, taskComments);
   }
 
-  const unassignedTasks = tasks.filter((task) => !task.storyId);
+  const unassignedTasks = tasks.filter((task) =>
+    storyStatusFilter === "all" ? !task.storyId : !task.storyId && isActiveTask(task.status),
+  );
 
   return (
     <Layout>
