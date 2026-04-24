@@ -1,4 +1,5 @@
 import { Task } from "@domain/model/Task.ts";
+import { TaskComment } from "@domain/model/TaskComment.ts";
 import { TaskRepository } from "@domain/repository/TaskRepository.ts";
 
 import { DatabaseClient } from "@database/SQLiteClient.ts";
@@ -125,11 +126,48 @@ export class SQLiteTaskRepository implements TaskRepository {
       .execute();
   }
 
+  async addComment(taskId: string, body: string, author?: string | null): Promise<TaskComment> {
+    const row = await DatabaseClient.insertInto("task_comment")
+      .values({
+        id: crypto.randomUUID(),
+        task_id: taskId,
+        body: body.trim(),
+        author: author ?? null,
+        created_at: Date.now(),
+      })
+      .returningAll()
+      .executeTakeFirstOrThrow();
+    return new TaskComment(row.id, row.task_id, row.body, row.author, row.created_at);
+  }
+
+  async findCommentsByTaskId(taskId: string): Promise<TaskComment[]> {
+    return this.findCommentsByTaskIds([taskId]);
+  }
+
+  async findCommentsByTaskIds(taskIds: string[]): Promise<TaskComment[]> {
+    if (taskIds.length === 0) return [];
+    const rows = await DatabaseClient.selectFrom("task_comment")
+      .selectAll()
+      .where("task_id", "in", taskIds)
+      .orderBy("created_at", "asc")
+      .execute();
+    return rows.map(
+      (row) => new TaskComment(row.id, row.task_id, row.body, row.author, row.created_at),
+    );
+  }
+
   async delete(taskId: string) {
+    await DatabaseClient.deleteFrom("task_comment").where("task_id", "=", taskId).execute();
     await DatabaseClient.deleteFrom("task").where("id", "=", taskId).execute();
   }
 
   async deleteByStoryId(storyId: string) {
-    await DatabaseClient.deleteFrom("task").where("story_id", "=", storyId).execute();
+    const tasks = await DatabaseClient.selectFrom("task")
+      .select("id")
+      .where("story_id", "=", storyId)
+      .execute();
+    for (const task of tasks) {
+      await this.delete(task.id);
+    }
   }
 }

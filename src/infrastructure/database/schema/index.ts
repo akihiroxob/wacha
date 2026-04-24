@@ -1,6 +1,7 @@
 import { ProjectMembershipTable } from "@database/schema/projectMembership.ts";
 import { ProjectTable } from "@database/schema/project.ts";
 import { StoryTable } from "@database/schema/story.ts";
+import { TaskCommentTable } from "@database/schema/taskComment.ts";
 import { TaskTable } from "@database/schema/task.ts";
 
 export interface DataBase {
@@ -8,4 +9,5 @@ export interface DataBase {
   project: ProjectTable;
   story: StoryTable;
   task: TaskTable;
+  task_comment: TaskCommentTable;
 }

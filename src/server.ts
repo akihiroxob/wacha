@@ -11,7 +11,7 @@ import { createMcpServer } from "@mcp/createMcpServer.ts";
 import { MCP_HEADER } from "@constants/McpHeader.ts";
 import { sessionService, membershipService } from "@container";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
-import PageController from "@controller/PageController.ts";
+import PageCtrl from "@controller/PageController.ts";
 import { ValidationError } from "@application/error/ValidationError.ts";
 import { SessionInvalidError } from "@application/error/SessionInvalidError.ts";
 import { toMcpErrorResponse } from "@mcp/utils/toMcpErrorResponse.ts";
@@ -37,14 +37,17 @@ const root = fileURLToPath(new URL("../public", import.meta.url));
 app.use("/*", serveStatic({ root }));
 
 // Page Routes
-app.get("/", PageController.index);
-app.get("/project/:projectId", PageController.project);
-app.get("/project/:projectId/story/add", PageController.addStory);
-app.post("/project/:projectId/story", PageController.createStory);
-app.post("/project/:projectId/story/:storyId/delete", PageController.deleteStory);
-app.post("/project/:projectId/task/:taskId/delete", PageController.deleteTask);
-app.post("/project/:projectId/task/:taskId/accept", PageController.acceptTask);
-app.post("/project/:projectId/task/:taskId/reject", PageController.rejectTask);
+app.get("/", PageCtrl.index.bind(PageCtrl));
+app.get("/project/:projectId", PageCtrl.project.bind(PageCtrl));
+app.get("/project/:projectId/story/add", PageCtrl.addStory.bind(PageCtrl));
+app.get("/project/:projectId/story/:storyId/edit", PageCtrl.editStory.bind(PageCtrl));
+app.post("/project/:projectId/story", PageCtrl.createStory.bind(PageCtrl));
+app.post("/project/:projectId/story/:storyId", PageCtrl.updateStory.bind(PageCtrl));
+app.post("/project/:projectId/story/:storyId/delete", PageCtrl.deleteStory.bind(PageCtrl));
+app.post("/project/:projectId/task/:taskId/delete", PageCtrl.deleteTask.bind(PageCtrl));
+app.post("/project/:projectId/task/:taskId/accept", PageCtrl.acceptTask.bind(PageCtrl));
+app.post("/project/:projectId/task/:taskId/reject", PageCtrl.rejectTask.bind(PageCtrl));
+app.post("/project/:projectId/task/:taskId/comment", PageCtrl.addTaskComment.bind(PageCtrl));
 
 // MCP Route
 app.all("/mcp", async (c) => {

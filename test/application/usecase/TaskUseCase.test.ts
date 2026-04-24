@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { Task } from "@domain/model/Task.ts";
 import { Story } from "@domain/model/Story.ts";
 import { TaskRepository } from "@domain/repository/TaskRepository.ts";
+import { TaskComment } from "@domain/model/TaskComment.ts";
 import { StoryRepository } from "@domain/repository/StoryRepository.ts";
 import { TaskStatus } from "@constants/TaskStatus.ts";
 import { StoryStatus } from "@constants/StoryStatus.ts";
@@ -14,9 +15,11 @@ import { CompleteTaskUseCase } from "@application/usecase/tasks/CompleteTaskUseC
 import { ReviewedTaskUseCase } from "@application/usecase/tasks/ReviewedTaskUseCase.ts";
 import { AcceptTaskUseCase } from "@application/usecase/tasks/AcceptTaskUseCase.ts";
 import { RejectTaskUseCase } from "@application/usecase/tasks/RejectTaskUseCase.ts";
+import { DeleteTaskUseCase } from "@application/usecase/tasks/DeleteTaskUseCase.ts";
 
 class InMemoryTaskRepository implements TaskRepository {
   private tasks = new Map<string, Task>();
+  comments: TaskComment[] = [];
 
   constructor(seed: Task[] = []) {
     seed.forEach((task) => this.tasks.set(task.id, task));
@@ -59,6 +62,36 @@ class InMemoryTaskRepository implements TaskRepository {
 
   async save(task: Task): Promise<void> {
     this.tasks.set(task.id, task);
+  }
+
+  async addComment(taskId: string, body: string, author?: string | null): Promise<TaskComment> {
+    const comment = new TaskComment(
+      `comment-${this.comments.length + 1}`,
+      taskId,
+      body,
+      author ?? null,
+      1000 + this.comments.length,
+    );
+    this.comments.push(comment);
+    return comment;
+  }
+
+  async findCommentsByTaskId(taskId: string): Promise<TaskComment[]> {
+    return this.comments.filter((comment) => comment.taskId === taskId);
+  }
+
+  async findCommentsByTaskIds(taskIds: string[]): Promise<TaskComment[]> {
+    return this.comments.filter((comment) => taskIds.includes(comment.taskId));
+  }
+
+  async delete(taskId: string): Promise<void> {
+    this.tasks.delete(taskId);
+  }
+
+  async deleteByStoryId(storyId: string): Promise<void> {
+    for (const task of this.tasks.values()) {
+      if (task.storyId === storyId) this.tasks.delete(task.id);
+    }
   }
 }
 
@@ -397,4 +430,20 @@ test("CompleteTaskUseCase throws when task is missing", async () => {
   const repo = new InMemoryTaskRepository();
 
   await assert.rejects(() => new CompleteTaskUseCase(repo).execute("missing-task"), /not exists/);
+});
+
+test("DeleteTaskUseCase deletes a todo task", async () => {
+  const task = createTask(TaskStatus.TODO);
+  const repo = new InMemoryTaskRepository([task]);
+
+  await new DeleteTaskUseCase(repo).execute(task.id);
+
+  assert.equal(await repo.findById(task.id), null);
+});
+
+test("DeleteTaskUseCase rejects non-todo task deletion", async () => {
+  const task = createTask(TaskStatus.DOING);
+  const repo = new InMemoryTaskRepository([task]);
+
+  await assert.rejects(() => new DeleteTaskUseCase(repo).execute(task.id), /Only todo task can be deleted/);
 });

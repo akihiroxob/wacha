@@ -8,6 +8,7 @@ import {
   AcceptedBadge,
   RejectedBadge,
 } from "./badge.tsx";
+import type { TaskComment } from "@domain/model/TaskComment.ts";
 
 type TaskRowProps = {
   projectId: string;
@@ -16,6 +17,7 @@ type TaskRowProps = {
   description: string | null;
   status: string;
   rejectReason: string | null;
+  comments: TaskComment[];
   updatedAt: number;
 };
 
@@ -26,6 +28,7 @@ export const TaskRow: FC<TaskRowProps> = ({
   description,
   status,
   rejectReason,
+  comments,
   updatedAt,
 }) => {
   const detailId = `task-detail-${id}`;
@@ -126,6 +129,46 @@ export const TaskRow: FC<TaskRowProps> = ({
               <p class="mt-1 whitespace-pre-wrap text-base text-stone-800">{rejectReason}</p>
             </div>
           )}
+          <div class="rounded-2xl border border-stone-200 bg-stone-50 p-4">
+            <div class="flex items-center justify-between gap-3">
+              <p class="text-sm font-medium text-stone-700">Comments</p>
+              <span class="text-xs text-stone-400">{comments.length}</span>
+            </div>
+            {comments.length > 0 && (
+              <div class="mt-3 flex flex-col gap-2">
+                {comments.map((comment) => (
+                  <div
+                    key={comment.id}
+                    class="rounded-xl bg-white px-3 py-2 text-sm text-stone-700"
+                  >
+                    <p class="whitespace-pre-wrap">{comment.body}</p>
+                    <p class="mt-1 text-xs text-stone-400">
+                      {comment.author ?? "unknown"} / {new Date(comment.createdAt).toLocaleString()}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+            <form
+              method="post"
+              action={`/project/${projectId}/task/${id}/comment`}
+              class="mt-3 flex flex-col gap-2"
+            >
+              <textarea
+                name="body"
+                rows={2}
+                required
+                placeholder="コメントを入力"
+                class="rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm leading-6 text-stone-900 outline-none transition focus:border-stone-400"
+              />
+              <button
+                type="submit"
+                class="w-fit rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
+              >
+                Add Comment
+              </button>
+            </form>
+          </div>
           <div>
             <p class="text-sm font-medium text-stone-500">Updated At</p>
             <p class="mt-1 text-base text-stone-800">{formattedUpdatedAt}</p>

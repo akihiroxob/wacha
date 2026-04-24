@@ -36,7 +36,8 @@
 - 新しく管理対象にしたい作業がある場合は、`issue_task` を呼ぶ
 - 自分が担当するタスクを引き受ける場合は、`claim_task` を呼ぶ
 - 実装が完了しレビュー可能な状態になったら、`complete_task` を呼ぶ
-- レビュー担当として確認した場合は、`accept_task` または `reject_task` を呼ぶ
+- レビュー担当として確認した場合は、`reviewed_task` または `reject_task` を呼ぶ
+- 最終受入を行う場合は、`accept_task` または `reject_task` を呼ぶ
 
 ## 利用可能な MCP Tools
 
@@ -73,12 +74,21 @@
 - `complete_task`
   - 用途: `doing` のタスクを `in_review` に進める
   - Arguments: `{ "taskId": string }`
+- `reviewed_task`
+  - 用途: `in_review` のタスクを `wait_accept` に進める
+  - Arguments: `{ "taskId": string }`
 - `accept_task`
-  - 用途: `in_review` のタスクを `accepted` に進める
+  - 用途: `in_review` または `wait_accept` のタスクを `accepted` に進める
   - Arguments: `{ "taskId": string }`
 - `reject_task`
-  - 用途: `in_review` のタスクを `rejected` に進める
+  - 用途: `in_review` または `wait_accept` のタスクを `rejected` に進める
   - Arguments: `{ "taskId": string, "reason": string }`
+- `add_task_comment`
+  - 用途: task に worker / reviewer の補足コメントを追加する
+  - Arguments: `{ "taskId": string, "body": string, "author"?: string }`
+- `list_task_comments`
+  - 用途: 指定した task のコメント一覧を取得する
+  - Arguments: `{ "taskId": string }`
 - `assign_project_role`
   - 用途: プロジェクトに対するメンバーの役割を割り当てる
   - Arguments: `{ "baseDir": string, "projectName": string, "description"?: string, "requestedRole"?: "manager" | "reviewer" | "worker" }`
@@ -89,6 +99,7 @@
 ## レスポンス
 
 - `list_tasks` は `summary.total`, `summary.byStatus`, `summary.lastUpdatedAt`, `tasks` を返す
+- `list_project_agents` は `projectId`, `summary`, `agents` を返す
 - `list_projects` は `projects` を返す
 - `list_stories` は `stories` を返す
 - それ以外の tools は、更新後の状態が分かる実行結果を返す

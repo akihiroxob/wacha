@@ -11,8 +11,8 @@ export class DeleteStoryUseCase {
   async execute(storyId: string): Promise<void> {
     const story = await this.storyRepository.findById(storyId);
     if (!story) throw new Error("Story not found");
-    if (story.status !== StoryStatus.TODO) {
-      throw new Error("Only todo story can be deleted");
+    if (story.status !== StoryStatus.TODO && story.status !== StoryStatus.CANCELED) {
+      throw new Error("Only todo or canceled story can be deleted");
     }
 
     await this.taskRepository.deleteByStoryId(storyId);
