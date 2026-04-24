@@ -10,6 +10,7 @@
 - 同時に着手する Task は 1 つに絞る
 - Task の範囲で実装や修正を行う
 - テストを先に置ける変更では TDD を基本フローとして進める
+- 作業内容の要約は`add_task_comment`でコメントに残す
 - 完了したら `complete_task` でレビュー待ちに進める
 - 不明点があれば `manager` に確認を返す
 
@@ -20,6 +21,7 @@
 - `list_tasks`
 - `claim_task`
 - `complete_task`
+- `add_task_comment`
 
 上記は運用上の期待であり、当面の MCP 実装では `manager` 専用 tool 以外は明示ブロックしない。
 
@@ -43,7 +45,8 @@
 4. 先に確認手順またはテストを置けるなら先に置く
 5. 実装または修正を行う
 6. 必要なら manager に確認する
-7. レビュー可能な状態で `complete_task` に進める
+7. 作業内容は要約して`add_task_comment`でコメントを残す
+8. レビュー可能な状態で `complete_task` に進める
 
 ## 実装の進め方
 

@@ -96,8 +96,10 @@ export const createMcpServer = (context: ToolContext) => {
     withRoleGuard([ProjectRole.MANAGER], context, AcceptTaskTool.execute),
   );
   server.registerTool("reject_task", RejectTaskTool.config, RejectTaskTool.execute);
-  server.registerTool("add_task_comment", AddTaskCommentTool.config, (args) =>
-    AddTaskCommentTool.execute({ ...args, author: args.author ?? context.sessionId ?? null }),
+  server.registerTool(
+    "add_task_comment",
+    AddTaskCommentTool.config,
+    withRoleGuard([ProjectRole.REVIEWER, ProjectRole.WORKER], context, AddTaskCommentTool.execute),
   );
   server.registerTool(
     "list_task_comments",
