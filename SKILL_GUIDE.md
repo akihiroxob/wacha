@@ -1,108 +1,108 @@
-# Skill Guide
+# Skill ガイド
 
-## Positioning
+## 位置づけ
 
-Skill is a reusable execution pattern for agents.
+Skill は agent のための再利用可能な実行パターンです。
 
-It complements existing role instructions.
+既存の role instruction を補完します。
 
 ```txt
-Role = who is responsible
-Task = what to do
-Skill = how to do it
-Tool = executable action
+Role = 誰が責任を持つか
+Task = 何をやるか
+Skill = どうやるか
+Tool = 実行可能な操作
 ```
 
-## Why Skill is Needed
+## Skill が必要な理由
 
-Current system:
+現在の system には次があります。
 
-- role instructions exist (`agent/*.md`)
-- tasks exist
-- tools exist
+- role instruction がある (`agent/*.md`)
+- task がある
+- tool がある
 
-Missing:
+不足しているもの:
 
-- reusable execution patterns across tasks
+- task をまたいで再利用できる実行パターン
 
-## Skill Definition
+## Skill の定義
 
-A Skill must define:
+Skill は次を定義するべきです。
 
-- clear input
-- clear output
-- repeatable steps
-- success criteria
+- 明確な入力
+- 明確な出力
+- 再現可能な手順
+- 成功条件
 
-## Example Skill
+## Skill の例
 
 ### Task Implementation Skill
 
 ```txt
 input:
-  - Task description
+  - Task の説明
 
 steps:
-  1. read task
-  2. identify files
-  3. write failing test (if possible)
-  4. implement
-  5. validate
+  1. task を読む
+  2. 対象 file を特定する
+  3. 可能なら失敗する test を先に書く
+  4. 実装する
+  5. 検証する
 
 successCriteria:
-  - task acceptance criteria satisfied
-  - no regression
+  - task の acceptance criteria を満たしている
+  - regression がない
 ```
 
-## Skill Lifecycle
+## Skill のライフサイクル
 
-1. discovered during repeated work
-2. documented
-3. reused
-4. improved via review feedback
+1. 繰り返し作業の中で発見される
+2. 文書化される
+3. 再利用される
+4. review feedback で改善される
 
-## Skill → MCP Tool Evolution (重要)
+## Skill から MCP Tool への進化
 
-Once stable, a Skill can become an MCP Tool.
+安定した Skill は MCP Tool へ進化できます。
 
-Example:
+例:
 
 ```txt
-Skill: run tests
-→ MCP Tool: run_tests
+Skill: test を実行する
+-> MCP Tool: run_tests
 
-Skill: apply patch
-→ MCP Tool: apply_patch
+Skill: patch を適用する
+-> MCP Tool: apply_patch
 
-Skill: create task from story
-→ MCP Tool: decompose_story
+Skill: story から task を作る
+-> MCP Tool: decompose_story
 ```
 
-## Design Rule
+## 設計ルール
 
-- Skill is descriptive
-- Tool is executable
+- Skill は descriptive
+- Tool は executable
 
-Do not mix them.
+両者を混ぜてはいけません。
 
-## Storage
+## 保存方針
 
-Future:
+今後の候補:
 
-- store skill in DB or artifact
-- version skill
-- allow agent to propose skill updates
+- skill を DB または artifact に保存する
+- version を持たせる
+- agent が skill 更新を提案できるようにする
 
-## Warning
+## 注意点
 
-Bad Skill:
+悪い Skill:
 
-- vague
-- too big
-- not reusable
+- 曖昧
+- 大きすぎる
+- 再利用できない
 
-Good Skill:
+良い Skill:
 
-- small
-- repeatable
-- measurable
+- 小さい
+- 再現できる
+- 測定できる

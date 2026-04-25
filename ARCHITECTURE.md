@@ -1,64 +1,64 @@
-# Wacha Architecture
+# Wacha アーキテクチャ
 
-## Positioning
+## 位置づけ
 
-Wacha is a task orchestration hub for coordinating human requests and AI agents through MCP.
+Wacha は、人からの依頼と AI agent を MCP を通じて調整するためのタスクオーケストレーション基盤です。
 
-It is not only a tool server. It owns the workflow for project, story, task, role, review, and instruction delivery.
+単なる tool server ではありません。project、story、task、role、review、instruction 配信の workflow 自体を責務として持ちます。
 
-## Core Principle: AI-Native DDD
+## 中核原則: AI-Native DDD
 
-Wacha uses AI-Native DDD.
+Wacha は AI-Native DDD を採用します。
 
-This means:
+これは次を意味します。
 
-- domain concepts are explicit
-- use cases are the main unit of change
-- agents receive role-specific instructions
-- MCP tools expose controlled operations
-- review is part of the workflow, not an afterthought
+- domain 概念が明示されている
+- use case が変更の主単位である
+- agent は role ごとの instruction を受け取る
+- MCP tool は制御された操作だけを公開する
+- review は後付けではなく workflow の一部である
 
-## Current Architectural Contract
+## 現在のアーキテクチャ契約
 
-Wacha already has these important boundaries:
+Wacha にはすでに重要な境界があります。
 
-- `AGENTS.md` explains how agents should use the MCP server.
-- `agent/role-policy.md` defines role responsibilities and tool permissions.
-- `agent/manager.md`, `agent/reviewer.md`, and `agent/worker.md` define role-specific behavior.
-- `get_role_instructions` returns role-specific instruction files.
-- `TaskStatus` represents the review workflow: `todo`, `doing`, `in_review`, `wait_accept`, `accepted`, `rejected`.
+- `AGENTS.md` は agent が MCP server をどう使うべきかを説明する
+- `agent/role-policy.md` は role ごとの責務と tool 権限を定義する
+- `agent/manager.md`, `agent/reviewer.md`, `agent/worker.md` は role 固有の振る舞いを定義する
+- `get_role_instructions` は role ごとの instruction file を返す
+- `TaskStatus` は review workflow を表す: `todo`, `doing`, `in_review`, `wait_accept`, `accepted`, `rejected`
 
-These files and concepts should remain the operational base.
+これらの file と概念は、運用の基盤として維持されるべきです。
 
-## Recommended Layering
+## 推奨レイヤ構成
 
 ```txt
 src/
-  constants/          # shared constants such as ProjectRole and TaskStatus
+  constants/          # ProjectRole や TaskStatus などの共有定数
   domain/
-    model/            # domain models
-    repository/       # repository interfaces
-    service/          # domain services
-    policy/           # pure decision rules
+    model/            # domain model
+    repository/       # repository interface
+    service/          # domain service
+    policy/           # 純粋な意思決定ルール
 
   application/
-    usecase/          # one application action per use case
-    service/          # orchestration services such as InstructionService
+    usecase/          # 1 use case = 1 application action
+    service/          # InstructionService のような orchestration service
 
   infrastructure/
-    database/         # schema and DB setup
-    repository/       # concrete repository implementations
-    filesystem/       # file-backed instruction / skill loading
+    database/         # schema と DB 初期化
+    repository/       # repository の実装
+    filesystem/       # instruction / skill の file 読み込み
 
   mcp/
-    tool/             # MCP tool adapters
-    middleware/       # guards and role checks
-    utils/            # MCP response helpers
+    tool/             # MCP tool adapter
+    middleware/       # guard と role check
+    utils/            # MCP response helper
 
-  presentation/       # Hono routes, controllers, SSR views
+  presentation/       # Hono route, controller, SSR view
 ```
 
-## Dependency Direction
+## 依存方向
 
 ```txt
 presentation / mcp
@@ -70,18 +70,18 @@ domain
 infrastructure
 ```
 
-Rules:
+ルール:
 
-- Domain must not depend on MCP, Hono, SQLite, filesystem, or Codex.
-- Application may depend on domain interfaces.
-- Infrastructure implements concrete persistence and I/O.
-- MCP tools should be thin adapters around use cases or application services.
+- domain は MCP, Hono, SQLite, filesystem, Codex に依存してはいけない
+- application は domain interface に依存してよい
+- infrastructure は具体的な persistence と I/O を実装する
+- MCP tool は use case または application service を呼ぶ薄い adapter であるべき
 
-## UseCase Policy
+## UseCase 方針
 
-A UseCase represents one intentional action.
+UseCase は 1 つの意図的な action を表します。
 
-Good examples:
+良い例:
 
 - `AssignProjectRoleUseCase`
 - `IssueStoryUseCase`
@@ -92,71 +92,71 @@ Good examples:
 - `AcceptTaskUseCase`
 - `RejectTaskUseCase`
 
-Avoid generic services such as:
+避けるべき例:
 
-- `TaskService` that does everything
-- `ProjectService` that owns unrelated workflows
-- `AgentService` that mixes role, task, and instruction logic
+- 何でもやる `TaskService`
+- 無関係な workflow まで抱え込む `ProjectService`
+- role, task, instruction の責務を混ぜる `AgentService`
 
-## MCP Tool Policy
+## MCP Tool 方針
 
-An MCP tool is an external operation boundary.
+MCP tool は外部公開される操作境界です。
 
-It should:
+やるべきこと:
 
-- validate input
-- check role permissions when needed
-- call one use case or application service
-- return a clear machine-readable result
+- 入力を validate する
+- 必要に応じて role 権限を確認する
+- 1 つの use case または application service を呼ぶ
+- 機械可読な明確な結果を返す
 
-It should not:
+やってはいけないこと:
 
-- contain large domain logic
-- directly encode complex state transition rules
-- bypass review or role policy
+- 大きな domain logic を持つこと
+- 複雑な状態遷移ルールを直接書くこと
+- review や role policy を迂回すること
 
-## Role Policy
+## Role 方針
 
-Role is not just permission.
+Role は単なる permission ではありません。
 
 ```txt
 Role = permission + responsibility + instruction
 ```
 
-The canonical roles are:
+正規の role は次です。
 
 - `manager`
 - `reviewer`
 - `worker`
 - `viewer`
 
-Role behavior is defined under `agent/`.
+role の振る舞いは `agent/` 配下で定義します。
 
-## Instruction Policy
+## Instruction 方針
 
-Instructions should be delivered by Wacha, not assumed to be known by the agent.
+Instruction は agent が暗黙に知っている前提ではなく、Wacha から配信されるべきです。
 
-The current `get_role_instructions` approach is correct.
+現在の `get_role_instructions` 方式は正しいです。
 
-Recommended shared instruction set:
+推奨される shared instruction 群:
 
 - `agent/role-policy.md`
 - `DOMAIN.md`
 - `REVIEW_POLICY.md`
 - `SKILL_GUIDE.md`
 
-Recommended role-specific instruction set:
+推奨される role-specific instruction 群:
 
 - `agent/manager.md`
 - `agent/reviewer.md`
 - `agent/worker.md`
-- `agent/viewer.md` when viewer becomes active
+- `viewer` を有効化する場合の `agent/viewer.md`
 
-## Review Policy
+## Review 方針
 
-Review is a domain workflow.
+Review は domain workflow の一部です。
 
-The intended flow is:
+意図する flow は次です。
 
 ```txt
 todo -> doing -> in_review -> wait_accept -> accepted
@@ -164,31 +164,31 @@ todo -> doing -> in_review -> wait_accept -> accepted
                  rejected
 ```
 
-- `worker` moves a task to `in_review`.
-- `reviewer` moves a reviewed task to `wait_accept`.
-- `manager` performs final `accepted` / `rejected` judgment.
+- `worker` は task を `in_review` に進める
+- `reviewer` は review 済み task を `wait_accept` に進める
+- `manager` は最終的な `accepted` / `rejected` を判断する
 
-## Skill Policy
+## Skill 方針
 
-A Skill is a reusable agent operating procedure.
+Skill は、agent が再利用可能な形で作業するための operating procedure です。
 
-A Skill is not a role and not a task.
+Skill は role でも task でもありません。
 
 ```txt
-Task  = what should be done
-Role  = who is responsible
-Skill = how the agent should perform a reusable operation
-Tool  = executable operation exposed through MCP
+Task  = 何をやるべきか
+Role  = 誰が責任を持つか
+Skill = agent が再利用可能な操作をどう実行するか
+Tool  = MCP で公開される実行可能な操作
 ```
 
-Skills should first be stored as Markdown or JSON artifacts. After they stabilize, they can be exposed through MCP tools.
+Skill はまず Markdown や JSON の artifact として管理し、安定してから MCP tool として公開するのがよいです。
 
-## Design Rule
+## 設計ルール
 
-When unsure where something belongs, use this test:
+どこに置くべきか迷ったら、次で判定します。
 
-- Is it a business concept? -> domain
-- Is it one application action? -> application/usecase
-- Is it I/O or persistence? -> infrastructure
-- Is it an external callable operation? -> mcp/tool
-- Is it agent behavior guidance? -> agent or skill docs
+- business concept か? -> domain
+- 1 つの application action か? -> `application/usecase`
+- I/O や persistence か? -> infrastructure
+- 外部から呼ばれる操作か? -> `mcp/tool`
+- agent への行動指針か? -> agent 文書または skill 文書

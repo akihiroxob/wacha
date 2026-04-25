@@ -1,83 +1,81 @@
 # Review Policy
 
-## Positioning
+## 位置づけ
 
-Review is a first-class workflow in Wacha.
+Review は Wacha における第一級の workflow です。
 
-It is already encoded in TaskStatus transitions:
+これは `TaskStatus` の遷移として表現されます。
 
 - `in_review`
 - `wait_accept`
 - `accepted`
-- `rejected` fileciteturn14file0L3-L7
+- `rejected`
 
-## Roles in Review
+## Review における role
 
-- worker: produces implementation
-- reviewer: validates implementation
-- manager: final acceptance
+- worker: 実装を作る
+- reviewer: 実装を検証する
+- manager: 最終受入を行う
 
-This is enforced in MCP tools via role guard fileciteturn6file0L55-L66
-
-## Review Stages
+## Review 段階
 
 ### Stage 1: Worker
 
-- moves task to `in_review`
+- task を `in_review` に進める
 
 ### Stage 2: Reviewer
 
-- validates implementation
-- moves to `wait_accept` or `rejected`
+- 実装を検証する
+- `wait_accept` または `rejected` に進める
 
 ### Stage 3: Manager
 
-- decides final `accepted` or `rejected`
+- 最終的に `accepted` または `rejected` を判断する
 
-## Review Criteria
+## Review 観点
 
 ### Correctness
 
-- does it meet task intent?
+- task の意図を満たしているか
 
 ### Safety
 
-- does it break existing behavior?
+- 既存の振る舞いを壊していないか
 
 ### Completeness
 
-- are all acceptance criteria covered?
+- acceptance criteria をすべて満たしているか
 
 ### Clarity
 
-- is code understandable?
+- code が理解しやすいか
 
-## Reject Rule
+## Reject ルール
 
-Reject must include:
+Reject には次を含めるべきです。
 
-- what is wrong
-- why it matters
-- what to fix
+- 何が問題か
+- なぜ重要か
+- 何を直すべきか
 
 ## Anti-Patterns
 
-- approving incomplete work
-- reviewer doing full implementation
-- manager skipping review stage
+- 未完成の作業を通すこと
+- reviewer が全面的に実装を引き取ること
+- manager が review 段階を飛ばすこと
 
 ## Feedback Loop
 
-Important:
+重要な考え方:
 
 ```txt
-Review → Skill improvement
+Review -> Skill improvement
 ```
 
-Repeated issues should update Skill definitions.
+同じ種類の指摘が繰り返されるなら、Skill 定義へ反映すべきです。
 
-## Final Principle
+## 最終原則
 
-Review is not optional.
+Review は任意ではありません。
 
-A task is complete only after acceptance.
+task は acceptance 後にのみ完了です。

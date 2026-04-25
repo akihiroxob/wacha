@@ -1,8 +1,8 @@
-# Domain Guide
+# Domain ガイド
 
-## Existing Domain Reality
+## 既存の domain の実態
 
-Wacha already defines key domain primitives:
+Wacha はすでに重要な domain primitive を定義しています。
 
 - Project
 - Story
@@ -10,37 +10,33 @@ Wacha already defines key domain primitives:
 - ProjectRole
 - TaskStatus
 
-For example, `ProjectRole` includes manager, reviewer, worker, viewer fileciteturn12file0L1-L4
+これらが domain の中核であり、安定して維持されるべきです。
 
-And `TaskStatus` expresses the workflow including review and acceptance fileciteturn14file0L1-L7
-
-These are the core of the domain and must remain stable.
-
-## Core Concepts
+## 中核概念
 
 ### Project
 
-A container of stories, tasks, roles, and artifacts.
+story、task、role、artifact を束ねる単位です。
 
 ### Story
 
-Represents intent and context of work.
+作業の意図と文脈を表します。
 
-Story is owned by manager.
+Story は manager が責任を持ちます。
 
 ### Task
 
-Executable unit for worker.
+worker が実行する単位です。
 
-Task must be:
+Task は次を満たすべきです。
 
-- small
-- testable
-- reviewable
+- 小さい
+- テスト可能
+- review 可能
 
 ### TaskStatus
 
-The canonical lifecycle:
+正規の lifecycle は次です。
 
 ```txt
 todo -> doing -> in_review -> wait_accept -> accepted
@@ -50,7 +46,7 @@ todo -> doing -> in_review -> wait_accept -> accepted
 
 ### ProjectRole
 
-Defines responsibility and permission.
+責務と権限を定義します。
 
 ```txt
 manager  -> planning + acceptance
@@ -59,53 +55,49 @@ worker   -> execution
 viewer   -> read-only
 ```
 
-## Domain Rules
+## Domain ルール
 
-### Rule 1: State transition is explicit
+### ルール 1: 状態遷移は明示的である
 
-Never mutate TaskStatus arbitrarily.
+`TaskStatus` を任意に書き換えてはいけません。
 
-Always use defined transitions.
+必ず定義済みの遷移を通すべきです。
 
-### Rule 2: Role decides responsibility
+### ルール 2: role が責務を決める
 
-- Worker cannot accept
-- Reviewer cannot finalize
-- Manager owns acceptance
+- worker は accept できない
+- reviewer は最終確定できない
+- manager が acceptance を持つ
 
-These rules are already partially enforced in MCP tools fileciteturn6file0L52-L67
+### ルール 3: review は domain の一部である
 
-### Rule 3: Review is part of the domain
+Review は任意ではありません。
 
-Review is not optional.
+task は `in_review` になった時点ではまだ完了ではありません。
 
-A task is not complete at `in_review`.
+`accepted` になって初めて完了です。
 
-It is only complete after `accepted`.
+### ルール 4: instruction は domain に駆動される
 
-### Rule 4: Instructions are domain-driven
+Instruction 配信は UI の都合ではありません。
 
-Instruction delivery is not UI concern.
+role 実行の振る舞いの一部です。
 
-It is part of role execution behavior.
+## domain ではないもの
 
-This is already implemented via `InstructionService` fileciteturn16file0L1-L6
+次のものは domain に置くべきではありません。
 
-## Non-Domain Concepts
-
-The following should not be placed in domain:
-
-- MCP response formats
+- MCP response format
 - HTTP request handling
-- SQLite queries
-- File loading logic
+- SQLite query
+- file 読み込み処理
 
-## Design Goal
+## 設計目標
 
-Keep domain small and strict.
+domain は小さく、厳密に保ちます。
 
-Push complexity to:
+複雑さは次へ押し出します。
 
-- usecases for orchestration
-- skills for reusable behavior
-- tools for execution boundary
+- orchestration は use case
+- 再利用可能な振る舞いは skill
+- 実行境界は tool
