@@ -1,13 +1,13 @@
 ---
 name: review-task
-description: `in_review` の task を品質観点で検証し、受け入れ可能性を明確に判定する。
+description: in_reviewのtaskを品質観点で検証し、受け入れ可能性を明確に判定する。
 allowRoles: [reviewer, manager]
 requiredKnowledge:
   - knowledge/tips/reviewing.md
   - knowledge/tips/task-writing.md
 requiredTools:
   - reviewed_task
-  - reject_task 
+  - reject_task
 ---
 
 # review-task
