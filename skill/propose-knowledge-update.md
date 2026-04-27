@@ -8,6 +8,8 @@ requiredKnowledge:
   - principles/development-principles.md
   - tips/reviewing.md
 requiredTools:
+  - list_tasks
+  - list_task_comments
   - add_task_comment
 ---
 

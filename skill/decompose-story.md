@@ -8,6 +8,7 @@ requiredKnowledge:
   - tips/story-splitting.md
   - tips/task-writing.md
 requiredTools:
+  - list_tasks
   - issue_task
 ---
 

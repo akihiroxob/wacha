@@ -8,6 +8,9 @@ requiredKnowledge:
   - tips/reviewing.md
   - tips/task-writing.md
 requiredTools:
+  - list_tasks
+  - list_task_comments
+  - add_task_comment
   - reviewed_task
   - reject_task
 ---

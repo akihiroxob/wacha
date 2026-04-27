@@ -9,6 +9,8 @@ requiredKnowledge:
   - principles/ai-native-ddd.md
   - tips/task-writing.md
 requiredTools:
+  - list_tasks
+  - claim_task
   - add_task_comment
   - complete_task
 ---
