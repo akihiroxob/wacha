@@ -7,6 +7,7 @@ import { SkillStatus } from "@constants/SkillStatus.ts";
 import { SkillRepository } from "@domain/repository/SkillRepository.ts";
 import { KnowledgeRepository } from "@domain/repository/KnowledgeRepository.ts";
 import { GetSkillContextUseCase } from "@application/usecase/skills/GetSkillContextUseCase.ts";
+import { Knowledge } from "@domain/model/Knowledge.ts";
 
 class InMemorySkillRepository implements SkillRepository {
   constructor(private readonly skills: Skill[]) {}
@@ -23,8 +24,9 @@ class InMemorySkillRepository implements SkillRepository {
 class InMemoryKnowledgeRepository implements KnowledgeRepository {
   constructor(private readonly entries: Record<string, string>) {}
 
-  async getContent(path: string): Promise<string | undefined> {
-    return this.entries[path];
+  async getKnowledge(path: string): Promise<Knowledge | undefined> {
+    const content = this.entries[path];
+    return content ? new Knowledge(path, content) : undefined;
   }
 }
 
@@ -51,16 +53,19 @@ test("GetSkillContextUseCase returns a skill with resolved knowledge", async () 
   const result = await useCase.execute({ name: "implement-task" });
 
   assert.equal(result.skill.name, "implement-task");
-  assert.deepEqual(result.knowledge, [
-    {
-      path: "principles/development-principles.md",
-      content: "development principles",
-    },
-    {
-      path: "tips/task-writing.md",
-      content: "task writing",
-    },
-  ]);
+  assert.deepEqual(
+    result.knowledge.map((item) => ({ path: item.path, content: item.content })),
+    [
+      {
+        path: "tips/task-writing.md",
+        content: "task writing",
+      },
+      {
+        path: "principles/development-principles.md",
+        content: "development principles",
+      },
+    ],
+  );
 });
 
 test("GetSkillContextUseCase throws when skill is missing", async () => {
@@ -91,6 +96,6 @@ test("GetSkillContextUseCase throws when required knowledge is missing", async (
 
   await assert.rejects(
     () => useCase.execute({ name: "implement-task" }),
-    /Knowledge not found: tips\/task-writing.md/,
+    /Required knowledge not found: tips\/task-writing.md/,
   );
 });

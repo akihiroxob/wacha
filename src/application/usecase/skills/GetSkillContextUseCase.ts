@@ -4,12 +4,12 @@ import { SkillRepository } from "@domain/repository/SkillRepository.ts";
 import { KnowledgeRepository } from "@domain/repository/KnowledgeRepository.ts";
 
 interface GetSkillContextUseCaseInput {
-  skillName: string;
+  name: string;
 }
 
 interface GetSkillContextUseCaseResult {
   skill: Skill;
-  knowledges: Knowledge[];
+  knowledge: Knowledge[];
 }
 
 export class GetSkillContextUseCase {
@@ -18,16 +18,19 @@ export class GetSkillContextUseCase {
     private knowledgeRepository: KnowledgeRepository,
   ) {}
 
-  async execute({ skillName }: GetSkillContextUseCaseInput): Promise<GetSkillContextUseCaseResult> {
-    const skill = await this.skillRepository.findByName(skillName);
+  async execute({ name }: GetSkillContextUseCaseInput): Promise<GetSkillContextUseCaseResult> {
+    const skill = await this.skillRepository.findByName(name);
     if (!skill) throw new Error("Skill not found");
 
-    const knowledges = [];
+    const knowledge: Knowledge[] = [];
     for (const path of skill.requiredKnowledge) {
-      const knowledge = await this.knowledgeRepository.getKnowledge(path);
-      if (knowledge) knowledges.push(knowledge);
+      const knowledgeItem = await this.knowledgeRepository.getKnowledge(path);
+      if (!knowledgeItem) {
+        throw new Error(`Required knowledge not found: ${path}`);
+      }
+      knowledge.push(knowledgeItem);
     }
 
-    return { skill, knowledges };
+    return { skill, knowledge };
   }
 }

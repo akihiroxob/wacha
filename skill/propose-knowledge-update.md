@@ -8,7 +8,7 @@ requiredKnowledge:
   - principles/development-principles.md
   - tips/reviewing.md
 requiredTools:
-  - proposal_knowledge
+  - add_task_comment
 ---
 
 # propose-knowledge-update
@@ -23,7 +23,7 @@ requiredTools:
 2. `knowledge/principles/development-principles.md` と照合し、原則化できる内容を選別する。
 3. `knowledge/tips/reviewing.md` の観点で、再現性・検証可能性・副作用を確認する。
 4. 提案を「背景 / 提案内容 / 適用条件 / 期待効果 / リスク」の形式でまとめる。
-5. 元になった task やレビュー指摘への参照を添えて `proposal_knowledge` で提案を共有する。
+5. 元になった task やレビュー指摘への参照を添えて `add_task_comment` で提案を共有する。
 6. 採用可否の判断に必要な追加検証項目があれば明記する。
 
 ## Success Criteria

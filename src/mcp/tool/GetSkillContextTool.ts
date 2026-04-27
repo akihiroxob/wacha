@@ -3,7 +3,7 @@ import { getSkillContextUseCase } from "@container";
 import { toTextResult } from "@mcp/utils/mcpUtils.ts";
 
 type GetSkillContextInput = {
-  skillName: string;
+  name: string;
 };
 
 export const GetSkillContextTool = {
@@ -11,11 +11,11 @@ export const GetSkillContextTool = {
     title: "Get Skill Context",
     description: "Get a skill and its required knowledge context by skill name.",
     inputSchema: {
-      skillName: z.string().min(1).describe("Skill name to load"),
+      name: z.string().min(1).describe("Skill name to load"),
     },
   },
-  execute: async ({ skillName }: GetSkillContextInput) => {
-    const result = await getSkillContextUseCase.execute({ skillName });
+  execute: async ({ name }: GetSkillContextInput) => {
+    const result = await getSkillContextUseCase.execute({ name });
     return toTextResult(result, `Returned skill context for ${result.skill.name}.`);
   },
 };
