@@ -44,6 +44,9 @@
 - `list_projects`
   - 用途: プロジェクト一覧を取得する
   - Arguments: `{}`
+- `list_skills`
+  - 用途: 利用可能な Skill 一覧を取得する
+  - Arguments: `{}`
 - `list_project_agents`
   - 用途: 指定したプロジェクトの agent 一覧を取得する
   - Arguments: `{ "projectId": string }`
@@ -101,6 +104,7 @@
 - `list_tasks` は `summary.total`, `summary.byStatus`, `summary.lastUpdatedAt`, `tasks` を返す
 - `list_project_agents` は `projectId`, `summary`, `agents` を返す
 - `list_projects` は `projects` を返す
+- `list_skills` は `skills` を返す
 - `list_stories` は `stories` を返す
 - それ以外の tools は、更新後の状態が分かる実行結果を返す
 

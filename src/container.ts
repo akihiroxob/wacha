@@ -4,6 +4,7 @@ import { SQLiteProjectRepository } from "@repository/SQLiteProjectRepository.ts"
 import { SQLiteProjectMembershipRepository } from "@repository/SQLiteProjectMembershipRepository.ts";
 import { SQLiteStoryRepository } from "@repository/SQLiteStoryRepository.ts";
 import { InMemorySessionRepository } from "@repository/InMemorySessionRepository.ts";
+import { FileSkillRepository } from "@repository/FileSkillRepository.ts";
 // application services
 import { SessionService } from "@application/service/SessionService.ts";
 import { MembershipService } from "@application/service/MembershipService.ts";
@@ -19,6 +20,7 @@ import { ListProjectAgentsUseCase } from "@application/usecase/membership/ListPr
 // project usecases[]
 import { GetProjectUseCase } from "@application/usecase/project/GetProjectUseCase.ts";
 import { ListProjectUseCase } from "@application/usecase/project/ListProjectUseCase.ts";
+import { ListSkillUseCase } from "@application/usecase/skills/ListSkillUseCase.ts";
 // task usecases
 import { ListTaskUseCase } from "@application/usecase/tasks/ListTaskUseCase.ts";
 import { IssueTaskUseCase } from "@application/usecase/tasks/IssueTaskUseCase.ts";
@@ -44,6 +46,7 @@ const taskRepository = new SQLiteTaskRepository();
 const projectRepository = new SQLiteProjectRepository();
 const projectMembershipRepository = new SQLiteProjectMembershipRepository();
 const storyRepository = new SQLiteStoryRepository();
+const skillRepository = new FileSkillRepository();
 const roleAssignmentService = new RoleAssignmentService();
 const sessionRepository = new InMemorySessionRepository();
 
@@ -76,3 +79,4 @@ export const assignProjectRoleUseCase = new AssignProjectRoleUseCase(
 export const listProjectUseCase = new ListProjectUseCase(projectRepository);
 export const getProjectUseCase = new GetProjectUseCase(projectRepository);
 export const listProjectAgentsUseCase = new ListProjectAgentsUseCase(projectMembershipRepository);
+export const listSkillUseCase = new ListSkillUseCase(skillRepository);

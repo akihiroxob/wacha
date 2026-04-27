@@ -103,6 +103,7 @@ docker compose down -v
 ## Available Tools
 
 - `list_projects`
+- `list_skills`
 - `list_project_agents`
 - `list_stories`
 - `issue_story`
@@ -121,6 +122,11 @@ docker compose down -v
 - `list_task_comments`
 - `assign_project_role`
 - `get_role_instructions`
+
+Skill-related notes:
+
+- `list_skills` は `skill/` 配下の利用可能な Skill 一覧を返します
+- 返却値には `name`, `description`, `allowRoles`, `requiredKnowledge`, `requiredTools`, `content` が含まれます
 
 Task flow:
 

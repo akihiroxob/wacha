@@ -1,9 +1,10 @@
 import { readFile, readdir } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { Skill } from "@domain/model/Skill.ts";
+import { SkillRepository } from "@domain/repository/SkillRepository.ts";
 import matter from "gray-matter";
 
-export class SkillRepository {
+export class FileSkillRepository implements SkillRepository {
   private skillsPath: string;
 
   constructor() {
