@@ -126,7 +126,8 @@ docker compose down -v
 Skill-related notes:
 
 - `list_skills` は `skill/` 配下の利用可能な Skill 一覧を返します
-- 返却値には `name`, `description`, `allowRoles`, `requiredKnowledge`, `requiredTools`, `content` が含まれます
+- `status` と `role` を指定すると絞り込みできます
+- 返却値には `name`, `description`, `status`, `version`, `allowRoles` が含まれます
 
 Task flow:
 

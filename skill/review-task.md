@@ -1,6 +1,8 @@
 ---
 name: review-task
 description: in_reviewのtaskを品質観点で検証し、受け入れ可能性を明確に判定する。
+status: active
+version: 1
 allowRoles: [reviewer, manager]
 requiredKnowledge:
   - knowledge/tips/reviewing.md

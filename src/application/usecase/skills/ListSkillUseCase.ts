@@ -1,8 +1,15 @@
 import { Skill } from "@domain/model/Skill.ts";
+import { ProjectRole } from "@constants/ProjectRole.ts";
+import { SkillStatus } from "@constants/SkillStatus.ts";
 import { SkillRepository } from "@domain/repository/SkillRepository.ts";
 
 interface ListSkillUseCaseResult {
   skills: Skill[];
+}
+
+interface ListSkillUseCaseInput {
+  status?: SkillStatus;
+  role?: ProjectRole;
 }
 
 type SkillListRepository = Pick<SkillRepository, "list">;
@@ -10,11 +17,15 @@ type SkillListRepository = Pick<SkillRepository, "list">;
 export class ListSkillUseCase {
   constructor(private skillRepository: SkillListRepository) {}
 
-  async execute(): Promise<ListSkillUseCaseResult> {
+  async execute(input: ListSkillUseCaseInput = {}): Promise<ListSkillUseCaseResult> {
     const skills = await this.skillRepository.list();
+    const { status, role } = input;
 
     return {
-      skills: skills.sort((a, b) => a.name.localeCompare(b.name)),
+      skills: skills
+        .filter((skill) => (status ? skill.status === status : true))
+        .filter((skill) => (role ? skill.allowRoles.includes(role) : true))
+        .sort((a, b) => a.name.localeCompare(b.name)),
     };
   }
 }

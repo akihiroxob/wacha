@@ -1,6 +1,8 @@
 ---
 name: decompose-story
 description: Story を、実装・レビュー・受け入れまで進めやすい独立した task 群に分解する。
+status: active
+version: 1
 allowRoles: [manager]
 requiredKnowledge:
   - knowledge/tips/story-splitting.md

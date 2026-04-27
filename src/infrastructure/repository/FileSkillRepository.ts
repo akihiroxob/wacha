@@ -1,6 +1,7 @@
 import { readFile, readdir } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { Skill } from "@domain/model/Skill.ts";
+import { SkillStatus } from "@constants/SkillStatus.ts";
 import { SkillRepository } from "@domain/repository/SkillRepository.ts";
 import matter from "gray-matter";
 
@@ -22,6 +23,8 @@ export class FileSkillRepository implements SkillRepository {
           return new Skill(
             data.name,
             data.description,
+            data.status ?? SkillStatus.DRAFT,
+            data.version ?? 1,
             data.allowRoles,
             data.requiredKnowledge,
             data.requiredTools,

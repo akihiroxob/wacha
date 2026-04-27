@@ -1,6 +1,8 @@
 ---
 name: implement-task
 description: 割り当てられた task を、設計原則と実装品質を満たしながらレビュー可能な状態まで実装する。
+status: active
+version: 1
 allowRoles: [worker]
 requiredKnowledge:
   - knowledge/principles/development-principles.md

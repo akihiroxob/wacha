@@ -46,7 +46,7 @@
   - Arguments: `{}`
 - `list_skills`
   - 用途: 利用可能な Skill 一覧を取得する
-  - Arguments: `{}`
+  - Arguments: `{ "status"?: "draft" | "active" | "deprecated", "role"?: "manager" | "reviewer" | "worker" | "viewer" }`
 - `list_project_agents`
   - 用途: 指定したプロジェクトの agent 一覧を取得する
   - Arguments: `{ "projectId": string }`

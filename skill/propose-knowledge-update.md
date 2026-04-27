@@ -1,6 +1,8 @@
 ---
 name: propose-knowledge-update
 description: 実装・レビューで得た学びを再利用可能な知識として整理し、knowledge 更新提案を作成する。
+status: active
+version: 1
 allowRoles: [worker, reviewer, manager]
 requiredKnowledge:
   - knowledge/principles/development-principles.md
