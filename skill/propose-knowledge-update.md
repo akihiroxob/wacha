@@ -5,8 +5,8 @@ status: active
 version: 1
 allowRoles: [worker, reviewer, manager]
 requiredKnowledge:
-  - knowledge/principles/development-principles.md
-  - knowledge/tips/reviewing.md
+  - principles/development-principles.md
+  - tips/reviewing.md
 requiredTools:
   - proposal_knowledge
 ---

@@ -5,8 +5,8 @@ status: active
 version: 1
 allowRoles: [reviewer, manager]
 requiredKnowledge:
-  - knowledge/tips/reviewing.md
-  - knowledge/tips/task-writing.md
+  - tips/reviewing.md
+  - tips/task-writing.md
 requiredTools:
   - reviewed_task
   - reject_task

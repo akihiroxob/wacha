@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { ToolContext } from "../domain/model/ToolContext.js";
 import { ListProjectTool } from "@mcp/tool/ListProjectTool.ts";
 import { ListSkillsTool } from "@mcp/tool/ListSkillsTool.ts";
+import { GetSkillContextTool } from "@mcp/tool/GetSkillContextTool.ts";
 import { ListProjectAgentsTool } from "@mcp/tool/ListProjectAgentsTool.ts";
 import { ListStoryTool } from "@mcp/tool/ListStoryTool.ts";
 import { IssueStoryTool } from "@mcp/tool/IssueStoryTool.ts";
@@ -33,6 +34,7 @@ export const createMcpServer = (context: ToolContext) => {
   // tool for project
   server.registerTool("list_projects", ListProjectTool.config, ListProjectTool.execute);
   server.registerTool("list_skills", ListSkillsTool.config, ListSkillsTool.execute);
+  server.registerTool("get_skill_context", GetSkillContextTool.config, GetSkillContextTool.execute);
   server.registerTool(
     "list_project_agents",
     ListProjectAgentsTool.config,

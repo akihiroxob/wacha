@@ -3,13 +3,13 @@ import { ProjectRole } from "@constants/ProjectRole.ts";
 import { SkillStatus } from "@constants/SkillStatus.ts";
 import { SkillRepository } from "@domain/repository/SkillRepository.ts";
 
-interface ListSkillUseCaseResult {
-  skills: Skill[];
-}
-
 interface ListSkillUseCaseInput {
   status?: SkillStatus;
   role?: ProjectRole;
+}
+
+interface ListSkillUseCaseResult {
+  skills: Skill[];
 }
 
 type SkillListRepository = Pick<SkillRepository, "list">;

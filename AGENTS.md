@@ -47,6 +47,9 @@
 - `list_skills`
   - 用途: 利用可能な Skill 一覧を取得する
   - Arguments: `{ "status"?: "draft" | "active" | "deprecated", "role"?: "manager" | "reviewer" | "worker" | "viewer" }`
+- `get_skill_context`
+  - 用途: Skill 本体と関連 knowledge を取得する
+  - Arguments: `{ "name": string }`
 - `list_project_agents`
   - 用途: 指定したプロジェクトの agent 一覧を取得する
   - Arguments: `{ "projectId": string }`
@@ -105,6 +108,7 @@
 - `list_project_agents` は `projectId`, `summary`, `agents` を返す
 - `list_projects` は `projects` を返す
 - `list_skills` は `skills` を返す
+- `get_skill_context` は `skill`, `knowledge` を返す
 - `list_stories` は `stories` を返す
 - それ以外の tools は、更新後の状態が分かる実行結果を返す
 

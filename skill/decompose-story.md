@@ -5,8 +5,8 @@ status: active
 version: 1
 allowRoles: [manager]
 requiredKnowledge:
-  - knowledge/tips/story-splitting.md
-  - knowledge/tips/task-writing.md
+  - tips/story-splitting.md
+  - tips/task-writing.md
 requiredTools:
   - issue_task
 ---

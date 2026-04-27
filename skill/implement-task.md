@@ -5,9 +5,9 @@ status: active
 version: 1
 allowRoles: [worker]
 requiredKnowledge:
-  - knowledge/principles/development-principles.md
-  - knowledge/principles/ai-native-ddd.md
-  - knowledge/tips/task-writing.md
+  - principles/development-principles.md
+  - principles/ai-native-ddd.md
+  - tips/task-writing.md
 requiredTools:
   - add_task_comment
   - complete_task

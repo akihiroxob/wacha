@@ -34,6 +34,8 @@ export const ListSkillsTool = {
       status: skill.status,
       version: skill.version,
       allowRoles: skill.allowRoles,
+      requiredKnowledge: skill.requiredKnowledge,
+      requiredTools: skill.requiredTools,
     }));
 
     return toTextResult(
