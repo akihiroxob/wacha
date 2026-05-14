@@ -24,6 +24,8 @@ export class ListTaskUseCase {
         byStatus: {
           [TaskStatus.TODO]: sortedTasks.filter((task) => task.status === TaskStatus.TODO).length,
           [TaskStatus.DOING]: sortedTasks.filter((task) => task.status === TaskStatus.DOING).length,
+          [TaskStatus.CANCELED]: sortedTasks.filter((task) => task.status === TaskStatus.CANCELED)
+            .length,
           [TaskStatus.IN_REVIEW]: sortedTasks.filter((task) => task.status === TaskStatus.IN_REVIEW)
             .length,
           [TaskStatus.WAIT_ACCEPT]: sortedTasks.filter(

@@ -11,6 +11,7 @@ import { CompleteStoryTool } from "@mcp/tool/CompleteStoryTool.ts";
 import { CancelStoryTool } from "@mcp/tool/CancelStoryTool.ts";
 import { ListTaskTool } from "@mcp/tool/ListTaskTool.ts";
 import { IssueTaskTool } from "@mcp/tool/IssueTaskTool.ts";
+import { EditTaskTool } from "@mcp/tool/EditTaskTool.ts";
 import { AcceptTaskTool } from "@mcp/tool/AcceptTaskTool.ts";
 import { RejectTaskTool } from "@mcp/tool/RejectTaskTool.ts";
 import { AddTaskCommentTool } from "@mcp/tool/AddTaskCommentTool.ts";
@@ -78,6 +79,11 @@ export const createMcpServer = (context: ToolContext) => {
 
     return IssueTaskTool.execute(args);
   });
+  server.registerTool(
+    "edit_task",
+    EditTaskTool.config,
+    withRoleGuard([ProjectRole.MANAGER], context, EditTaskTool.execute),
+  );
   server.registerTool("claim_task", ClaimTaskTool.config, (args) =>
     ClaimTaskTool.execute({ ...args, sessionId: context.sessionId }),
   );
