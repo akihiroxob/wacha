@@ -9,6 +9,7 @@ import {
   RejectedBadge,
 } from "./badge.tsx";
 import type { TaskComment } from "@domain/model/TaskComment.ts";
+import { Markdown } from "./markdown.tsx";
 
 type TaskRowProps = {
   projectId: string;
@@ -141,7 +142,7 @@ export const TaskRow: FC<TaskRowProps> = ({
                     key={comment.id}
                     class="rounded-xl bg-white px-3 py-2 text-sm text-stone-700"
                   >
-                    <p class="whitespace-pre-wrap">{comment.body}</p>
+                    <Markdown text={comment.body} />
                     <p class="mt-1 text-xs text-stone-400">
                       {comment.author ?? "unknown"} / {new Date(comment.createdAt).toLocaleString()}
                     </p>

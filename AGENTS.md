@@ -59,9 +59,6 @@
 - `issue_story`
   - 用途: 新しい Story を作成する
   - Arguments: `{ "projectId": string, "title": string, "description"?: string }`
-- `claim_story`
-  - 用途: `todo` の Story を `doing` に進める
-  - Arguments: `{ "storyId": string }`
 - `complete_story`
   - 用途: `doing` の Story を `done` に進める
   - Arguments: `{ "storyId": string }`
@@ -91,6 +88,7 @@
   - Arguments: `{ "taskId": string, "reason": string }`
 - `add_task_comment`
   - 用途: task に worker / reviewer の補足コメントを追加する
+  - 備考: 本文は Markdown 前提で書く
   - Arguments: `{ "taskId": string, "body": string, "author"?: string }`
 - `list_task_comments`
   - 用途: 指定した task のコメント一覧を取得する
@@ -110,6 +108,8 @@
 - `list_skills` は `skills` を返す
 - `get_skill_context` は `skill`, `knowledge` を返す
 - `list_stories` は `stories` を返す
+- `issue_story` は作成された Story の主要フィールドに加えて `requiredNextTool: "issue_task"` を返す
+- `issue_story` は今回 `requiredNextArgs` を返さない
 - それ以外の tools は、更新後の状態が分かる実行結果を返す
 
 ## 運用ガイド
@@ -118,3 +118,5 @@
 - タスク名は短く、何をするか分かる表現にする
 - `complete_task` は本当にレビュー可能な状態になってから呼ぶ
 - 追加対応が必要な場合は、状態を曖昧にせず `reject_task` を使う
+- Story が `doing` になるのは、Story 配下の Task が `claim_task` で着手されたとき
+- コメント本文は Markdown 前提で扱うが、厳密な Markdown 構文検証は今回必須ではない

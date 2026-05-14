@@ -32,9 +32,9 @@ requiredTools:
 4. `knowledge/principles/ai-native-ddd.md` を読み、domain / application / infrastructure / mcp / presentation の責務境界を確認する。
 5. フロントエンドを変更する場合は、必ず `knowledge/principles/frontend-architecture.md` を確認する。
 6. 既存の類似ファイル・類似ディレクトリを探し、既存構成に合わせる。
-7. 実装前に FileChangePlan を作成し、必要に応じて `add_task_comment` で共有する。
+7. 実装前に FileChangePlan を作成し、必要に応じて Markdown 形式の `add_task_comment` で共有する。
 8. FileChangePlan に沿って、最小差分で実装・テスト・リファクタリングを行う。
-9. 実施内容・判断理由・検証結果・未解決事項を `add_task_comment` で共有する。
+9. 実施内容・判断理由・検証結果・未解決事項を Markdown 形式の `add_task_comment` で共有する。
 10. レビュー可能と判断したら `complete_task` で `in_review` に進める。
 
 ## FileChangePlan
@@ -67,6 +67,7 @@ requiredTools:
 - 新規ファイル・新規ディレクトリの作成は最小限にする。
 - 新規ファイルを作る場合は、理由と配置根拠を説明できる状態にする。
 - 1 task で新規ファイルが 3 つ以上必要な場合は、実装を進める前に `add_task_comment` で FileChangePlan を共有する。
+- コメント本文は Markdown 前提で書いてよいが、厳密な Markdown 構文検証に合わせる必要はない。
 - 明示的に指示されていない限り、アーキテクチャ再構成・大規模リファクタリングを行わない。
 - 構成に迷った場合は、新しい構成を作らず、既存の近い実装に合わせる。
 - 判断できない場合は推測で進めず、前提・選択肢・懸念をコメントして確認する。

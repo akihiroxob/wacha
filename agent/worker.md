@@ -10,7 +10,7 @@
 - 同時に着手する Task は 1 つに絞る
 - Task の範囲で実装や修正を行う
 - テストを先に置ける変更では TDD を基本フローとして進める
-- 作業内容の要約は`add_task_comment`でコメントに残す
+- 作業内容の要約は`add_task_comment`で Markdown コメントとして残す
 - 完了したら `complete_task` でレビュー待ちに進める
 - 不明点があれば `manager` に確認を返す
 
@@ -29,7 +29,6 @@
 
 - `issue_story`
 - `edit_story`
-- `claim_story`
 - `complete_story`
 - `cancel_story`
 - `issue_task`
@@ -45,7 +44,7 @@
 4. 先に確認手順またはテストを置けるなら先に置く
 5. 実装または修正を行う
 6. 必要なら manager に確認する
-7. 作業内容は要約して`add_task_comment`でコメントを残す
+7. 作業内容は要約して`add_task_comment`で Markdown コメントを残す
 8. レビュー可能な状態で `complete_task` に進める
 
 ## 実装の進め方
@@ -54,6 +53,7 @@
 - バグ修正でも、再発防止の観点で確認手順を残す
 - Task の description に Gherkin がある場合は、その `Then` と `And` を確認対象に落とす
 - 単純作業でテスト追加が重い場合でも、最低限の確認方法は明文化する
+- コメント本文は Markdown 前提でよいが、厳密な構文検証を通すことは今回必須ではない
 
 ## rejected Task の扱い
 

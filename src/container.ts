@@ -39,7 +39,6 @@ import { ListStoryUseCase } from "@application/usecase/stories/ListStoryUseCase.
 import { IssueStoryUseCase } from "@application/usecase/stories/IssueStoryUseCase.ts";
 import { EditStoryUseCase } from "@application/usecase/stories/EditStoryUseCase.ts";
 import { DeleteStoryUseCase } from "@application/usecase/stories/DeleteStoryUseCase.ts";
-import { ClaimStoryUseCase } from "@application/usecase/stories/ClaimStoryUseCase.ts";
 import { CompleteStoryUseCase } from "@application/usecase/stories/CompleteStoryUseCase.ts";
 import { CancelStoryUseCase } from "@application/usecase/stories/CancelStoryUseCase.ts";
 
@@ -71,7 +70,6 @@ export const listStoryUseCase = new ListStoryUseCase(storyRepository);
 export const issueStoryUseCase = new IssueStoryUseCase(storyRepository);
 export const editStoryUseCase = new EditStoryUseCase(storyRepository);
 export const deleteStoryUseCase = new DeleteStoryUseCase(storyRepository, taskRepository);
-export const claimStoryUseCase = new ClaimStoryUseCase(storyRepository);
 export const completeStoryUseCase = new CompleteStoryUseCase(storyRepository);
 export const cancelStoryUseCase = new CancelStoryUseCase(storyRepository);
 export const assignProjectRoleUseCase = new AssignProjectRoleUseCase(

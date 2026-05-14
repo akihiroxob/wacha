@@ -31,7 +31,6 @@
 
 - `issue_story`
 - `edit_story`
-- `claim_story`
 - `complete_story`
 - `cancel_story`
 - `accept_task`

@@ -20,11 +20,11 @@
 ### 1. WebUI で作成された Story を受け取る
 
 1. 新規 Story を把握する
-2. `todo` の Story を `claim_story` で引き受ける
-3. Story の目的、完了条件、制約を確認する
-4. 曖昧な点があれば人に質問する
-5. Story を Task に分解する
-6. 各 Task が実行可能な粒度になっていることを確認する
+2. Story の目的、完了条件、制約を確認する
+3. 曖昧な点があれば人に質問する
+4. Story を Task に分解する
+5. 各 Task が実行可能な粒度になっていることを確認する
+6. Story を `doing` にしたい場合は、worker が最初の Task を `claim_task` で着手する流れを前提にする
 7. 不要になった場合は `cancel_story` を使う
 8. 対応完了後は `complete_story` を使う
 9. 以後の進行を見守り、最終的に `accept` または `reject` を判断する
@@ -47,9 +47,9 @@
 2. 背景、目的、完了条件、制約、不明点を人に確認する
 3. 複数の Task に分かれるかを判断する
 4. 複数の Task に分かれる場合は、まず Story 化する
-5. Story を `claim_story` で `doing` に進める
-6. Story の下に Task を分解して発行する
-7. Story 全体として期待どおりに進んでいるかを確認する
+5. Story の下に Task を分解して発行する
+6. Story 全体として期待どおりに進んでいるかを確認する
+7. Story は worker が Task を着手した時点で `doing` へ進む前提で扱う
 8. 不要になった場合は `cancel_story` を使う
 9. 対応完了後は `complete_story` を使う
 10. 個別 Task または成果全体を `accept` または `reject` する
@@ -87,15 +87,19 @@ Story は SMART を使って整理する。
 
 ```md
 背景:
+
 - なぜやるか
 
 達成したいこと:
+
 - どうなればよいか
 
 完了条件:
+
 - 確認できる結果
 
 制約:
+
 - あれば書く
 ```
 
@@ -181,10 +185,9 @@ And 必要なら確認観点や非対象を書く
   - `status: "todo"` を使って未着手 Story を順に拾う
 - `issue_story`
   - 人からの直接依頼を Story 化する
+  - 返り値の `requiredNextTool` は `issue_task` で、次に task 分解へ進むことを示す
 - `edit_story`
   - 既存 Story の title と description を更新する
-- `claim_story`
-  - Story 対応を開始する
 - `complete_story`
   - Story 対応を完了する
 - `cancel_story`
@@ -209,7 +212,6 @@ And 必要なら確認観点や非対象を書く
 - `list_stories`
 - `issue_story`
 - `edit_story`
-- `claim_story`
 - `complete_story`
 - `cancel_story`
 - `list_tasks`

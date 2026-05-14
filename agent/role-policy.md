@@ -46,7 +46,6 @@
 
 - `issue_story`
 - `edit_story`
-- `claim_story`
 - `complete_story`
 - `cancel_story`
 - `storyId` を伴う `issue_task`
@@ -61,11 +60,10 @@
 | `list_projects`       | allow   | allow    | allow  | no               | 参照系                                  |
 | `list_project_agents` | allow   | allow    | allow  | no               | 参照系                                  |
 | `list_stories`        | allow   | allow    | allow  | no               | 参照系                                  |
-| `issue_story`         | allow   | deny     | deny   | yes              | Story 作成は manager のみ               |
-| `edit_story`          | allow   | deny     | deny   | yes              | Story 編集は manager のみ               |
-| `claim_story`         | allow   | deny     | deny   | yes              | Story を処理対象にするのは manager のみ |
-| `complete_story`      | allow   | deny     | deny   | yes              | Story 完了は manager のみ               |
-| `cancel_story`        | allow   | deny     | deny   | yes              | Story 中止は manager のみ               |
+| `issue_story`         | allow   | deny     | deny   | yes              | Story 作成は manager のみ                    |
+| `edit_story`          | allow   | deny     | deny   | yes              | Story 編集は manager のみ                    |
+| `complete_story`      | allow   | deny     | deny   | yes              | Story 完了は manager のみ                    |
+| `cancel_story`        | allow   | deny     | deny   | yes              | Story 中止は manager のみ                    |
 | `list_tasks`          | allow   | allow    | allow  | no               | 参照系                                  |
 | `issue_task`          | allow   | allow    | deny   | partial          | reviewer は Story 非紐付け Task のみ可  |
 | `claim_task`          | deny    | deny     | allow  | no               | 当面は運用で制御                        |
@@ -104,6 +102,7 @@
 - 人からの依頼受付を担う
 - Story 化と Task 分解を担う
 - Story の状態を管理する
+- Story の `doing` は worker の `claim_task` 由来で進む前提で扱う
 - 最終的な `accept_task` / `reject_task` を担う
 
 ### reviewer

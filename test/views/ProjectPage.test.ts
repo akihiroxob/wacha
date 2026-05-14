@@ -7,6 +7,7 @@ import { Task } from "@domain/model/Task.ts";
 import { Story } from "@domain/model/Story.ts";
 import { Project } from "@domain/model/Project.ts";
 import { ProjectMembership } from "@domain/model/ProjectMembership.ts";
+import { TaskComment } from "@domain/model/TaskComment.ts";
 import { TaskStatus } from "@constants/TaskStatus.ts";
 import { StoryStatus } from "@constants/StoryStatus.ts";
 import { ProjectRole } from "@constants/ProjectRole.ts";
@@ -141,6 +142,58 @@ test("ProjectPage renders reject reason for rejected tasks", () => {
 
   assert.match(html, /Reject Reason/);
   assert.match(html, /Need more tests/);
+});
+
+test("ProjectPage renders task comments as basic markdown", () => {
+  const task = new Task(
+    "task-3",
+    "project-1",
+    "story-1",
+    "Task 3",
+    "desc",
+    TaskStatus.DOING,
+    null,
+    null,
+    null,
+    1000,
+    2000,
+  );
+  const comment = new TaskComment(
+    "comment-1",
+    "task-3",
+    "## Heading\n- first item\n- second item with `code`\n\n```ts\nconst value = 1;\n```",
+    "worker",
+    2000,
+  );
+
+  const html = renderToString(
+    ProjectPage({
+      project,
+      summary: {
+        total: 1,
+        byStatus: {
+          [TaskStatus.TODO]: 0,
+          [TaskStatus.DOING]: 1,
+          [TaskStatus.IN_REVIEW]: 0,
+          [TaskStatus.WAIT_ACCEPT]: 0,
+          [TaskStatus.ACCEPTED]: 0,
+          [TaskStatus.REJECTED]: 0,
+        },
+        lastUpdatedAt: 2000,
+      },
+      tasks: [task],
+      comments: [comment],
+      stories: [story],
+      agents: [agent],
+      agentSummary: { total: 1 },
+      storyStatusFilter: "active",
+    }),
+  );
+
+  assert.match(html, /<h4[^>]*>Heading<\/h4>/);
+  assert.match(html, /<li>first item<\/li>/);
+  assert.match(html, /<code[^>]*>code<\/code>/);
+  assert.match(html, /<pre[^>]*><code>const value = 1;/);
 });
 
 test("ProjectPage renders story sections collapsed by default", () => {
