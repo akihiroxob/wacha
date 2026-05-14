@@ -34,6 +34,7 @@
 - `complete_story`
 - `cancel_story`
 - `accept_task`
+- `edit_task`
 
 `claim_task` `complete_task` `assign_project_role` は当面 MCP では明示ブロックしないが、reviewer の責務ではない。
 `issue_task` は Story に紐づかない follow-up Task を起こす場合に限って扱う。
@@ -136,3 +137,4 @@
 - 付随作業をしても reviewer の主業務は review のままに保つ
 - 問題がなければ `reviewed_task` で manager 判断待ちへ進める
 - 通す理由より、通して危ない理由がないかを優先して確認する
+- Story / Task の退役議論では、hard delete ではなく理由付きの非破壊操作を前提に読む

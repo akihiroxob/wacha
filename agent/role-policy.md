@@ -49,6 +49,7 @@
 - `complete_story`
 - `cancel_story`
 - `storyId` を伴う `issue_task`
+- `edit_task`
 - `accept_task`
 
 ## 権限表
@@ -66,6 +67,7 @@
 | `cancel_story`        | allow   | deny     | deny   | yes              | Story 中止は manager のみ                    |
 | `list_tasks`          | allow   | allow    | allow  | no               | 参照系                                  |
 | `issue_task`          | allow   | allow    | deny   | partial          | reviewer は Story 非紐付け Task のみ可  |
+| `edit_task`           | allow   | deny     | deny   | yes              | Task 編集は manager のみ                     |
 | `claim_task`          | deny    | deny     | allow  | no               | 当面は運用で制御                        |
 | `complete_task`       | deny    | deny     | allow  | no               | 当面は運用で制御                        |
 | `reviewed_task`       | deny    | allow    | deny   | yes              | reviewer 承認で `wait_accept` に進める  |
@@ -145,6 +147,12 @@ role ごとに Push すべきイベントは次のとおり。
 
 - 自分が担当すべき Task が明示的に割り当てられた
 - 自分の Task が `reject_task` で差し戻された
+
+## Cancel 方針
+
+- Story / Task を管理対象から外す cancel は、hard delete ではなく非破壊の状態遷移として定義する前提で扱う
+- cancel 時は理由をコメントとして残す運用、または同等の入力要件を持たせる
+- 現在の delete 実装は既存挙動であり、cancel 方針の最終形とは分けて考える
 
 ## Session 再初期化後の扱い
 

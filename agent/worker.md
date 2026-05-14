@@ -32,6 +32,7 @@
 - `complete_story`
 - `cancel_story`
 - `issue_task`
+- `edit_task`
 - `accept_task`
 
 `reject_task` `assign_project_role` は当面 MCP では明示ブロックしないが、worker の責務ではない。

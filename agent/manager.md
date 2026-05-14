@@ -188,6 +188,8 @@ And 必要なら確認観点や非対象を書く
   - 返り値の `requiredNextTool` は `issue_task` で、次に task 分解へ進むことを示す
 - `edit_story`
   - 既存 Story の title と description を更新する
+- `edit_task`
+  - 既存 Task の title と description を更新する
 - `complete_story`
   - Story 対応を完了する
 - `cancel_story`
@@ -197,6 +199,8 @@ And 必要なら確認観点や非対象を書く
   - 現在の進行状況を把握する
 - `issue_task`
   - Story または人の依頼を Task 化する
+- `edit_task`
+  - 既存 Task の期待に合わせて title / description を更新する
 - `accept_task`
   - 要件どおりの成果を受理する
 - `reject_task`
@@ -216,6 +220,7 @@ And 必要なら確認観点や非対象を書く
 - `cancel_story`
 - `list_tasks`
 - `issue_task`
+- `edit_task`
 - `accept_task`
 - `reject_task`
 - `assign_project_role`
@@ -241,3 +246,5 @@ And 必要なら確認観点や非対象を書く
 - Task は小さく、責務が明確になるように切る
 - レビュー結果だけでなく、元の要件期待に照らして最終判断する
 - 追加対応が必要なら、受理せず `reject` で明確に返す
+- Story / Task を退役させる場合は、理由をコメントとして残す前提で扱う
+- hard delete は退役方針の対象外として切り分ける
