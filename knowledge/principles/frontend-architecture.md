@@ -45,6 +45,16 @@ Next.js の場合は、routing の `app/` と実装の `src/` が分かれるこ
 
 ## 配置ルール
 
+## 実装前の探索ルール
+
+新規 UI を作る前に、最低 1 回は次を探索する。
+
+- `components` 配下の類似 UI
+- `features` 配下の類似 section / form / interaction
+- `app` 配下の類似 page / route 直下 UI
+
+探索後は、再利用するか新規作成するかを FileChangePlan または task comment に残す。
+
 ### app に置くもの
 
 - routing
@@ -54,6 +64,14 @@ Next.js の場合は、routing の `app/` と実装の `src/` が分かれるこ
 - feature の呼び出し
 
 app に business logic を直接置かない。
+
+page 直書きは次の条件を満たす場合に限って許容する。
+
+- その page でしか使わない
+- 要素数が少ない
+- 近い将来の再利用予定がない
+
+この条件を外れる場合は、feature または components への切り出しを検討する。
 
 ### features に置くもの
 
@@ -72,6 +90,8 @@ app に business logic を直接置かない。
 - Header、Card、Section などの汎用的な組み合わせ UI
 
 特定 feature の業務知識を components に持ち込まない。
+
+同種 UI が 2 箇所目に出たら、components に上げるか、feature 内共有に留めるかを必ず判断して記録する。
 
 ### lib / utils に置くもの
 
@@ -96,12 +116,16 @@ app に business logic を直接置かない。
 - 既存の置き場所が分からないため
 - 名前だけ独立しているが、実態は既存 feature の一部であるため
 
+既存 feature で代替できない理由を説明できない場合は、新しい feature を作らない。
+
 ## 新規ディレクトリ作成ルール
 
 - 空ディレクトリは作らない
 - api / components / hooks / types / utils などの標準フォルダを先に全部作らない
 - 必要なファイルが発生した時点で、そのファイルに必要な最小ディレクトリだけ作る
 - 既存構成と異なる命名を導入しない
+
+既存の再利用候補が見つからない場合は、page または既存 feature 内で最小実装してよい。ただし、同種要素が再登場した時点で切り出し可否を再判定する。
 
 ## Bulletproof React の扱い
 
