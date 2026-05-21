@@ -26,7 +26,9 @@ import { ListSkillUseCase } from "@application/usecase/skills/ListSkillUseCase.t
 // task usecases
 import { ListTaskUseCase } from "@application/usecase/tasks/ListTaskUseCase.ts";
 import { IssueTaskUseCase } from "@application/usecase/tasks/IssueTaskUseCase.ts";
+import { EditTaskUseCase } from "@application/usecase/tasks/EditTaskUseCase.ts";
 import { ClaimTaskUseCase } from "@application/usecase/tasks/ClaimTaskUseCase.ts";
+import { CancelTaskUseCase } from "@application/usecase/tasks/CancelTaskUseCase.ts";
 import { CompleteTaskUseCase } from "@application/usecase/tasks/CompleteTaskUseCase.ts";
 import { ReviewedTaskUseCase } from "@application/usecase/tasks/ReviewedTaskUseCase.ts";
 import { AcceptTaskUseCase } from "@application/usecase/tasks/AcceptTaskUseCase.ts";
@@ -39,7 +41,6 @@ import { ListStoryUseCase } from "@application/usecase/stories/ListStoryUseCase.
 import { IssueStoryUseCase } from "@application/usecase/stories/IssueStoryUseCase.ts";
 import { EditStoryUseCase } from "@application/usecase/stories/EditStoryUseCase.ts";
 import { DeleteStoryUseCase } from "@application/usecase/stories/DeleteStoryUseCase.ts";
-import { ClaimStoryUseCase } from "@application/usecase/stories/ClaimStoryUseCase.ts";
 import { CompleteStoryUseCase } from "@application/usecase/stories/CompleteStoryUseCase.ts";
 import { CancelStoryUseCase } from "@application/usecase/stories/CancelStoryUseCase.ts";
 
@@ -59,7 +60,9 @@ export const membershipService = new MembershipService(projectMembershipReposito
 export const instructionService = new InstructionService();
 export const listTaskUseCase = new ListTaskUseCase(taskRepository);
 export const issueTaskUseCase = new IssueTaskUseCase(taskRepository);
+export const editTaskUseCase = new EditTaskUseCase(taskRepository);
 export const claimTaskUseCase = new ClaimTaskUseCase(taskRepository, storyRepository);
+export const cancelTaskUseCase = new CancelTaskUseCase(taskRepository);
 export const completeTaskUseCase = new CompleteTaskUseCase(taskRepository);
 export const reviewedTaskUseCase = new ReviewedTaskUseCase(taskRepository);
 export const acceptTaskUseCase = new AcceptTaskUseCase(taskRepository, storyRepository);
@@ -71,7 +74,6 @@ export const listStoryUseCase = new ListStoryUseCase(storyRepository);
 export const issueStoryUseCase = new IssueStoryUseCase(storyRepository);
 export const editStoryUseCase = new EditStoryUseCase(storyRepository);
 export const deleteStoryUseCase = new DeleteStoryUseCase(storyRepository, taskRepository);
-export const claimStoryUseCase = new ClaimStoryUseCase(storyRepository);
 export const completeStoryUseCase = new CompleteStoryUseCase(storyRepository);
 export const cancelStoryUseCase = new CancelStoryUseCase(storyRepository);
 export const assignProjectRoleUseCase = new AssignProjectRoleUseCase(

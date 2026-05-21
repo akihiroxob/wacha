@@ -7,6 +7,7 @@ import { Task } from "@domain/model/Task.ts";
 import { Story } from "@domain/model/Story.ts";
 import { Project } from "@domain/model/Project.ts";
 import { ProjectMembership } from "@domain/model/ProjectMembership.ts";
+import { TaskComment } from "@domain/model/TaskComment.ts";
 import { TaskStatus } from "@constants/TaskStatus.ts";
 import { StoryStatus } from "@constants/StoryStatus.ts";
 import { ProjectRole } from "@constants/ProjectRole.ts";
@@ -42,6 +43,7 @@ test("ProjectPage renders accept and reject actions for wait_accept tasks", () =
           [TaskStatus.WAIT_ACCEPT]: 1,
           [TaskStatus.ACCEPTED]: 0,
           [TaskStatus.REJECTED]: 0,
+          [TaskStatus.CANCELED]: 0,
         },
         lastUpdatedAt: 2000,
       },
@@ -85,6 +87,7 @@ test("ProjectPage renders accept and reject actions for in_review tasks", () => 
           [TaskStatus.WAIT_ACCEPT]: 0,
           [TaskStatus.ACCEPTED]: 0,
           [TaskStatus.REJECTED]: 0,
+          [TaskStatus.CANCELED]: 0,
         },
         lastUpdatedAt: 2000,
       },
@@ -128,6 +131,7 @@ test("ProjectPage renders reject reason for rejected tasks", () => {
           [TaskStatus.WAIT_ACCEPT]: 0,
           [TaskStatus.ACCEPTED]: 0,
           [TaskStatus.REJECTED]: 1,
+          [TaskStatus.CANCELED]: 0,
         },
         lastUpdatedAt: 2000,
       },
@@ -141,6 +145,59 @@ test("ProjectPage renders reject reason for rejected tasks", () => {
 
   assert.match(html, /Reject Reason/);
   assert.match(html, /Need more tests/);
+});
+
+test("ProjectPage renders task comments as basic markdown", () => {
+  const task = new Task(
+    "task-3",
+    "project-1",
+    "story-1",
+    "Task 3",
+    "desc",
+    TaskStatus.DOING,
+    null,
+    null,
+    null,
+    1000,
+    2000,
+  );
+  const comment = new TaskComment(
+    "comment-1",
+    "task-3",
+    "## Heading\n- first item\n- second item with `code`\n\n```ts\nconst value = 1;\n```",
+    "worker",
+    2000,
+  );
+
+  const html = renderToString(
+    ProjectPage({
+      project,
+      summary: {
+        total: 1,
+        byStatus: {
+          [TaskStatus.TODO]: 0,
+          [TaskStatus.DOING]: 1,
+          [TaskStatus.IN_REVIEW]: 0,
+          [TaskStatus.WAIT_ACCEPT]: 0,
+          [TaskStatus.ACCEPTED]: 0,
+          [TaskStatus.REJECTED]: 0,
+          [TaskStatus.CANCELED]: 0,
+        },
+        lastUpdatedAt: 2000,
+      },
+      tasks: [task],
+      comments: [comment],
+      stories: [story],
+      agents: [agent],
+      agentSummary: { total: 1 },
+      storyStatusFilter: "active",
+    }),
+  );
+
+  assert.match(html, /<h4[^>]*>Heading<\/h4>/);
+  assert.match(html, /<li>first item<\/li>/);
+  assert.match(html, /<code[^>]*>code<\/code>/);
+  assert.match(html, /<pre[^>]*><code>const value = 1;/);
 });
 
 test("ProjectPage renders story sections collapsed by default", () => {
@@ -170,6 +227,7 @@ test("ProjectPage renders story sections collapsed by default", () => {
           [TaskStatus.WAIT_ACCEPT]: 0,
           [TaskStatus.ACCEPTED]: 0,
           [TaskStatus.REJECTED]: 0,
+          [TaskStatus.CANCELED]: 0,
         },
         lastUpdatedAt: 2000,
       },
@@ -200,6 +258,7 @@ test("ProjectPage renders edit action for stories", () => {
           [TaskStatus.WAIT_ACCEPT]: 0,
           [TaskStatus.ACCEPTED]: 0,
           [TaskStatus.REJECTED]: 0,
+          [TaskStatus.CANCELED]: 0,
         },
         lastUpdatedAt: 2000,
       },
@@ -244,7 +303,92 @@ test("ProjectPage renders delete action for canceled stories", () => {
   assert.match(html, /project\/project-1\/story\/story-2\/delete/);
 });
 
-test("ProjectPage hides delete action for non-todo task", () => {
+test("ProjectPage hides cancel action for non-cancelable task", () => {
+  const task = new Task(
+    "task-1",
+    "project-1",
+    "story-1",
+    "Task 1",
+    "desc",
+    TaskStatus.IN_REVIEW,
+    null,
+    null,
+    null,
+    1000,
+    2000,
+  );
+
+  const html = renderToString(
+    ProjectPage({
+      project,
+      summary: {
+        total: 1,
+        byStatus: {
+          [TaskStatus.TODO]: 0,
+          [TaskStatus.DOING]: 1,
+          [TaskStatus.IN_REVIEW]: 0,
+          [TaskStatus.WAIT_ACCEPT]: 0,
+          [TaskStatus.ACCEPTED]: 0,
+          [TaskStatus.REJECTED]: 0,
+          [TaskStatus.CANCELED]: 0,
+        },
+        lastUpdatedAt: 2000,
+      },
+      tasks: [task],
+      stories: [new Story("story-1", "project-1", "Story 1", "desc", StoryStatus.TODO, 1000, 2000)],
+      agents: [agent],
+      agentSummary: { total: 1 },
+      storyStatusFilter: "active",
+    }),
+  );
+
+  assert.doesNotMatch(html, /project\/project-1\/task\/task-1\/cancel/);
+});
+
+test("ProjectPage renders cancel action for todo task", () => {
+  const task = new Task(
+    "task-1",
+    "project-1",
+    "story-1",
+    "Task 1",
+    "desc",
+    TaskStatus.TODO,
+    null,
+    null,
+    null,
+    1000,
+    2000,
+  );
+
+  const html = renderToString(
+    ProjectPage({
+      project,
+      summary: {
+        total: 1,
+        byStatus: {
+          [TaskStatus.TODO]: 1,
+          [TaskStatus.DOING]: 0,
+          [TaskStatus.IN_REVIEW]: 0,
+          [TaskStatus.WAIT_ACCEPT]: 0,
+          [TaskStatus.ACCEPTED]: 0,
+          [TaskStatus.REJECTED]: 0,
+          [TaskStatus.CANCELED]: 0,
+        },
+        lastUpdatedAt: 2000,
+      },
+      tasks: [task],
+      stories: [story],
+      agents: [agent],
+      agentSummary: { total: 1 },
+      storyStatusFilter: "active",
+    }),
+  );
+
+  assert.match(html, /project\/project-1\/task\/task-1\/cancel/);
+  assert.match(html, /Cancel reason/);
+});
+
+test("ProjectPage renders cancel action for doing task", () => {
   const task = new Task(
     "task-1",
     "project-1",
@@ -267,6 +411,7 @@ test("ProjectPage hides delete action for non-todo task", () => {
         byStatus: {
           [TaskStatus.TODO]: 0,
           [TaskStatus.DOING]: 1,
+          [TaskStatus.CANCELED]: 0,
           [TaskStatus.IN_REVIEW]: 0,
           [TaskStatus.WAIT_ACCEPT]: 0,
           [TaskStatus.ACCEPTED]: 0,
@@ -275,14 +420,57 @@ test("ProjectPage hides delete action for non-todo task", () => {
         lastUpdatedAt: 2000,
       },
       tasks: [task],
-      stories: [new Story("story-1", "project-1", "Story 1", "desc", StoryStatus.TODO, 1000, 2000)],
+      stories: [story],
       agents: [agent],
       agentSummary: { total: 1 },
       storyStatusFilter: "active",
     }),
   );
 
-  assert.doesNotMatch(html, /project\/project-1\/task\/task-1\/delete/);
+  assert.match(html, /project\/project-1\/task\/task-1\/cancel/);
+});
+
+test("ProjectPage renders edit action for tasks", () => {
+  const task = new Task(
+    "task-1",
+    "project-1",
+    "story-1",
+    "Task 1",
+    "desc",
+    TaskStatus.DOING,
+    null,
+    null,
+    null,
+    1000,
+    2000,
+  );
+
+  const html = renderToString(
+    ProjectPage({
+      project,
+      summary: {
+        total: 1,
+        byStatus: {
+          [TaskStatus.TODO]: 0,
+          [TaskStatus.DOING]: 1,
+          [TaskStatus.CANCELED]: 0,
+          [TaskStatus.IN_REVIEW]: 0,
+          [TaskStatus.WAIT_ACCEPT]: 0,
+          [TaskStatus.ACCEPTED]: 0,
+          [TaskStatus.REJECTED]: 0,
+        },
+        lastUpdatedAt: 2000,
+      },
+      tasks: [task],
+      stories: [story],
+      agents: [agent],
+      agentSummary: { total: 1 },
+      storyStatusFilter: "active",
+    }),
+  );
+
+  assert.match(html, /project\/project-1\/task\/task-1\/edit/);
+  assert.match(html, /編集/);
 });
 
 test("ProjectPage groups story sections into a single-open accordion", () => {
@@ -300,6 +488,7 @@ test("ProjectPage groups story sections into a single-open accordion", () => {
           [TaskStatus.WAIT_ACCEPT]: 0,
           [TaskStatus.ACCEPTED]: 0,
           [TaskStatus.REJECTED]: 0,
+          [TaskStatus.CANCELED]: 0,
         },
         lastUpdatedAt: 2000,
       },
@@ -347,6 +536,7 @@ test("ProjectPage keeps active Tasks Without Story visible while active stories 
           [TaskStatus.WAIT_ACCEPT]: 0,
           [TaskStatus.ACCEPTED]: 0,
           [TaskStatus.REJECTED]: 0,
+          [TaskStatus.CANCELED]: 0,
         },
         lastUpdatedAt: 2000,
       },
@@ -407,6 +597,7 @@ test("ProjectPage hides terminal unassigned tasks in active mode", () => {
           [TaskStatus.WAIT_ACCEPT]: 0,
           [TaskStatus.ACCEPTED]: 1,
           [TaskStatus.REJECTED]: 0,
+          [TaskStatus.CANCELED]: 0,
         },
         lastUpdatedAt: 2000,
       },
@@ -420,6 +611,49 @@ test("ProjectPage hides terminal unassigned tasks in active mode", () => {
 
   assert.match(html, /Story 1/);
   assert.doesNotMatch(html, /Accepted Task/);
+});
+
+test("ProjectPage hides canceled unassigned tasks in active mode", () => {
+  const canceledTask = new Task(
+    "task-4",
+    "project-1",
+    null,
+    "Canceled Task",
+    "desc",
+    TaskStatus.CANCELED,
+    null,
+    null,
+    null,
+    1000,
+    2000,
+  );
+
+  const html = renderToString(
+    ProjectPage({
+      project,
+      summary: {
+        total: 1,
+        byStatus: {
+          [TaskStatus.TODO]: 0,
+          [TaskStatus.DOING]: 0,
+          [TaskStatus.IN_REVIEW]: 0,
+          [TaskStatus.WAIT_ACCEPT]: 0,
+          [TaskStatus.ACCEPTED]: 0,
+          [TaskStatus.REJECTED]: 0,
+          [TaskStatus.CANCELED]: 1,
+        },
+        lastUpdatedAt: 2000,
+      },
+      tasks: [canceledTask],
+      stories: [story],
+      agents: [agent],
+      agentSummary: { total: 1 },
+      storyStatusFilter: "active",
+    }),
+  );
+
+  assert.match(html, /Story 1/);
+  assert.doesNotMatch(html, /Canceled Task/);
 });
 
 test("ProjectPage shows done stories and terminal unassigned tasks in all mode", () => {
@@ -450,6 +684,7 @@ test("ProjectPage shows done stories and terminal unassigned tasks in all mode",
           [TaskStatus.WAIT_ACCEPT]: 0,
           [TaskStatus.ACCEPTED]: 1,
           [TaskStatus.REJECTED]: 0,
+          [TaskStatus.CANCELED]: 0,
         },
         lastUpdatedAt: 2000,
       },

@@ -3,6 +3,7 @@ import { Index } from "@views/index.tsx";
 import { ProjectPage } from "@views/project.tsx";
 import { AddStoryPage } from "@views/add-story.tsx";
 import { EditStoryPage } from "@views/edit-story.tsx";
+import { EditTaskPage } from "@views/edit-task.tsx";
 import { renderToString } from "hono/jsx/dom/server";
 import { ValidationError } from "@application/error/ValidationError.ts";
 import { StoryStatus } from "@constants/StoryStatus.ts";
@@ -14,6 +15,8 @@ import {
   listStoryUseCase,
   issueStoryUseCase,
   editStoryUseCase,
+  editTaskUseCase,
+  cancelTaskUseCase,
   deleteStoryUseCase,
   deleteTaskUseCase,
   acceptTaskUseCase,
@@ -30,6 +33,11 @@ export class PageController {
   private async findStoryInProject(projectId: string, storyId: string) {
     const storyResult = await listStoryUseCase.execute(projectId);
     return storyResult.stories.find((story) => story.id === storyId) ?? null;
+  }
+
+  private async findTaskInProject(projectId: string, taskId: string) {
+    const taskResult = await listTaskUseCase.execute(projectId);
+    return taskResult.tasks.find((task) => task.id === taskId) ?? null;
   }
 
   async index(c: Context) {
@@ -105,6 +113,24 @@ export class PageController {
     return c.html(`<!doctype html>${renderToString(page ?? "")}`);
   }
 
+  async editTask(c: Context) {
+    const projectId = c.req.param("projectId");
+    const taskId = c.req.param("taskId");
+
+    if (!projectId || !taskId) {
+      return c.json({ error: "projectId and taskId are required" }, 400);
+    }
+
+    const project = await getProjectUseCase.execute(projectId);
+    if (!project) return c.json({ error: "Project not found" }, 404);
+
+    const task = await this.findTaskInProject(projectId, taskId);
+    if (!task) return c.json({ error: "Task not found" }, 404);
+
+    const page = EditTaskPage({ project, task });
+    return c.html(`<!doctype html>${renderToString(page ?? "")}`);
+  }
+
   async createStory(c: Context) {
     const projectId = c.req.param("projectId");
 
@@ -167,6 +193,50 @@ export class PageController {
       const page = EditStoryPage({
         project,
         story,
+        error: message,
+        values: { title, description },
+      });
+      return c.html(`<!doctype html>${renderToString(page ?? "")}`, 400);
+    }
+
+    return c.redirect(`/project/${projectId}`, 303);
+  }
+
+  async updateTask(c: Context) {
+    const projectId = c.req.param("projectId");
+    const taskId = c.req.param("taskId");
+
+    if (!projectId || !taskId) {
+      return c.json({ error: "projectId and taskId are required" }, 400);
+    }
+
+    const project = await getProjectUseCase.execute(projectId);
+    if (!project) return c.json({ error: "Project not found" }, 404);
+
+    const task = await this.findTaskInProject(projectId, taskId);
+    if (!task) return c.json({ error: "Task not found" }, 404);
+
+    const formData = await c.req.formData();
+    const title = String(formData.get("title") ?? "").trim();
+    const description = String(formData.get("description") ?? "").trim();
+
+    if (title === "") {
+      const page = EditTaskPage({
+        project,
+        task,
+        error: "Title は必須です。",
+        values: { title, description },
+      });
+      return c.html(`<!doctype html>${renderToString(page ?? "")}`, 400);
+    }
+
+    try {
+      await editTaskUseCase.execute(projectId, taskId, title, description || null);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to update task";
+      const page = EditTaskPage({
+        project,
+        task,
         error: message,
         values: { title, description },
       });
@@ -271,6 +341,31 @@ export class PageController {
     if (body === "") throw new ValidationError("Comment body is required");
 
     await addTaskCommentUseCase.execute(taskId, body);
+    return c.redirect(`/project/${projectId}`, 303);
+  }
+
+  async cancelTask(c: Context) {
+    const projectId = c.req.param("projectId");
+    const taskId = c.req.param("taskId");
+
+    if (!projectId || !taskId) {
+      return c.json({ error: "projectId and taskId are required" }, 400);
+    }
+
+    const project = await getProjectUseCase.execute(projectId);
+    if (!project) return c.json({ error: "Project not found" }, 404);
+
+    const formData = await c.req.formData();
+    const reason = String(formData.get("reason") ?? "").trim();
+    if (reason === "") throw new ValidationError("Cancel reason is required");
+
+    try {
+      await cancelTaskUseCase.execute(taskId, reason);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to cancel task";
+      throw new ValidationError(message);
+    }
+
     return c.redirect(`/project/${projectId}`, 303);
   }
 }

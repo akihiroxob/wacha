@@ -10,12 +10,14 @@ import { TaskStatus } from "@constants/TaskStatus.ts";
 import { StoryStatus } from "@constants/StoryStatus.ts";
 import { ListTaskUseCase } from "@application/usecase/tasks/ListTaskUseCase.ts";
 import { IssueTaskUseCase } from "@application/usecase/tasks/IssueTaskUseCase.ts";
+import { EditTaskUseCase } from "@application/usecase/tasks/EditTaskUseCase.ts";
 import { ClaimTaskUseCase } from "@application/usecase/tasks/ClaimTaskUseCase.ts";
 import { CompleteTaskUseCase } from "@application/usecase/tasks/CompleteTaskUseCase.ts";
 import { ReviewedTaskUseCase } from "@application/usecase/tasks/ReviewedTaskUseCase.ts";
 import { AcceptTaskUseCase } from "@application/usecase/tasks/AcceptTaskUseCase.ts";
 import { RejectTaskUseCase } from "@application/usecase/tasks/RejectTaskUseCase.ts";
 import { DeleteTaskUseCase } from "@application/usecase/tasks/DeleteTaskUseCase.ts";
+import { CancelTaskUseCase } from "@application/usecase/tasks/CancelTaskUseCase.ts";
 
 class InMemoryTaskRepository implements TaskRepository {
   private tasks = new Map<string, Task>();
@@ -206,6 +208,7 @@ test("ListTaskUseCase returns tasks for the specified project", async () => {
   assert.equal(result.summary.byStatus[TaskStatus.TODO], 1);
   assert.equal(result.summary.byStatus[TaskStatus.DOING], 1);
   assert.equal(result.summary.byStatus[TaskStatus.WAIT_ACCEPT], 0);
+  assert.equal(result.summary.byStatus[TaskStatus.CANCELED], 0);
   assert.equal(result.summary.lastUpdatedAt, 2000);
   assert.equal(result.tasks.length, 2);
   assert.equal(result.tasks[0]?.id, "task-2");
@@ -220,6 +223,66 @@ test("IssueTaskUseCase creates a todo task", async () => {
   assert.equal(task.description, "details");
   assert.equal(task.projectId, "project-1");
   assert.equal(task.status, TaskStatus.TODO);
+});
+
+test("EditTaskUseCase updates title and description without changing status or story", async () => {
+  const task = new Task(
+    "task-1",
+    "project-1",
+    "story-1",
+    "Task 1",
+    "desc",
+    TaskStatus.DOING,
+    "session-1",
+    null,
+    null,
+    1000,
+    1000,
+  );
+  const repo = new InMemoryTaskRepository([task]);
+
+  const updated = await new EditTaskUseCase(repo).execute(
+    "project-1",
+    "task-1",
+    "Updated Task",
+    "new details",
+  );
+
+  assert.equal(updated.title, "Updated Task");
+  assert.equal(updated.description, "new details");
+  assert.equal(updated.status, TaskStatus.DOING);
+  assert.equal(updated.storyId, "story-1");
+});
+
+test("EditTaskUseCase throws when task is missing", async () => {
+  const repo = new InMemoryTaskRepository();
+
+  await assert.rejects(
+    () => new EditTaskUseCase(repo).execute("project-1", "missing-task", "Updated Task", "details"),
+    /Task not found/,
+  );
+});
+
+test("EditTaskUseCase throws when project does not match", async () => {
+  const task = new Task(
+    "task-1",
+    "project-2",
+    "story-1",
+    "Task 1",
+    "desc",
+    TaskStatus.TODO,
+    null,
+    null,
+    null,
+    1000,
+    1000,
+  );
+  const repo = new InMemoryTaskRepository([task]);
+
+  await assert.rejects(
+    () => new EditTaskUseCase(repo).execute("project-1", "task-1", "Updated Task", "details"),
+    /specified project/,
+  );
 });
 
 test("ClaimTaskUseCase claims a todo task", async () => {
@@ -368,6 +431,42 @@ test("AcceptTaskUseCase completes the linked story when all story tasks are acce
   assert.equal(savedStory?.status, StoryStatus.DONE);
 });
 
+test("AcceptTaskUseCase completes the linked story when remaining story tasks are canceled", async () => {
+  const canceledTask = new Task(
+    "task-1",
+    "project-1",
+    "story-1",
+    "Task 1",
+    "desc",
+    TaskStatus.CANCELED,
+    null,
+    null,
+    null,
+    1000,
+    1000,
+  );
+  const reviewTask = new Task(
+    "task-2",
+    "project-1",
+    "story-1",
+    "Task 2",
+    "desc",
+    TaskStatus.WAIT_ACCEPT,
+    null,
+    null,
+    null,
+    1000,
+    1000,
+  );
+  const taskRepo = new InMemoryTaskRepository([canceledTask, reviewTask]);
+  const storyRepo = new InMemoryStoryRepository([createStory(StoryStatus.DOING)]);
+
+  await new AcceptTaskUseCase(taskRepo, storyRepo).execute(reviewTask.id);
+
+  const savedStory = await storyRepo.findById("story-1");
+  assert.equal(savedStory?.status, StoryStatus.DONE);
+});
+
 test("AcceptTaskUseCase does not complete a story while another task is still waiting", async () => {
   const doingTask = new Task(
     "task-1",
@@ -424,6 +523,48 @@ test("RejectTaskUseCase rejects a wait_accept task", async () => {
   const savedTask = await repo.findById(task.id);
   assert.equal(savedTask?.status, TaskStatus.REJECTED);
   assert.equal(savedTask?.rejectReason, "Need manager follow-up");
+});
+
+test("CancelTaskUseCase cancels a todo task and leaves a comment", async () => {
+  const task = createTask(TaskStatus.TODO);
+  const repo = new InMemoryTaskRepository([task]);
+
+  await new CancelTaskUseCase(repo).execute(task.id, "Scope changed");
+
+  const savedTask = await repo.findById(task.id);
+  assert.equal(savedTask?.status, TaskStatus.CANCELED);
+  assert.equal(repo.comments.length, 1);
+  assert.equal(repo.comments[0]?.body, "Scope changed");
+});
+
+test("CancelTaskUseCase cancels a doing task", async () => {
+  const task = createTask(TaskStatus.DOING);
+  const repo = new InMemoryTaskRepository([task]);
+
+  await new CancelTaskUseCase(repo).execute(task.id, "Stopped midway");
+
+  const savedTask = await repo.findById(task.id);
+  assert.equal(savedTask?.status, TaskStatus.CANCELED);
+});
+
+test("CancelTaskUseCase rejects empty reason", async () => {
+  const task = createTask(TaskStatus.TODO);
+  const repo = new InMemoryTaskRepository([task]);
+
+  await assert.rejects(
+    () => new CancelTaskUseCase(repo).execute(task.id, " "),
+    /Cancel reason is required/,
+  );
+});
+
+test("CancelTaskUseCase rejects non-cancelable task status", async () => {
+  const task = createTask(TaskStatus.IN_REVIEW);
+  const repo = new InMemoryTaskRepository([task]);
+
+  await assert.rejects(
+    () => new CancelTaskUseCase(repo).execute(task.id, "Scope changed"),
+    /not in cancelable status/,
+  );
 });
 
 test("CompleteTaskUseCase throws when task is missing", async () => {

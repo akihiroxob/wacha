@@ -143,3 +143,26 @@ test("Task.reject throws when reason is empty", () => {
 
   assert.throws(() => task.reject(" "), /reject reason cannot be empty/);
 });
+
+test("Task.cancel changes status from todo to canceled", () => {
+  const task = createTask(TaskStatus.TODO);
+
+  task.cancel();
+
+  assert.equal(task.status, TaskStatus.CANCELED);
+  assert.equal(task.resumeSourceStatus, null);
+});
+
+test("Task.cancel changes status from doing to canceled", () => {
+  const task = createTask(TaskStatus.DOING);
+
+  task.cancel();
+
+  assert.equal(task.status, TaskStatus.CANCELED);
+});
+
+test("Task.cancel throws when status is not cancelable", () => {
+  const task = createTask(TaskStatus.IN_REVIEW);
+
+  assert.throws(() => task.cancel(), /not in cancelable status/);
+});

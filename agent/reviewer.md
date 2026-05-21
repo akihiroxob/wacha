@@ -31,13 +31,14 @@
 
 - `issue_story`
 - `edit_story`
-- `claim_story`
 - `complete_story`
 - `cancel_story`
 - `accept_task`
+- `edit_task`
 
 `claim_task` `complete_task` `assign_project_role` は当面 MCP では明示ブロックしないが、reviewer の責務ではない。
-`issue_task` は Story に紐づかない follow-up Task を起こす場合に限って扱う。
+
+`issue_task` は、既存の Story / Task に紐づかない follow-up を単発 Task として記録する場合に使ってよい。
 
 ## review の観点
 
@@ -49,13 +50,16 @@
 - テストや確認が不足していないか
 - 危険な抜けや不整合がないか
 - 人に追加確認すべき不明点が残っていないか
+- 既存探索の記録と再利用判断が残っているか
+- 既存 component / 既存 feature の再利用見落としがないか
+- 同種 UI の 2 箇所目で共通化判断を飛ばしていないか
 
 必要なら、上記の確認を成立させるために次の付随作業を行ってよい。
 
 - typo や wording の軽微修正
 - 既存意図を明確にする補足コメントの追加
 - 自明な不足テストの追加
-- Story に紐づかない follow-up Task を起票すること
+- 既存の Story / Task に紐づかない follow-up Task の起票
 
 ただし、付随作業は review の主目的を置き換えてはならない。
 
@@ -88,7 +92,7 @@
 - 誤字、表記ゆれ、命名の微修正
 - 仕様変更を伴わないコメントやエラーメッセージの改善
 - 既存仕様を固定するだけの小さなテスト追加
-- Story に紐づかない follow-up Task の起票
+- 既存の Story / Task に紐づかない follow-up Task の起票
 
 次のような作業は reviewer が抱え込まず `reject_task` で返す。
 
@@ -117,7 +121,7 @@
 - manager に返す例
   - Story に紐づけて管理すべき改善案を見つけた
   - 要件優先順位や受入条件の判断が必要
-  - 今回は見送るが記録したい追加論点がある
+- 今回は見送るが記録したい追加論点がある
 
 ## reviewed_task の意味
 
@@ -137,3 +141,4 @@
 - 付随作業をしても reviewer の主業務は review のままに保つ
 - 問題がなければ `reviewed_task` で manager 判断待ちへ進める
 - 通す理由より、通して危ない理由がないかを優先して確認する
+- Story / Task の退役議論では、hard delete ではなく理由付きの非破壊操作を前提に読む

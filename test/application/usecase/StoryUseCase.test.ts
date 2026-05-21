@@ -7,7 +7,6 @@ import { StoryStatus } from "@constants/StoryStatus.ts";
 import { ListStoryUseCase } from "@application/usecase/stories/ListStoryUseCase.ts";
 import { IssueStoryUseCase } from "@application/usecase/stories/IssueStoryUseCase.ts";
 import { EditStoryUseCase } from "@application/usecase/stories/EditStoryUseCase.ts";
-import { ClaimStoryUseCase } from "@application/usecase/stories/ClaimStoryUseCase.ts";
 import { CompleteStoryUseCase } from "@application/usecase/stories/CompleteStoryUseCase.ts";
 import { CancelStoryUseCase } from "@application/usecase/stories/CancelStoryUseCase.ts";
 import { DeleteStoryUseCase } from "@application/usecase/stories/DeleteStoryUseCase.ts";
@@ -186,16 +185,6 @@ test("EditStoryUseCase updates title and description", async () => {
   assert.ok(updated.updatedAt >= story.updatedAt);
 });
 
-test("ClaimStoryUseCase moves a todo story to doing", async () => {
-  const story = createStory("story-1", StoryStatus.TODO, 1000);
-  const repo = new InMemoryStoryRepository([story]);
-
-  await new ClaimStoryUseCase(repo).execute(story.id);
-
-  const savedStory = await repo.findById(story.id);
-  assert.equal(savedStory?.status, StoryStatus.DOING);
-});
-
 test("CompleteStoryUseCase moves a doing story to done", async () => {
   const story = createStory("story-1", StoryStatus.DOING, 1000);
   const repo = new InMemoryStoryRepository([story]);
@@ -214,12 +203,6 @@ test("CancelStoryUseCase moves a doing story to canceled", async () => {
 
   const savedStory = await repo.findById(story.id);
   assert.equal(savedStory?.status, StoryStatus.CANCELED);
-});
-
-test("ClaimStoryUseCase throws when story is missing", async () => {
-  const repo = new InMemoryStoryRepository();
-
-  await assert.rejects(() => new ClaimStoryUseCase(repo).execute("missing-story"), /Story not found/);
 });
 
 test("EditStoryUseCase throws when story is missing", async () => {

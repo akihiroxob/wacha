@@ -3,12 +3,14 @@ import { TaskStatus } from "@constants/TaskStatus.ts";
 import {
   TodoBadge,
   DoingBadge,
+  CanceledBadge,
   InReviewBadge,
   WaitAcceptBadge,
   AcceptedBadge,
   RejectedBadge,
 } from "./badge.tsx";
 import type { TaskComment } from "@domain/model/TaskComment.ts";
+import { Markdown } from "./markdown.tsx";
 
 type TaskRowProps = {
   projectId: string;
@@ -33,7 +35,7 @@ export const TaskRow: FC<TaskRowProps> = ({
 }) => {
   const detailId = `task-detail-${id}`;
   const formattedUpdatedAt = new Date(updatedAt).toLocaleString();
-  const canDelete = status === TaskStatus.TODO;
+  const canCancel = status === TaskStatus.TODO || status === TaskStatus.DOING;
   const canAccept = status === TaskStatus.IN_REVIEW || status === TaskStatus.WAIT_ACCEPT;
   const canReject = status === TaskStatus.IN_REVIEW || status === TaskStatus.WAIT_ACCEPT;
 
@@ -50,6 +52,7 @@ export const TaskRow: FC<TaskRowProps> = ({
             <div class="flex items-center self-stretch">
               {status === TaskStatus.TODO && <TodoBadge />}
               {status === TaskStatus.DOING && <DoingBadge />}
+              {status === TaskStatus.CANCELED && <CanceledBadge />}
               {status === TaskStatus.IN_REVIEW && <InReviewBadge />}
               {status === TaskStatus.WAIT_ACCEPT && <WaitAcceptBadge />}
               {status === TaskStatus.ACCEPTED && <AcceptedBadge />}
@@ -70,20 +73,6 @@ export const TaskRow: FC<TaskRowProps> = ({
               </div>
             </div>
           </button>
-          {canDelete && (
-            <form
-              method="post"
-              action={`/project/${projectId}/task/${id}/delete`}
-              onsubmit={"return confirm('この Task を削除しますか？');"}
-            >
-              <button
-                type="submit"
-                class="rounded-xl border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
-              >
-                削除
-              </button>
-            </form>
-          )}
         </div>
       </div>
 
@@ -97,6 +86,7 @@ export const TaskRow: FC<TaskRowProps> = ({
             <div class="flex items-center gap-3">
               {status === TaskStatus.TODO && <TodoBadge />}
               {status === TaskStatus.DOING && <DoingBadge />}
+              {status === TaskStatus.CANCELED && <CanceledBadge />}
               {status === TaskStatus.IN_REVIEW && <InReviewBadge />}
               {status === TaskStatus.WAIT_ACCEPT && <WaitAcceptBadge />}
               {status === TaskStatus.ACCEPTED && <AcceptedBadge />}
@@ -117,6 +107,14 @@ export const TaskRow: FC<TaskRowProps> = ({
         </div>
 
         <div class="mt-5 flex flex-col gap-3">
+          <div class="flex justify-end">
+            <a
+              href={`/project/${projectId}/task/${id}/edit`}
+              class="rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
+            >
+              編集
+            </a>
+          </div>
           <div>
             <p class="text-sm font-medium text-stone-500">Description</p>
             <p class="mt-1 whitespace-pre-wrap text-base text-stone-800">
@@ -141,7 +139,7 @@ export const TaskRow: FC<TaskRowProps> = ({
                     key={comment.id}
                     class="rounded-xl bg-white px-3 py-2 text-sm text-stone-700"
                   >
-                    <p class="whitespace-pre-wrap">{comment.body}</p>
+                    <Markdown text={comment.body} />
                     <p class="mt-1 text-xs text-stone-400">
                       {comment.author ?? "unknown"} / {new Date(comment.createdAt).toLocaleString()}
                     </p>
@@ -212,6 +210,33 @@ export const TaskRow: FC<TaskRowProps> = ({
                   </form>
                 )}
               </div>
+            </div>
+          )}
+          {canCancel && (
+            <div class="rounded-2xl border border-stone-200 bg-stone-50 p-4">
+              <p class="text-sm font-medium text-stone-700">Cancel Task</p>
+              <form
+                method="post"
+                action={`/project/${projectId}/task/${id}/cancel`}
+                class="mt-3 flex flex-col gap-3"
+              >
+                <label class="flex flex-col gap-2">
+                  <span class="text-sm font-medium text-stone-700">Cancel reason</span>
+                  <textarea
+                    name="reason"
+                    rows={3}
+                    required
+                    placeholder="キャンセル理由を入力してください"
+                    class="rounded-2xl border border-stone-200 px-4 py-3 text-sm leading-6 text-stone-900 outline-none transition focus:border-stone-400"
+                  />
+                </label>
+                <button
+                  type="submit"
+                  class="inline-flex items-center justify-center rounded-xl border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-100"
+                >
+                  Cancel
+                </button>
+              </form>
             </div>
           )}
         </div>

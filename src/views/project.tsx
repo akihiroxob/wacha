@@ -40,7 +40,9 @@ export const ProjectPage: FC<ProjectProps> = ({
   storyStatusFilter,
 }) => {
   const isActiveTask = (status: TaskStatusValue) =>
-    status !== TaskStatus.ACCEPTED && status !== TaskStatus.REJECTED;
+    status !== TaskStatus.ACCEPTED &&
+    status !== TaskStatus.REJECTED &&
+    status !== TaskStatus.CANCELED;
   const tasksByStoryId = new Map<string, Task[]>();
   const commentsByTaskId = new Map<string, TaskComment[]>();
   const storyStatusOptions: { label: string; value: "all" | "active" }[] = [

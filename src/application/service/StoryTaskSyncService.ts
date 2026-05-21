@@ -29,7 +29,10 @@ export class StoryTaskSyncService {
     if (
       story.status === StoryStatus.DOING &&
       storyTasks.length > 0 &&
-      storyTasks.every((candidate) => candidate.status === TaskStatus.ACCEPTED)
+      storyTasks.every(
+        (candidate) =>
+          candidate.status === TaskStatus.ACCEPTED || candidate.status === TaskStatus.CANCELED,
+      )
     ) {
       story.complete();
       await this.storyRepository.save(story);

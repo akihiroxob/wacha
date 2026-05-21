@@ -109,11 +109,11 @@ docker compose down -v
 - `list_stories`
 - `issue_story`
 - `edit_story`
-- `claim_story`
 - `complete_story`
 - `cancel_story`
 - `list_tasks`
 - `issue_task`
+- `edit_task`
 - `claim_task`
 - `complete_task`
 - `reviewed_task`
@@ -131,6 +131,13 @@ Skill-related notes:
 - 返却値には `name`, `description`, `status`, `version`, `allowRoles` が含まれます
 - `get_skill_context` は Skill 本体と `requiredKnowledge` に対応する knowledge 内容を返します
 
+Response notes:
+
+- `issue_story` は作成された Story の主要フィールドに加えて `requiredNextTool: "issue_task"` を返します
+- `issue_story` の返り値には、今回 `requiredNextArgs` は含まれません
+- `assign_project_role` は `requiredNextTool: "get_role_instructions"` と `requiredNextArgs` を返します
+- `edit_story` と `edit_task` は更新後の entity を返します
+
 Task flow:
 
 - `claim_task`: `todo` / `rejected` -> `doing`
@@ -141,11 +148,22 @@ Task flow:
 
 Role-related notes:
 
-- `issue_story`, `edit_story`, `claim_story`, `complete_story`, `cancel_story`, `accept_task` は manager 向けです
-- `issue_task` は manager なら常に実行でき、reviewer は Story 非紐付け task のみ作成できます
+- `issue_story`, `edit_story`, `complete_story`, `cancel_story`, `accept_task` は manager 向けです
+- `edit_task` も manager 向けです
+- `issue_task` は manager / reviewer / worker が使えます
 - `reviewed_task` は reviewer 向けです
 - `add_task_comment` は reviewer / worker が使えます
+- `add_task_comment` の本文は Markdown 前提で扱います
+- コメントの Markdown は基本要素を読みやすく表示しますが、厳密な構文検証は今回行いません
+- Story が `doing` になるのは `claim_task` による着手時です
+- 既存の Story / Task に紐づかない直接依頼や follow-up は、`issue_task` で単発 Task として記録できます
 - 詳細な運用ルールは `agent/role-policy.md` を参照してください
+
+Cancellation notes:
+
+- Story / Task を管理対象から外す cancel 操作は、hard delete ではなく非破壊の状態遷移として扱う前提です
+- cancel 時は、理由を `add_task_comment` などのコメントとして残す運用または入力要件を持たせる想定です
+- 現在の delete 操作は既存挙動であり、この cancel 方針そのものとは別に扱います
 
 ## Docker
 

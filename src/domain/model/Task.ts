@@ -24,6 +24,19 @@ export class Task {
     }
   }
 
+  changeTitle(title: string) {
+    if (title.trim() === "") {
+      throw new Error("task title cannot be empty");
+    }
+    this.title = title.trim();
+    this.updatedAt = Date.now();
+  }
+
+  changeDescription(description: string) {
+    this.description = description.trim() === "" ? null : description;
+    this.updatedAt = Date.now();
+  }
+
   claim(sessionId: string) {
     if (this.status !== TaskStatus.TODO && this.status !== TaskStatus.REJECTED) {
       throw new Error(`the task(${this.id}) is already claimed`);
@@ -70,6 +83,15 @@ export class Task {
     }
     this.status = TaskStatus.REJECTED;
     this.rejectReason = reason.trim();
+    this.resumeSourceStatus = null;
+    this.updatedAt = Date.now();
+  }
+
+  cancel() {
+    if (this.status !== TaskStatus.TODO && this.status !== TaskStatus.DOING) {
+      throw new Error(`the task(${this.id}) is not in cancelable status`);
+    }
+    this.status = TaskStatus.CANCELED;
     this.resumeSourceStatus = null;
     this.updatedAt = Date.now();
   }

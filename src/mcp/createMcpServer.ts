@@ -7,11 +7,11 @@ import { ListProjectAgentsTool } from "@mcp/tool/ListProjectAgentsTool.ts";
 import { ListStoryTool } from "@mcp/tool/ListStoryTool.ts";
 import { IssueStoryTool } from "@mcp/tool/IssueStoryTool.ts";
 import { EditStoryTool } from "@mcp/tool/EditStoryTool.ts";
-import { ClaimStoryTool } from "@mcp/tool/ClaimStoryTool.ts";
 import { CompleteStoryTool } from "@mcp/tool/CompleteStoryTool.ts";
 import { CancelStoryTool } from "@mcp/tool/CancelStoryTool.ts";
 import { ListTaskTool } from "@mcp/tool/ListTaskTool.ts";
 import { IssueTaskTool } from "@mcp/tool/IssueTaskTool.ts";
+import { EditTaskTool } from "@mcp/tool/EditTaskTool.ts";
 import { AcceptTaskTool } from "@mcp/tool/AcceptTaskTool.ts";
 import { RejectTaskTool } from "@mcp/tool/RejectTaskTool.ts";
 import { AddTaskCommentTool } from "@mcp/tool/AddTaskCommentTool.ts";
@@ -21,9 +21,8 @@ import { CompleteTaskTool } from "@mcp/tool/CompleteTaskTool.ts";
 import { ReviewedTaskTool } from "@mcp/tool/ReviewedTaskTool.ts";
 import { AssignTool } from "@mcp/tool/AssignTool.ts";
 import { GetRoleInstructionsTool } from "./tool/GetRoleInstructionsTool.ts";
-import { canIssueTask, withRoleGuard } from "@mcp/middleware/RoleGuard.ts";
+import { withRoleGuard } from "@mcp/middleware/RoleGuard.ts";
 import { ProjectRole } from "@constants/ProjectRole.ts";
-import { membershipService } from "@container";
 
 const name = "wacha";
 const version = "1.0.0";
@@ -54,11 +53,6 @@ export const createMcpServer = (context: ToolContext) => {
     withRoleGuard([ProjectRole.MANAGER], context, EditStoryTool.execute),
   );
   server.registerTool(
-    "claim_story",
-    ClaimStoryTool.config,
-    withRoleGuard([ProjectRole.MANAGER], context, ClaimStoryTool.execute),
-  );
-  server.registerTool(
     "complete_story",
     CompleteStoryTool.config,
     withRoleGuard([ProjectRole.MANAGER], context, CompleteStoryTool.execute),
@@ -71,19 +65,20 @@ export const createMcpServer = (context: ToolContext) => {
 
   // tool for task
   server.registerTool("list_tasks", ListTaskTool.config, ListTaskTool.execute);
-  server.registerTool("issue_task", IssueTaskTool.config, async (args) => {
-    const { sessionId } = context;
-    if (!sessionId) {
-      throw new Error("Unauthorized: No sessionId in context");
-    }
-
-    const roles = await membershipService.getRolesBySessionId(sessionId);
-    if (!canIssueTask(roles, args.storyId)) {
-      throw new Error("Forbidden: Agent cannot issue story-linked tasks without manager role");
-    }
-
-    return IssueTaskTool.execute(args);
-  });
+  server.registerTool(
+    "issue_task",
+    IssueTaskTool.config,
+    withRoleGuard(
+      [ProjectRole.MANAGER, ProjectRole.REVIEWER, ProjectRole.WORKER],
+      context,
+      IssueTaskTool.execute,
+    ),
+  );
+  server.registerTool(
+    "edit_task",
+    EditTaskTool.config,
+    withRoleGuard([ProjectRole.MANAGER], context, EditTaskTool.execute),
+  );
   server.registerTool("claim_task", ClaimTaskTool.config, (args) =>
     ClaimTaskTool.execute({ ...args, sessionId: context.sessionId }),
   );
