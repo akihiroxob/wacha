@@ -123,6 +123,7 @@
 
 - 重複タスクを作らないため、まず `list_tasks` を確認する
 - タスク名は短く、何をするか分かる表現にする
+- 既存の Story / Task に紐づかない直接依頼や follow-up は、`issue_task` で単発 Task を作成してから進める
 - `complete_task` は本当にレビュー可能な状態になってから呼ぶ
 - 追加対応が必要な場合は、状態を曖昧にせず `reject_task` を使う
 - Story が `doing` になるのは、Story 配下の Task が `claim_task` で着手されたとき

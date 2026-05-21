@@ -150,12 +150,13 @@ Role-related notes:
 
 - `issue_story`, `edit_story`, `complete_story`, `cancel_story`, `accept_task` は manager 向けです
 - `edit_task` も manager 向けです
-- `issue_task` は manager なら常に実行でき、reviewer は Story 非紐付け task のみ作成できます
+- `issue_task` は manager / reviewer / worker が使えます
 - `reviewed_task` は reviewer 向けです
 - `add_task_comment` は reviewer / worker が使えます
 - `add_task_comment` の本文は Markdown 前提で扱います
 - コメントの Markdown は基本要素を読みやすく表示しますが、厳密な構文検証は今回行いません
 - Story が `doing` になるのは `claim_task` による着手時です
+- 既存の Story / Task に紐づかない直接依頼や follow-up は、`issue_task` で単発 Task として記録できます
 - 詳細な運用ルールは `agent/role-policy.md` を参照してください
 
 Cancellation notes:
