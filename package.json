@@ -16,30 +16,37 @@
   "main": "index.js",
   "scripts": {
     "start": "tsx src/server.ts",
-    "prestart": "postcss src/views/css/style.css -o public/css/style.css",
+    "prestart": "npm run build",
+    "build": "tsc -p frontend && vite build --config frontend/vite.config.ts",
     "test": "mkdir -p .tmp && rm -f .tmp/wacha-test.db && WACHA_DB_PATH=.tmp/wacha-test.db node --import tsx --test --test-concurrency=1 \"test/**/*.test.ts\"",
     "test2": "mkdir -p .tmp && rm -f .tmp/wacha-test.db && WACHA_DB_PATH=.tmp/wacha-test.db node --import tsx --test --test-concurrency=1 \"test/**/SkillRepository.test.ts\"",
-    "dev": "npm-run-all --parallel dev:server dev:css",
+    "dev": "npm-run-all --parallel dev:server dev:frontend",
     "dev:server": "tsx watch src/server.ts",
-    "dev:css": "postcss src/views/css/style.css -o public/css/style.css --watch"
+    "dev:frontend": "vite --config frontend/vite.config.ts"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.2.2",
+    "@tailwindcss/vite": "^4.2.2",
     "@types/better-sqlite3": "^7.6.13",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^5.0.0",
     "npm-run-all": "^4.1.5",
-    "postcss": "^8.5.8",
-    "postcss-cli": "^11.0.1",
     "tailwindcss": "^4.2.2",
-    "typescript": "^6.0.2"
+    "typescript": "^6.0.2",
+    "vite": "^7.1.0"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.12",
     "@modelcontextprotocol/sdk": "^1.29.0",
+    "@tanstack/react-query": "^5.90.0",
     "better-sqlite3": "^12.8.0",
     "clsx": "^2.1.1",
     "gray-matter": "^4.0.3",
     "hono": "^4.12.9",
     "kysely": "^0.28.15",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-router-dom": "^7.9.0",
     "tsx": "^4.21.0",
     "zod": "^4.3.6"
   }

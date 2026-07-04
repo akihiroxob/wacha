@@ -1,54 +1,73 @@
-"use client";
-import type { FC } from "hono/jsx";
-import { StoryStatus } from "@constants/StoryStatus.ts";
-import { TaskStatus, type TaskStatus as TaskStatusValue } from "@constants/TaskStatus.ts";
-import type { Task } from "@domain/model/Task.ts";
-import type { Project } from "@domain/model/Project.ts";
-import type { Story } from "@domain/model/Story.ts";
-import type { TaskComment } from "@domain/model/TaskComment.ts";
-import { Layout } from "./layout/Layout.tsx";
-import { Button } from "./components/button.tsx";
-import { StoryCard } from "./components/story-card.tsx";
-import { TaskRow } from "./components/task-row.tsx";
-import { ProjectMembership } from "@domain/model/ProjectMembership.ts";
+import { Link, useParams, useSearchParams } from "react-router-dom";
+import type { StoryDto, TaskDto, TaskCommentDto, TaskStatus } from "@shared/apiTypes";
+import { Layout } from "@/components/Layout";
+import { Button } from "@/components/Button";
+import { StoryCard } from "@/components/StoryCard";
+import { TaskRow } from "@/components/TaskRow";
+import { useDeleteStory, useProject } from "@/lib/queries";
+import { ApiError } from "@/lib/api";
 
-type ProjectProps = {
-  summary: {
-    total: number;
-    byStatus: Record<TaskStatusValue, number>;
-    lastUpdatedAt: number | null;
-  };
-  tasks: Task[];
-  comments?: TaskComment[];
-  stories: Story[];
-  project: Project;
-  agents: ProjectMembership[];
-  agentSummary: {
-    total: number;
-  };
-  storyStatusFilter: "all" | "active";
-};
+const isActiveStoryStatus = (status: StoryDto["status"]) =>
+  status !== "done" && status !== "canceled";
 
-export const ProjectPage: FC<ProjectProps> = ({
-  summary,
-  tasks,
-  comments = [],
-  stories,
-  project,
-  agents,
-  agentSummary,
-  storyStatusFilter,
-}) => {
-  const isActiveTask = (status: TaskStatusValue) =>
-    status !== TaskStatus.ACCEPTED &&
-    status !== TaskStatus.REJECTED &&
-    status !== TaskStatus.CANCELED;
-  const tasksByStoryId = new Map<string, Task[]>();
-  const commentsByTaskId = new Map<string, TaskComment[]>();
+const isActiveTask = (status: TaskStatus) =>
+  status !== "accepted" && status !== "rejected" && status !== "canceled";
+
+export const ProjectDetailPage = () => {
+  const { projectId = "" } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const storyStatusFilter = searchParams.get("storyStatus") === "all" ? "all" : "active";
+  const { data, isPending, error } = useProject(projectId);
+  const deleteStory = useDeleteStory(projectId);
+
   const storyStatusOptions: { label: string; value: "all" | "active" }[] = [
     { label: "Done / Canceled 以外", value: "active" },
     { label: "すべて表示", value: "all" },
   ];
+
+  if (isPending) {
+    return (
+      <Layout>
+        <main className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-6 py-10 md:px-8">
+          <div className="rounded-3xl border border-dashed border-stone-200 bg-white px-6 py-8 text-sm text-stone-500">
+            読み込み中...
+          </div>
+        </main>
+      </Layout>
+    );
+  }
+
+  if (error || !data) {
+    const message =
+      error instanceof ApiError && error.status === 404
+        ? "Project が見つかりません。"
+        : (error?.message ?? "読み込みに失敗しました。");
+    return (
+      <Layout>
+        <main className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-6 py-10 md:px-8">
+          <Link
+            to="/"
+            className="inline-flex w-fit rounded-xl px-3 py-2 text-sm text-stone-500 transition hover:bg-white hover:shadow-sm"
+          >
+            ← プロジェクト一覧に戻る
+          </Link>
+          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {message}
+          </div>
+        </main>
+      </Layout>
+    );
+  }
+
+  const { project, tasks, comments, agents } = data;
+
+  const stories =
+    storyStatusFilter === "all"
+      ? data.stories
+      : data.stories.filter((story) => isActiveStoryStatus(story.status));
+
+  const tasksByStoryId = new Map<string, TaskDto[]>();
+  const commentsByTaskId = new Map<string, TaskCommentDto[]>();
 
   for (const task of tasks) {
     if (!task.storyId) continue;
@@ -66,15 +85,20 @@ export const ProjectPage: FC<ProjectProps> = ({
     storyStatusFilter === "all" ? !task.storyId : !task.storyId && isActiveTask(task.status),
   );
 
+  const handleDeleteStory = (storyId: string) => {
+    if (!confirm("この Story と配下の Task を削除しますか？")) return;
+    deleteStory.mutate(storyId);
+  };
+
   return (
     <Layout>
       <main className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-6 py-10 md:px-8">
-        <a
-          href="/"
+        <Link
+          to="/"
           className="inline-flex w-fit rounded-xl px-3 py-2 text-sm text-stone-500 transition hover:bg-white hover:shadow-sm"
         >
           ← プロジェクト一覧に戻る
-        </a>
+        </Link>
         <section className="rounded-[2rem] border border-stone-200 bg-white px-6 py-8 shadow-sm md:px-8">
           <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
             <div className="flex max-w-3xl flex-col gap-3">
@@ -92,9 +116,9 @@ export const ProjectPage: FC<ProjectProps> = ({
                 最終更新: {new Date(project.updatedAt).toLocaleString()}
               </p>
             </div>
-            <a href={`/project/${project.id}/story/add`}>
+            <Link to={`/project/${project.id}/story/add`}>
               <Button text="+ 新しいStoryを作成" />
-            </a>
+            </Link>
           </div>
         </section>
 
@@ -168,32 +192,23 @@ export const ProjectPage: FC<ProjectProps> = ({
               <h2 className="text-lg font-semibold text-stone-900">Stories</h2>
               <p className="text-sm text-stone-500">Story 単位で状態を絞り込みできます</p>
             </div>
-            <form method="get" className="flex items-end gap-3">
-              <label className="flex flex-col gap-2 text-sm text-stone-600">
-                <span className="font-medium">Story Status</span>
-                <select
-                  name="storyStatus"
-                  className="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-900 outline-none transition focus:border-stone-400"
-                  onChange={(event) => console.log(event)}
-                >
-                  {storyStatusOptions.map((option) => (
-                    <option
-                      key={option.value}
-                      value={option.value}
-                      selected={storyStatusFilter === option.value}
-                    >
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <button
-                type="submit"
-                className="rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
+            <label className="flex flex-col gap-2 text-sm text-stone-600">
+              <span className="font-medium">Story Status</span>
+              <select
+                value={storyStatusFilter}
+                onChange={(event) => {
+                  const value = event.currentTarget.value;
+                  setSearchParams(value === "all" ? { storyStatus: "all" } : {});
+                }}
+                className="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-900 outline-none transition focus:border-stone-400"
               >
-                Apply
-              </button>
-            </form>
+                {storyStatusOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
             <p className="text-sm text-stone-400">{stories.length} items</p>
           </div>
           {stories.length > 0 ? (
@@ -214,22 +229,22 @@ export const ProjectPage: FC<ProjectProps> = ({
                           <div className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-500">
                             {storyTasks.length} tasks
                           </div>
-                          {story.status === StoryStatus.TODO && (
+                          {story.status === "todo" && (
                             <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-700">
                               Todo
                             </span>
                           )}
-                          {story.status === StoryStatus.DOING && (
+                          {story.status === "doing" && (
                             <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700">
                               Doing
                             </span>
                           )}
-                          {story.status === StoryStatus.DONE && (
+                          {story.status === "done" && (
                             <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700">
                               Done
                             </span>
                           )}
-                          {story.status === StoryStatus.CANCELED && (
+                          {story.status === "canceled" && (
                             <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-700">
                               Canceled
                             </span>
@@ -250,28 +265,21 @@ export const ProjectPage: FC<ProjectProps> = ({
                           <StoryCard story={story} taskCount={storyTasks.length} embedded />
                         </div>
                         <div className="flex shrink-0 items-start gap-2">
-                          <a
-                            href={`/project/${project.id}/story/${story.id}/edit`}
+                          <Link
+                            to={`/project/${project.id}/story/${story.id}/edit`}
                             className="rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
                           >
                             編集
-                          </a>
-                          {(story.status === StoryStatus.TODO ||
-                            story.status === StoryStatus.CANCELED) && (
-                            <form
-                              method="post"
-                              action={`/project/${project.id}/story/${story.id}/delete`}
-                              onsubmit={
-                                "return confirm('この Story と配下の Task を削除しますか？');"
-                              }
+                          </Link>
+                          {(story.status === "todo" || story.status === "canceled") && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteStory(story.id)}
+                              disabled={deleteStory.isPending}
+                              className="rounded-xl border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50"
                             >
-                              <button
-                                type="submit"
-                                className="rounded-xl border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
-                              >
-                                削除
-                              </button>
-                            </form>
+                              削除
+                            </button>
                           )}
                         </div>
                       </div>
@@ -317,21 +325,19 @@ export const ProjectPage: FC<ProjectProps> = ({
           </div>
           {unassignedTasks.length > 0 ? (
             <div className="flex flex-col gap-2">
-              {unassignedTasks.map((task) => {
-                return (
-                  <TaskRow
-                    key={task.id}
-                    projectId={project.id}
-                    id={task.id}
-                    title={task.title}
-                    description={task.description}
-                    status={task.status}
-                    rejectReason={task.rejectReason}
-                    comments={commentsByTaskId.get(task.id) ?? []}
-                    updatedAt={task.updatedAt}
-                  />
-                );
-              })}
+              {unassignedTasks.map((task) => (
+                <TaskRow
+                  key={task.id}
+                  projectId={project.id}
+                  id={task.id}
+                  title={task.title}
+                  description={task.description}
+                  status={task.status}
+                  rejectReason={task.rejectReason}
+                  comments={commentsByTaskId.get(task.id) ?? []}
+                  updatedAt={task.updatedAt}
+                />
+              ))}
             </div>
           ) : (
             <div className="rounded-3xl border border-dashed border-stone-200 bg-white px-6 py-8 text-sm text-stone-500">

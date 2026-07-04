@@ -4,8 +4,6 @@
     "target": "ES2022",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "jsx": "react-jsx",
-    "jsxImportSource": "hono/jsx",
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
@@ -45,17 +43,16 @@
       "@controller/*": [
         "presentation/controller/*"
       ],
-      "@views/*": [
-        "views/*"
-      ],
       "@utils/*": [
         "utils/*"
+      ],
+      "@shared/*": [
+        "../shared/*"
       ]
     },
   },
   "include": [
     "src/**/*.ts",
-    "src/**/*.tsx",
     "test/**/*.ts",
   ],
   "exclude": [

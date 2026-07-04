@@ -11,16 +11,26 @@ Worker Aggregation and Control Hub for Agents
 ### Local
 
 依存関係を入れたうえで、次のコマンドで起動します。
+`npm run start` は `prestart` で WebUI (React SPA) を `public/` にビルドしてから Hono を立ち上げます。
 
 ```bash
 npm install
 npm run start
 ```
 
+開発時はサーバ (tsx watch) と Vite dev server を同時に起動できます。
+
+```bash
+npm run dev
+```
+
+- Vite dev server: `http://localhost:5173` (`/api` は Hono へプロキシ)
+- Hono server: `http://localhost:51743`
+
 デフォルト設定:
 
-- MCP endpoint: `http://localhost:3000/mcp`
-- Health check: `http://localhost:3000/health`
+- MCP endpoint: `http://localhost:51743/mcp`
+- Health check: `http://localhost:51743/health`
 - DB path: `wacha.db`
 
 ポートを変える場合は `PORT` を指定します。
@@ -71,7 +81,7 @@ docker compose down -v
     "wacha": {
       "transport": {
         "type": "streamable_http",
-        "url": "http://localhost:3000/mcp"
+        "url": "http://localhost:51743/mcp"
       }
     }
   }
@@ -85,7 +95,7 @@ docker compose down -v
   "mcpServers": {
     "wacha": {
       "type": "streamable_http",
-      "url": "http://localhost:3000/mcp"
+      "url": "http://localhost:51743/mcp"
     }
   }
 }
@@ -98,7 +108,7 @@ docker compose down -v
 - role 制御付き tool の実行には project membership 側の role が必要です
 - server 再起動後に旧 `sessionId` を送ると、MCP は `Session expired or server restarted; initialize again` を返します
 - client はそのエラーを受けたら `initialize` をやり直し、必要なら `assign_project_role` で role を取り直してください
-- 接続確認は `http://localhost:3000/health` と MCP client 側の initialize で行ってください
+- 接続確認は `http://localhost:51743/health` と MCP client 側の initialize で行ってください
 
 ## Available Tools
 
@@ -180,8 +190,8 @@ docker build -t wacha .
 
 ```bash
 docker run --rm \
-  -p 3000:3000 \
-  -e PORT=3000 \
+  -p 51743:51743 \
+  -e PORT=51743 \
   -e WACHA_DB_PATH=/data/wacha.db \
   -v wacha-data:/data \
   wacha
@@ -201,7 +211,7 @@ docker compose up --build -d
 
 Compose の設定内容:
 
-- app port: `3000:3000`
+- app port: `51743:51743`
 - DB path: `/data/wacha.db`
 - named volume: `wacha-data`
 
@@ -220,7 +230,7 @@ docker compose down -v
 ## Health Check
 
 ```bash
-curl http://localhost:3000/health
+curl http://localhost:51743/health
 ```
 
 期待されるレスポンス:

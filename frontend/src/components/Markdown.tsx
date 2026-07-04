@@ -1,4 +1,4 @@
-import { Fragment } from "hono/jsx";
+import { Fragment } from "react";
 
 type MarkdownBlock =
   | { type: "heading"; level: 1 | 2 | 3; text: string }
@@ -14,7 +14,7 @@ const renderInline = (text: string) => {
       return (
         <code
           key={`code-${index}`}
-          class="rounded bg-stone-100 px-1.5 py-0.5 font-mono text-[0.9em] text-stone-800"
+          className="rounded bg-stone-100 px-1.5 py-0.5 font-mono text-[0.9em] text-stone-800"
         >
           {part.slice(1, -1)}
         </code>
@@ -111,12 +111,12 @@ export const Markdown = ({ text }: { text: string }) => {
   const blocks = parseMarkdown(text);
 
   return (
-    <div class="flex flex-col gap-3">
+    <div className="flex flex-col gap-3">
       {blocks.map((block, index) => {
         if (block.type === "heading") {
           if (block.level === 1) {
             return (
-              <h3 key={index} class="text-base font-semibold text-stone-900">
+              <h3 key={index} className="text-base font-semibold text-stone-900">
                 {renderInline(block.text)}
               </h3>
             );
@@ -124,14 +124,14 @@ export const Markdown = ({ text }: { text: string }) => {
 
           if (block.level === 2) {
             return (
-              <h4 key={index} class="text-sm font-semibold text-stone-900">
+              <h4 key={index} className="text-sm font-semibold text-stone-900">
                 {renderInline(block.text)}
               </h4>
             );
           }
 
           return (
-            <h5 key={index} class="text-sm font-medium text-stone-900">
+            <h5 key={index} className="text-sm font-medium text-stone-900">
               {renderInline(block.text)}
             </h5>
           );
@@ -139,7 +139,7 @@ export const Markdown = ({ text }: { text: string }) => {
 
         if (block.type === "list") {
           return (
-            <ul key={index} class="list-disc space-y-1 pl-5 text-sm text-stone-700">
+            <ul key={index} className="list-disc space-y-1 pl-5 text-sm text-stone-700">
               {block.items.map((item, itemIndex) => (
                 <li key={itemIndex}>{renderInline(item)}</li>
               ))}
@@ -151,7 +151,7 @@ export const Markdown = ({ text }: { text: string }) => {
           return (
             <pre
               key={index}
-              class="overflow-x-auto rounded-xl bg-stone-900 px-3 py-2 text-sm text-stone-100"
+              className="overflow-x-auto rounded-xl bg-stone-900 px-3 py-2 text-sm text-stone-100"
             >
               <code>{block.code}</code>
             </pre>
@@ -159,7 +159,7 @@ export const Markdown = ({ text }: { text: string }) => {
         }
 
         return (
-          <p key={index} class="text-sm leading-6 text-stone-700">
+          <p key={index} className="text-sm leading-6 text-stone-700">
             {renderInline(block.text)}
           </p>
         );
