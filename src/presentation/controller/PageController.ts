@@ -233,8 +233,9 @@ export class PageController {
     const jsonBody = await this.readJsonBody(c);
     const commentBody = this.readTextField(jsonBody, "body");
     if (commentBody === "") throw new ValidationError("Comment body is required");
+    const author = this.readTextField(jsonBody, "author");
 
-    await addTaskCommentUseCase.execute(taskId, commentBody);
+    await addTaskCommentUseCase.execute(taskId, commentBody, author || null);
     const body: OkResponse = { ok: true };
     return c.json(body, 201);
   }

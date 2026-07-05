@@ -1,17 +1,110 @@
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import type { StoryDto, TaskDto, TaskCommentDto, TaskStatus } from "@shared/apiTypes";
+import clsx from "clsx";
+import type {
+  AgentDto,
+  StoryDto,
+  TaskDto,
+  TaskCommentDto,
+  TaskStatus,
+  TaskSummary,
+} from "@shared/apiTypes";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/Button";
 import { StoryCard } from "@/components/StoryCard";
-import { TaskRow } from "@/components/TaskRow";
+import { TaskCard } from "@/components/TaskCard";
+import { TaskDrawer } from "@/components/TaskDrawer";
 import { useDeleteStory, useProject } from "@/lib/queries";
 import { ApiError } from "@/lib/api";
+import { formatAbsoluteTime, formatRelativeTime, HEARTBEAT_FRESH_MS } from "@/lib/time";
 
 const isActiveStoryStatus = (status: StoryDto["status"]) =>
   status !== "done" && status !== "canceled";
 
 const isActiveTask = (status: TaskStatus) =>
   status !== "accepted" && status !== "rejected" && status !== "canceled";
+
+const STATUS_CHIPS: { status: TaskStatus; label: string; dotClass: string }[] = [
+  { status: "todo", label: "Todo", dotClass: "bg-stone-400" },
+  { status: "doing", label: "Doing", dotClass: "bg-blue-500" },
+  { status: "in_review", label: "InReview", dotClass: "bg-purple-500" },
+  { status: "wait_accept", label: "WaitAccept", dotClass: "bg-amber-500" },
+  { status: "rejected", label: "Rejected", dotClass: "bg-red-500" },
+  { status: "accepted", label: "Accepted", dotClass: "bg-green-500" },
+  { status: "canceled", label: "Canceled", dotClass: "bg-stone-300" },
+];
+
+const StatusSummaryChips = ({ summary }: { summary: TaskSummary }) => {
+  const chips = STATUS_CHIPS.filter((chip) => summary.byStatus[chip.status] > 0);
+  if (chips.length === 0) {
+    return <p className="text-sm text-stone-400">Task はまだありません。</p>;
+  }
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {chips.map((chip) => (
+        <span
+          key={chip.status}
+          className="inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-white px-3 py-1 text-xs font-medium text-stone-600"
+        >
+          <span className={clsx("h-2 w-2 rounded-full", chip.dotClass)} />
+          {chip.label}
+          <span className="font-semibold text-stone-900">{summary.byStatus[chip.status]}</span>
+        </span>
+      ))}
+      <span className="text-xs text-stone-400">全 {summary.total} tasks</span>
+    </div>
+  );
+};
+
+const AgentChips = ({ agents }: { agents: AgentDto[] }) => {
+  if (agents.length === 0) {
+    return <p className="text-sm text-stone-400">接続中の agent はいません。</p>;
+  }
+  const now = Date.now();
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {agents.map((agent) => {
+        const fresh =
+          agent.lastHeartbeatAt !== null && now - agent.lastHeartbeatAt < HEARTBEAT_FRESH_MS;
+        return (
+          <span
+            key={agent.id}
+            title={`${agent.sessionId}\nheartbeat: ${
+              agent.lastHeartbeatAt ? formatAbsoluteTime(agent.lastHeartbeatAt) : "なし"
+            }`}
+            className="inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-white px-3 py-1 text-xs text-stone-600"
+          >
+            <span
+              className={clsx(
+                "h-2 w-2 rounded-full",
+                fresh ? "bg-green-500" : "bg-stone-300",
+              )}
+            />
+            <span className="font-medium text-stone-800">{agent.role}</span>
+            <code className="text-[11px] text-stone-400">{agent.sessionId.slice(0, 8)}</code>
+          </span>
+        );
+      })}
+    </div>
+  );
+};
+
+const SectionHeading = ({
+  title,
+  description,
+  count,
+}: {
+  title: string;
+  description?: string;
+  count?: number;
+}) => (
+  <div className="flex items-end justify-between gap-3">
+    <div>
+      <h2 className="text-lg font-semibold text-stone-900">{title}</h2>
+      {description && <p className="text-sm text-stone-500">{description}</p>}
+    </div>
+    {count !== undefined && <p className="text-sm text-stone-400">{count} tasks</p>}
+  </div>
+);
 
 export const ProjectDetailPage = () => {
   const { projectId = "" } = useParams();
@@ -20,15 +113,10 @@ export const ProjectDetailPage = () => {
   const { data, isPending, error } = useProject(projectId);
   const deleteStory = useDeleteStory(projectId);
 
-  const storyStatusOptions: { label: string; value: "all" | "active" }[] = [
-    { label: "Done / Canceled 以外", value: "active" },
-    { label: "すべて表示", value: "all" },
-  ];
-
   if (isPending) {
     return (
       <Layout>
-        <main className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-6 py-10 md:px-8">
+        <main className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-6 py-10 md:px-8">
           <div className="rounded-3xl border border-dashed border-stone-200 bg-white px-6 py-8 text-sm text-stone-500">
             読み込み中...
           </div>
@@ -44,7 +132,7 @@ export const ProjectDetailPage = () => {
         : (error?.message ?? "読み込みに失敗しました。");
     return (
       <Layout>
-        <main className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-6 py-10 md:px-8">
+        <main className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-6 py-10 md:px-8">
           <Link
             to="/"
             className="inline-flex w-fit rounded-xl px-3 py-2 text-sm text-stone-500 transition hover:bg-white hover:shadow-sm"
@@ -59,7 +147,7 @@ export const ProjectDetailPage = () => {
     );
   }
 
-  const { project, tasks, comments, agents } = data;
+  const { project, tasks, comments, agents, summary } = data;
 
   const stories =
     storyStatusFilter === "all"
@@ -81,6 +169,15 @@ export const ProjectDetailPage = () => {
     commentsByTaskId.set(comment.taskId, taskComments);
   }
 
+  // PdM の判断待ち (レビュー / 受入)
+  const reviewQueue = tasks.filter(
+    (task) => task.status === "in_review" || task.status === "wait_accept",
+  );
+  // Worker の再着手待ち
+  const rejectedTasks = tasks.filter((task) => task.status === "rejected");
+  // Agent が作業中
+  const workingTasks = tasks.filter((task) => task.status === "doing");
+
   const unassignedTasks = tasks.filter((task) =>
     storyStatusFilter === "all" ? !task.storyId : !task.storyId && isActiveTask(task.status),
   );
@@ -90,131 +187,159 @@ export const ProjectDetailPage = () => {
     deleteStory.mutate(storyId);
   };
 
+  // ドロワーの開閉は ?task=<id> で管理する (deep link 可能)
+  const selectedTaskId = searchParams.get("task");
+  const selectedTask = tasks.find((task) => task.id === selectedTaskId) ?? null;
+
+  const setSelectedTask = (taskId: string | null) => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (taskId) next.set("task", taskId);
+        else next.delete("task");
+        return next;
+      },
+      { replace: true },
+    );
+  };
+
+  const renderTaskRow = (task: TaskDto, highlight = false) => (
+    <TaskCard
+      key={task.id}
+      projectId={project.id}
+      task={task}
+      highlight={highlight}
+      onOpen={(taskId) => setSelectedTask(taskId)}
+    />
+  );
+
   return (
     <Layout>
-      <main className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-6 py-10 md:px-8">
+      <main className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-6 py-10 md:px-8">
         <Link
           to="/"
           className="inline-flex w-fit rounded-xl px-3 py-2 text-sm text-stone-500 transition hover:bg-white hover:shadow-sm"
         >
           ← プロジェクト一覧に戻る
         </Link>
-        <section className="rounded-[2rem] border border-stone-200 bg-white px-6 py-8 shadow-sm md:px-8">
-          <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-            <div className="flex max-w-3xl flex-col gap-3">
-              <p className="text-sm font-medium uppercase tracking-[0.22em] text-stone-400">
-                Project Detail
+
+        {/* プロジェクトヘッダ */}
+        <section className="rounded-[2rem] border border-stone-200 bg-white px-6 py-7 shadow-sm md:px-8">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div className="flex min-w-0 max-w-3xl flex-col gap-2">
+              <p className="text-xs font-medium uppercase tracking-[0.22em] text-stone-400">
+                Project
               </p>
-              <h1 className="text-4xl font-semibold tracking-tight text-stone-900">
+              <h1 className="text-3xl font-semibold tracking-tight text-stone-900">
                 {project.name}
               </h1>
-              <p className="text-sm leading-7 text-stone-600">
-                {project.description ?? "プロジェクトの説明はまだ設定されていません。"}
-              </p>
-              <p className="text-sm text-stone-500">BaseDir: {project.baseDir}</p>
-              <p className="text-sm text-stone-400">
-                最終更新: {new Date(project.updatedAt).toLocaleString()}
+              {project.description && (
+                <p className="text-sm leading-7 text-stone-600">{project.description}</p>
+              )}
+              <p className="text-xs text-stone-400">
+                {project.baseDir} ・ 最終更新{" "}
+                <span title={summary.lastUpdatedAt ? formatAbsoluteTime(summary.lastUpdatedAt) : ""}>
+                  {summary.lastUpdatedAt ? formatRelativeTime(summary.lastUpdatedAt) : "-"}
+                </span>
               </p>
             </div>
-            <Link to={`/project/${project.id}/story/add`}>
+            <Link to={`/project/${project.id}/story/add`} className="shrink-0">
               <Button text="+ 新しいStoryを作成" />
             </Link>
           </div>
-        </section>
-
-        <section className="flex flex-col gap-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-semibold text-stone-900">Agents</h2>
-              <p className="text-sm text-stone-500">
-                project に参加している agent と現在の接続状況
-              </p>
-            </div>
+          <div className="mt-5 flex flex-col gap-3 border-t border-stone-100 pt-4">
+            <StatusSummaryChips summary={summary} />
+            <AgentChips agents={agents} />
           </div>
-          {agents.length > 0 ? (
-            <div className="overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-sm">
-              <div className="overflow-x-auto">
-                <table className="min-w-full border-collapse">
-                  <thead className="bg-stone-50 text-left text-xs uppercase tracking-[0.18em] text-stone-400">
-                    <tr>
-                      <th className="px-5 py-4 font-medium">Worker</th>
-                      <th className="px-5 py-4 font-medium">Role</th>
-                      <th className="px-5 py-4 font-medium">Session</th>
-                      <th className="px-5 py-4 font-medium">Heartbeat</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {agents.map((agent) => (
-                      <tr key={agent.id} className="border-t border-stone-100 align-top">
-                        <td className="px-5 py-4">
-                          <div className="flex flex-col gap-1">
-                            <span className="font-medium text-stone-900">{agent.sessionId}</span>
-                            <span className="text-xs text-stone-400">{agent.id}</span>
-                          </div>
-                        </td>
-                        <td className="px-5 py-4">
-                          <span className="rounded-full bg-amber-50 px-3 py-1 text-sm font-medium text-amber-700">
-                            {agent.role}
-                          </span>
-                        </td>
-                        <td className="px-5 py-4 text-sm text-stone-600">
-                          {agent.sessionId ? (
-                            <code className="rounded bg-stone-100 px-2 py-1 text-xs text-stone-700">
-                              {agent.sessionId}
-                            </code>
-                          ) : (
-                            <span className="text-stone-400">not connected</span>
-                          )}
-                        </td>
-                        <td className="px-5 py-4 text-sm text-stone-600">
-                          {agent.lastHeartbeatAt ? (
-                            new Date(agent.lastHeartbeatAt).toLocaleString()
-                          ) : (
-                            <span className="text-stone-400">no heartbeat</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          ) : (
-            <div className="rounded-3xl border border-dashed border-stone-200 bg-white px-6 py-8 text-sm text-stone-500">
-              この project に参加している agent はまだいません。
-            </div>
-          )}
         </section>
 
+        {/* 要対応: PdM の判断待ち */}
+        {(reviewQueue.length > 0 || rejectedTasks.length > 0) && (
+          <section className="flex flex-col gap-4">
+            <SectionHeading
+              title="要対応"
+              description="あなたの確認・判断を待っている Task"
+              count={reviewQueue.length}
+            />
+            {reviewQueue.length > 0 && (
+              <div className="flex flex-col gap-2">
+                {reviewQueue.map((task) => renderTaskRow(task, true))}
+              </div>
+            )}
+            {rejectedTasks.length > 0 && (
+              <details className="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
+                <summary className="cursor-pointer text-sm font-medium text-stone-600">
+                  差し戻し済み (Worker の再着手待ち) — {rejectedTasks.length} tasks
+                </summary>
+                <div className="mt-3 flex flex-col gap-2">
+                  {rejectedTasks.map((task) => renderTaskRow(task))}
+                </div>
+              </details>
+            )}
+          </section>
+        )}
+
+        {/* 進行中 */}
+        {workingTasks.length > 0 && (
+          <section className="flex flex-col gap-4">
+            <SectionHeading
+              title="進行中"
+              description="Agent が現在作業している Task"
+              count={workingTasks.length}
+            />
+            <div className="flex flex-col gap-2">
+              {workingTasks.map((task) => renderTaskRow(task))}
+            </div>
+          </section>
+        )}
+
+        {/* Stories */}
         <section className="flex flex-col gap-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold text-stone-900">Stories</h2>
-              <p className="text-sm text-stone-500">Story 単位で状態を絞り込みできます</p>
+              <p className="text-sm text-stone-500">{stories.length} items</p>
             </div>
-            <label className="flex flex-col gap-2 text-sm text-stone-600">
-              <span className="font-medium">Story Status</span>
-              <select
-                value={storyStatusFilter}
-                onChange={(event) => {
-                  const value = event.currentTarget.value;
-                  setSearchParams(value === "all" ? { storyStatus: "all" } : {});
-                }}
-                className="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-900 outline-none transition focus:border-stone-400"
-              >
-                {storyStatusOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <p className="text-sm text-stone-400">{stories.length} items</p>
+            <div className="inline-flex rounded-xl border border-stone-200 bg-white p-1">
+              {(
+                [
+                  { value: "active", label: "進行中" },
+                  { value: "all", label: "すべて" },
+                ] as const
+              ).map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() =>
+                    setSearchParams(
+                      (prev) => {
+                        const next = new URLSearchParams(prev);
+                        if (option.value === "all") next.set("storyStatus", "all");
+                        else next.delete("storyStatus");
+                        return next;
+                      },
+                      { replace: true },
+                    )
+                  }
+                  className={clsx(
+                    "rounded-lg px-3.5 py-1.5 text-sm font-medium transition",
+                    storyStatusFilter === option.value
+                      ? "bg-stone-900 text-white"
+                      : "text-stone-500 hover:text-stone-800",
+                  )}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
           </div>
           {stories.length > 0 ? (
             <div className="flex flex-col gap-3">
               {stories.map((story) => {
                 const storyTasks = tasksByStoryId.get(story.id) ?? [];
+                const acceptedCount = storyTasks.filter(
+                  (task) => task.status === "accepted",
+                ).length;
 
                 return (
                   <details
@@ -226,9 +351,6 @@ export const ProjectDetailPage = () => {
                     <summary className="flex cursor-pointer list-none items-start justify-between gap-4 marker:content-none">
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
-                          <div className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-500">
-                            {storyTasks.length} tasks
-                          </div>
                           {story.status === "todo" && (
                             <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-700">
                               Todo
@@ -249,10 +371,15 @@ export const ProjectDetailPage = () => {
                               Canceled
                             </span>
                           )}
+                          <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-500">
+                            {acceptedCount}/{storyTasks.length} tasks
+                          </span>
                         </div>
                         <div className="mt-3 flex items-center gap-3">
                           <h3 className="text-lg font-semibold text-stone-900">{story.title}</h3>
-                          <span className="text-xs text-stone-400">{story.id}</span>
+                          <span className="hidden text-xs text-stone-400 md:inline">
+                            {story.id}
+                          </span>
                         </div>
                       </div>
                       <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-500 transition group-open:rotate-180">
@@ -286,19 +413,7 @@ export const ProjectDetailPage = () => {
                       <div className="mt-5">
                         {storyTasks.length > 0 ? (
                           <div className="flex flex-col gap-2">
-                            {storyTasks.map((task) => (
-                              <TaskRow
-                                key={task.id}
-                                projectId={project.id}
-                                id={task.id}
-                                title={task.title}
-                                description={task.description}
-                                status={task.status}
-                                rejectReason={task.rejectReason}
-                                comments={commentsByTaskId.get(task.id) ?? []}
-                                updatedAt={task.updatedAt}
-                              />
-                            ))}
+                            {storyTasks.map((task) => renderTaskRow(task))}
                           </div>
                         ) : (
                           <div className="rounded-2xl border border-dashed border-stone-200 bg-stone-50 px-5 py-6 text-sm text-stone-500">
@@ -318,26 +433,12 @@ export const ProjectDetailPage = () => {
           )}
         </section>
 
+        {/* Story に紐づかない Task */}
         <section className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-stone-900">Tasks Without Story</h2>
-            <p className="text-sm text-stone-400">{unassignedTasks.length} tasks</p>
-          </div>
+          <SectionHeading title="Tasks Without Story" count={unassignedTasks.length} />
           {unassignedTasks.length > 0 ? (
             <div className="flex flex-col gap-2">
-              {unassignedTasks.map((task) => (
-                <TaskRow
-                  key={task.id}
-                  projectId={project.id}
-                  id={task.id}
-                  title={task.title}
-                  description={task.description}
-                  status={task.status}
-                  rejectReason={task.rejectReason}
-                  comments={commentsByTaskId.get(task.id) ?? []}
-                  updatedAt={task.updatedAt}
-                />
-              ))}
+              {unassignedTasks.map((task) => renderTaskRow(task))}
             </div>
           ) : (
             <div className="rounded-3xl border border-dashed border-stone-200 bg-white px-6 py-8 text-sm text-stone-500">
@@ -345,6 +446,15 @@ export const ProjectDetailPage = () => {
             </div>
           )}
         </section>
+
+        {selectedTask && (
+          <TaskDrawer
+            projectId={project.id}
+            task={selectedTask}
+            comments={commentsByTaskId.get(selectedTask.id) ?? []}
+            onClose={() => setSelectedTask(null)}
+          />
+        )}
       </main>
     </Layout>
   );

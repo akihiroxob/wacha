@@ -101,11 +101,17 @@ export const useCancelTask = (projectId: string) => {
   });
 };
 
+// WebUI からのコメントは author を固定し、agent のコメントと区別できるようにする
+export const HUMAN_COMMENT_AUTHOR = "PdM";
+
 export const useAddTaskComment = (projectId: string) => {
   const invalidate = useInvalidateProject(projectId);
   return useMutation({
     mutationFn: ({ taskId, ...input }: { taskId: string } & CommentInput) =>
-      apiPost<OkResponse>(`/api/projects/${projectId}/tasks/${taskId}/comments`, input),
+      apiPost<OkResponse>(`/api/projects/${projectId}/tasks/${taskId}/comments`, {
+        author: HUMAN_COMMENT_AUTHOR,
+        ...input,
+      }),
     onSuccess: invalidate,
   });
 };

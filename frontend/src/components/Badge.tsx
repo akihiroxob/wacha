@@ -32,3 +32,15 @@ export const InReviewBadge = () => <Badge text="InReview" variant="purple" />;
 export const WaitAcceptBadge = () => <Badge text="WaitAccept" variant="amber" />;
 export const AcceptedBadge = () => <Badge text="Accepted" variant="green" />;
 export const RejectedBadge = () => <Badge text="Rejected" variant="red" />;
+
+export const StatusBadge = ({ status }: { status: string }) => (
+  <>
+    {status === "todo" && <TodoBadge />}
+    {status === "doing" && <DoingBadge />}
+    {status === "canceled" && <CanceledBadge />}
+    {status === "in_review" && <InReviewBadge />}
+    {status === "wait_accept" && <WaitAcceptBadge />}
+    {status === "accepted" && <AcceptedBadge />}
+    {status === "rejected" && <RejectedBadge />}
+  </>
+);

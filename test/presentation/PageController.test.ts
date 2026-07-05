@@ -203,13 +203,14 @@ test("POST /api/projects/:projectId/tasks/:taskId/comments creates a comment", a
 
   const res = await app.request(
     `/api/projects/${project.id}/tasks/${task.id}/comments`,
-    jsonInit("POST", { body: "looks good" }),
+    jsonInit("POST", { body: "looks good", author: "PdM" }),
   );
   assert.equal(res.status, 201);
 
   const comments = await taskRepository.findCommentsByTaskId(task.id);
   assert.equal(comments.length, 1);
   assert.equal(comments[0].body, "looks good");
+  assert.equal(comments[0].author, "PdM");
 });
 
 test("unknown /api path returns REST-style 404", async () => {

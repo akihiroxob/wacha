@@ -101,6 +101,7 @@ export interface ReasonInput {
 
 export interface CommentInput {
   body: string;
+  author?: string;
 }
 
 export interface CreateStoryResponse {
