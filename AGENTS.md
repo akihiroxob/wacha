@@ -21,8 +21,8 @@
 
 - ローカルで起動する: `npm install && npm run start`
 - Docker Compose で起動する: `docker compose up --build`
-- デフォルトの接続先: `http://localhost:3000/mcp`
-- ヘルスチェック: `http://localhost:3000/health`
+- デフォルトの接続先: `http://localhost:51743/mcp`
+- ヘルスチェック: `http://localhost:51743/health`
 - 永続化する SQLite ファイルのデフォルトパス: `wacha.db`
 - Docker Compose では SQLite ファイルは volume 経由で `/data/wacha.db` に保存される
 - 識別子や membership は MCP の `sessionId` ベースで扱われる

@@ -1,15 +1,12 @@
-import type { FC } from "hono/jsx";
-import { StoryStatus } from "@constants/StoryStatus.ts";
-import type { Story } from "@domain/model/Story.ts";
-import { CanceledBadge, DoingBadge, DoneBadge, TodoBadge } from "./badge.tsx";
+import type { StoryDto } from "@shared/apiTypes";
 
 type StoryCardProps = {
-  story: Story;
+  story: StoryDto;
   taskCount?: number;
   embedded?: boolean;
 };
 
-export const StoryCard: FC<StoryCardProps> = ({ story, taskCount, embedded = false }) => {
+export const StoryCard = ({ story, embedded = false }: StoryCardProps) => {
   const containerClass = embedded
     ? "rounded-[1.75rem] bg-white p-0"
     : "rounded-3xl border border-stone-200 bg-white p-5 shadow-sm transition hover:border-stone-300 hover:shadow-md";

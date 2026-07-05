@@ -1,12 +1,12 @@
 import { Context } from "hono";
-import { Index } from "@views/index.tsx";
-import { ProjectPage } from "@views/project.tsx";
-import { AddStoryPage } from "@views/add-story.tsx";
-import { EditStoryPage } from "@views/edit-story.tsx";
-import { EditTaskPage } from "@views/edit-task.tsx";
-import { renderToString } from "hono/jsx/dom/server";
 import { ValidationError } from "@application/error/ValidationError.ts";
-import { StoryStatus } from "@constants/StoryStatus.ts";
+import { NotFoundError } from "@application/error/NotFoundError.ts";
+import type {
+  CreateStoryResponse,
+  OkResponse,
+  ProjectDetailResponse,
+  ProjectListResponse,
+} from "@shared/apiTypes.ts";
 import {
   listTaskUseCase,
   listProjectUseCase,
@@ -26,8 +26,22 @@ import {
 } from "@container";
 
 export class PageController {
-  private isActiveStoryStatus(status: StoryStatus) {
-    return status !== StoryStatus.DONE && status !== StoryStatus.CANCELED;
+  private async readJsonBody(c: Context): Promise<Record<string, unknown>> {
+    const body = await c.req.json().catch(() => null);
+    if (!body || typeof body !== "object") throw new ValidationError("Invalid JSON body");
+    return body as Record<string, unknown>;
+  }
+
+  private readTextField(body: Record<string, unknown>, key: string): string {
+    const value = body[key];
+    return typeof value === "string" ? value.trim() : "";
+  }
+
+  private async getProjectOrThrow(projectId: string | undefined) {
+    if (!projectId) throw new ValidationError("projectId is required");
+    const project = await getProjectUseCase.execute(projectId);
+    if (!project) throw new NotFoundError("Project not found");
+    return project;
   }
 
   private async findStoryInProject(projectId: string, storyId: string) {
@@ -42,250 +56,123 @@ export class PageController {
 
   async index(c: Context) {
     const result = await listProjectUseCase.execute();
-    const page = Index({ projects: result.projects });
-    return c.html(`<!doctype html>${renderToString(page ?? "")}`);
+    const body: ProjectListResponse = { projects: result.projects };
+    return c.json(body);
   }
 
   async project(c: Context) {
-    const projectId = c.req.param("projectId");
-    const storyStatus = c.req.query("storyStatus");
+    const project = await this.getProjectOrThrow(c.req.param("projectId"));
 
-    if (!projectId) {
-      return c.json({ error: "projectId is required" }, 400);
-    }
-
-    const storyStatusFilter = storyStatus === "all" ? "all" : "active";
-
-    const project = await getProjectUseCase.execute(projectId);
-    if (!project) return c.json({ error: "Project not found" }, 404);
-
-    const taskResult = await listTaskUseCase.execute(projectId);
+    const taskResult = await listTaskUseCase.execute(project.id);
     const commentsResult = await listTaskCommentUseCase.executeForTasks(
       taskResult.tasks.map((task) => task.id),
     );
-    const storyResult = await listStoryUseCase.execute(projectId);
-    const agentResult = await listProjectAgentsUseCase.execute(projectId);
-    const page = ProjectPage({
+    const storyResult = await listStoryUseCase.execute(project.id);
+    const agentResult = await listProjectAgentsUseCase.execute(project.id);
+
+    const body: ProjectDetailResponse = {
       project,
       summary: taskResult.summary,
       tasks: taskResult.tasks,
       comments: commentsResult.comments,
-      stories:
-        storyStatusFilter === "all"
-          ? storyResult.stories
-          : storyResult.stories.filter((story) => this.isActiveStoryStatus(story.status)),
+      stories: storyResult.stories,
       agents: agentResult.agents,
       agentSummary: agentResult.summary,
-      storyStatusFilter,
-    });
-    return c.html(`<!doctype html>${renderToString(page ?? "")}`);
-  }
-
-  async addStory(c: Context) {
-    const projectId = c.req.param("projectId");
-
-    if (!projectId) {
-      return c.json({ error: "projectId is required" }, 400);
-    }
-
-    const project = await getProjectUseCase.execute(projectId);
-    if (!project) return c.json({ error: "Project not found" }, 404);
-
-    const page = AddStoryPage({ project });
-    return c.html(`<!doctype html>${renderToString(page ?? "")}`);
-  }
-
-  async editStory(c: Context) {
-    const projectId = c.req.param("projectId");
-    const storyId = c.req.param("storyId");
-
-    if (!projectId || !storyId) {
-      return c.json({ error: "projectId and storyId are required" }, 400);
-    }
-
-    const project = await getProjectUseCase.execute(projectId);
-    if (!project) return c.json({ error: "Project not found" }, 404);
-
-    const story = await this.findStoryInProject(projectId, storyId);
-    if (!story) return c.json({ error: "Story not found" }, 404);
-
-    const page = EditStoryPage({ project, story });
-    return c.html(`<!doctype html>${renderToString(page ?? "")}`);
-  }
-
-  async editTask(c: Context) {
-    const projectId = c.req.param("projectId");
-    const taskId = c.req.param("taskId");
-
-    if (!projectId || !taskId) {
-      return c.json({ error: "projectId and taskId are required" }, 400);
-    }
-
-    const project = await getProjectUseCase.execute(projectId);
-    if (!project) return c.json({ error: "Project not found" }, 404);
-
-    const task = await this.findTaskInProject(projectId, taskId);
-    if (!task) return c.json({ error: "Task not found" }, 404);
-
-    const page = EditTaskPage({ project, task });
-    return c.html(`<!doctype html>${renderToString(page ?? "")}`);
+    };
+    return c.json(body);
   }
 
   async createStory(c: Context) {
-    const projectId = c.req.param("projectId");
+    const project = await this.getProjectOrThrow(c.req.param("projectId"));
 
-    if (!projectId) {
-      return c.json({ error: "projectId is required" }, 400);
-    }
+    const jsonBody = await this.readJsonBody(c);
+    const title = this.readTextField(jsonBody, "title");
+    const description = this.readTextField(jsonBody, "description");
+    if (title === "") throw new ValidationError("Title は必須です。");
 
-    const project = await getProjectUseCase.execute(projectId);
-    if (!project) return c.json({ error: "Project not found" }, 404);
-
-    const formData = await c.req.formData();
-    const title = String(formData.get("title") ?? "").trim();
-    const description = String(formData.get("description") ?? "").trim();
-
-    if (title === "") {
-      const page = AddStoryPage({
-        project,
-        error: "Title は必須です。",
-        values: { title, description },
-      });
-      return c.html(`<!doctype html>${renderToString(page ?? "")}`, 400);
-    }
-
-    const story = await issueStoryUseCase.execute(projectId, title, description || null);
-    return c.redirect(`/project/${projectId}`, 303);
+    const story = await issueStoryUseCase.execute(project.id, title, description || null);
+    const body: CreateStoryResponse = { story };
+    return c.json(body, 201);
   }
 
   async updateStory(c: Context) {
-    const projectId = c.req.param("projectId");
+    const project = await this.getProjectOrThrow(c.req.param("projectId"));
     const storyId = c.req.param("storyId");
+    if (!storyId) throw new ValidationError("storyId is required");
 
-    if (!projectId || !storyId) {
-      return c.json({ error: "projectId and storyId are required" }, 400);
-    }
+    const story = await this.findStoryInProject(project.id, storyId);
+    if (!story) throw new NotFoundError("Story not found");
 
-    const project = await getProjectUseCase.execute(projectId);
-    if (!project) return c.json({ error: "Project not found" }, 404);
-
-    const story = await this.findStoryInProject(projectId, storyId);
-    if (!story) return c.json({ error: "Story not found" }, 404);
-
-    const formData = await c.req.formData();
-    const title = String(formData.get("title") ?? "").trim();
-    const description = String(formData.get("description") ?? "").trim();
-
-    if (title === "") {
-      const page = EditStoryPage({
-        project,
-        story,
-        error: "Title は必須です。",
-        values: { title, description },
-      });
-      return c.html(`<!doctype html>${renderToString(page ?? "")}`, 400);
-    }
+    const jsonBody = await this.readJsonBody(c);
+    const title = this.readTextField(jsonBody, "title");
+    const description = this.readTextField(jsonBody, "description");
+    if (title === "") throw new ValidationError("Title は必須です。");
 
     try {
-      await editStoryUseCase.execute(projectId, storyId, title, description || null);
+      await editStoryUseCase.execute(project.id, storyId, title, description || null);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to update story";
-      const page = EditStoryPage({
-        project,
-        story,
-        error: message,
-        values: { title, description },
-      });
-      return c.html(`<!doctype html>${renderToString(page ?? "")}`, 400);
+      throw new ValidationError(message);
     }
 
-    return c.redirect(`/project/${projectId}`, 303);
+    const body: OkResponse = { ok: true };
+    return c.json(body);
   }
 
   async updateTask(c: Context) {
-    const projectId = c.req.param("projectId");
+    const project = await this.getProjectOrThrow(c.req.param("projectId"));
     const taskId = c.req.param("taskId");
+    if (!taskId) throw new ValidationError("taskId is required");
 
-    if (!projectId || !taskId) {
-      return c.json({ error: "projectId and taskId are required" }, 400);
-    }
+    const task = await this.findTaskInProject(project.id, taskId);
+    if (!task) throw new NotFoundError("Task not found");
 
-    const project = await getProjectUseCase.execute(projectId);
-    if (!project) return c.json({ error: "Project not found" }, 404);
-
-    const task = await this.findTaskInProject(projectId, taskId);
-    if (!task) return c.json({ error: "Task not found" }, 404);
-
-    const formData = await c.req.formData();
-    const title = String(formData.get("title") ?? "").trim();
-    const description = String(formData.get("description") ?? "").trim();
-
-    if (title === "") {
-      const page = EditTaskPage({
-        project,
-        task,
-        error: "Title は必須です。",
-        values: { title, description },
-      });
-      return c.html(`<!doctype html>${renderToString(page ?? "")}`, 400);
-    }
+    const jsonBody = await this.readJsonBody(c);
+    const title = this.readTextField(jsonBody, "title");
+    const description = this.readTextField(jsonBody, "description");
+    if (title === "") throw new ValidationError("Title は必須です。");
 
     try {
-      await editTaskUseCase.execute(projectId, taskId, title, description || null);
+      await editTaskUseCase.execute(project.id, taskId, title, description || null);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to update task";
-      const page = EditTaskPage({
-        project,
-        task,
-        error: message,
-        values: { title, description },
-      });
-      return c.html(`<!doctype html>${renderToString(page ?? "")}`, 400);
+      throw new ValidationError(message);
     }
 
-    return c.redirect(`/project/${projectId}`, 303);
+    const body: OkResponse = { ok: true };
+    return c.json(body);
   }
 
   async deleteStory(c: Context) {
-    const projectId = c.req.param("projectId");
+    const project = await this.getProjectOrThrow(c.req.param("projectId"));
     const storyId = c.req.param("storyId");
+    if (!storyId) throw new ValidationError("storyId is required");
 
-    if (!projectId || !storyId) {
-      return c.json({ error: "projectId and storyId are required" }, 400);
-    }
-
-    const project = await getProjectUseCase.execute(projectId);
-    if (!project) return c.json({ error: "Project not found" }, 404);
+    const story = await this.findStoryInProject(project.id, storyId);
+    if (!story) throw new NotFoundError("Story not found");
 
     await deleteStoryUseCase.execute(storyId);
-    return c.redirect(`/project/${projectId}`, 303);
+    const body: OkResponse = { ok: true };
+    return c.json(body);
   }
 
   async deleteTask(c: Context) {
-    const projectId = c.req.param("projectId");
+    const project = await this.getProjectOrThrow(c.req.param("projectId"));
     const taskId = c.req.param("taskId");
+    if (!taskId) throw new ValidationError("taskId is required");
 
-    if (!projectId || !taskId) {
-      return c.json({ error: "projectId and taskId are required" }, 400);
-    }
-
-    const project = await getProjectUseCase.execute(projectId);
-    if (!project) return c.json({ error: "Project not found" }, 404);
+    const task = await this.findTaskInProject(project.id, taskId);
+    if (!task) throw new NotFoundError("Task not found");
 
     await deleteTaskUseCase.execute(taskId);
-    return c.redirect(`/project/${projectId}`, 303);
+    const body: OkResponse = { ok: true };
+    return c.json(body);
   }
 
   async acceptTask(c: Context) {
-    const projectId = c.req.param("projectId");
+    const project = await this.getProjectOrThrow(c.req.param("projectId"));
     const taskId = c.req.param("taskId");
-
-    if (!projectId || !taskId) {
-      return c.json({ error: "projectId and taskId are required" }, 400);
-    }
-
-    const project = await getProjectUseCase.execute(projectId);
-    if (!project) return c.json({ error: "Project not found" }, 404);
+    if (!taskId) throw new ValidationError("taskId is required");
 
     try {
       await acceptTaskUseCase.execute(taskId);
@@ -294,26 +181,18 @@ export class PageController {
       throw new ValidationError(message);
     }
 
-    return c.redirect(`/project/${projectId}`, 303);
+    const body: OkResponse = { ok: true };
+    return c.json(body);
   }
 
   async rejectTask(c: Context) {
-    const projectId = c.req.param("projectId");
+    const project = await this.getProjectOrThrow(c.req.param("projectId"));
     const taskId = c.req.param("taskId");
+    if (!taskId) throw new ValidationError("taskId is required");
 
-    if (!projectId || !taskId) {
-      return c.json({ error: "projectId and taskId are required" }, 400);
-    }
-
-    const project = await getProjectUseCase.execute(projectId);
-    if (!project) return c.json({ error: "Project not found" }, 404);
-
-    const formData = await c.req.formData();
-    const reason = String(formData.get("reason") ?? "").trim();
-
-    if (reason === "") {
-      throw new ValidationError("Reject reason is required");
-    }
+    const jsonBody = await this.readJsonBody(c);
+    const reason = this.readTextField(jsonBody, "reason");
+    if (reason === "") throw new ValidationError("Reject reason is required");
 
     try {
       await rejectTaskUseCase.execute(taskId, reason);
@@ -322,41 +201,17 @@ export class PageController {
       throw new ValidationError(message);
     }
 
-    return c.redirect(`/project/${projectId}`, 303);
-  }
-
-  async addTaskComment(c: Context) {
-    const projectId = c.req.param("projectId");
-    const taskId = c.req.param("taskId");
-
-    if (!projectId || !taskId) {
-      return c.json({ error: "projectId and taskId are required" }, 400);
-    }
-
-    const project = await getProjectUseCase.execute(projectId);
-    if (!project) return c.json({ error: "Project not found" }, 404);
-
-    const formData = await c.req.formData();
-    const body = String(formData.get("body") ?? "").trim();
-    if (body === "") throw new ValidationError("Comment body is required");
-
-    await addTaskCommentUseCase.execute(taskId, body);
-    return c.redirect(`/project/${projectId}`, 303);
+    const body: OkResponse = { ok: true };
+    return c.json(body);
   }
 
   async cancelTask(c: Context) {
-    const projectId = c.req.param("projectId");
+    const project = await this.getProjectOrThrow(c.req.param("projectId"));
     const taskId = c.req.param("taskId");
+    if (!taskId) throw new ValidationError("taskId is required");
 
-    if (!projectId || !taskId) {
-      return c.json({ error: "projectId and taskId are required" }, 400);
-    }
-
-    const project = await getProjectUseCase.execute(projectId);
-    if (!project) return c.json({ error: "Project not found" }, 404);
-
-    const formData = await c.req.formData();
-    const reason = String(formData.get("reason") ?? "").trim();
+    const jsonBody = await this.readJsonBody(c);
+    const reason = this.readTextField(jsonBody, "reason");
     if (reason === "") throw new ValidationError("Cancel reason is required");
 
     try {
@@ -366,7 +221,23 @@ export class PageController {
       throw new ValidationError(message);
     }
 
-    return c.redirect(`/project/${projectId}`, 303);
+    const body: OkResponse = { ok: true };
+    return c.json(body);
+  }
+
+  async addTaskComment(c: Context) {
+    const project = await this.getProjectOrThrow(c.req.param("projectId"));
+    const taskId = c.req.param("taskId");
+    if (!taskId) throw new ValidationError("taskId is required");
+
+    const jsonBody = await this.readJsonBody(c);
+    const commentBody = this.readTextField(jsonBody, "body");
+    if (commentBody === "") throw new ValidationError("Comment body is required");
+    const author = this.readTextField(jsonBody, "author");
+
+    await addTaskCommentUseCase.execute(taskId, commentBody, author || null);
+    const body: OkResponse = { ok: true };
+    return c.json(body, 201);
   }
 }
 

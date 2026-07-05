@@ -4,9 +4,9 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "3000:3000"
+      - "51743:51743"
     environment:
-      PORT: "3000"
+      PORT: "51743"
       WACHA_DB_PATH: /data/wacha.db
     volumes:
       - wacha-data:/data
@@ -17,7 +17,7 @@ services:
           "CMD",
           "node",
           "-e",
-          "fetch('http://127.0.0.1:3000/health').then((res)=>{if(!res.ok)process.exit(1)}).catch(()=>process.exit(1))",
+          "fetch('http://127.0.0.1:51743/health').then((res)=>{if(!res.ok)process.exit(1)}).catch(()=>process.exit(1))",
         ]
       interval: 30s
       timeout: 5s

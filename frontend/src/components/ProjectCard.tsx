@@ -1,5 +1,3 @@
-import { FC } from "hono/jsx";
-
 type ProjectCardProps = {
   id: string;
   name: string;
@@ -8,13 +6,7 @@ type ProjectCardProps = {
   updatedAt: number;
 };
 
-export const ProjectCard: FC<ProjectCardProps> = ({
-  id,
-  name,
-  description,
-  baseDir,
-  updatedAt,
-}) => {
+export const ProjectCard = ({ id, name, description, baseDir, updatedAt }: ProjectCardProps) => {
   return (
     <div className="flex h-full cursor-pointer flex-col gap-5 rounded-3xl border border-stone-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-stone-300 hover:shadow-md">
       <div className="flex items-center justify-between gap-3">
