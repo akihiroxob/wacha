@@ -2,7 +2,7 @@
 name: review-task
 description: in_review の task を、完了条件・既存構成・設計原則・変更範囲の観点で検証し、受け入れ可能性を明確に判定する。
 status: active
-version: 2
+version: 3
 allowRoles: [reviewer, manager]
 requiredKnowledge:
   - principles/development-principles.md
@@ -10,6 +10,7 @@ requiredKnowledge:
   - principles/frontend-architecture.md
   - tips/reviewing.md
   - tips/task-writing.md
+  - tips/verification.md
 requiredTools:
   - list_tasks
   - list_task_comments
@@ -50,6 +51,7 @@ reviewer は「好み」で見るのではなく、この task を通したあ�
 - フロントエンド変更の場合、Bulletproof React ベースの構成に沿っているか。
 - 最小差分になっているか。
 - テストまたは確認手順が残っているか。
+- 検証結果が「型チェック・ビルド通過」で止まらず、実際の挙動確認になっているか（`tips/verification.md`）。
 - 既存挙動を壊していないか。
 
 ## Reject Conditions

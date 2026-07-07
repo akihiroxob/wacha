@@ -63,3 +63,27 @@
 - 次点は `wacha-review-gate`
 
 この 2 つを Skill 化すると、今回のようなレビュー往復のコストをかなり下げやすい。
+
+## 2026-07-06 ロール運用の検証ログ
+
+サンドボックスプロジェクト（`wacha-sandbox`）を作って、manager/worker/reviewer の役割分離が実際に効くかを一通り触って確認した。
+
+### 分かったこと
+
+- `assign_project_role` は同一セッションに複数ロールを重ねて付与できる。実際に同一セッションへ manager + worker + reviewer を同時付与できた。
+- その状態で `issue_story` → `issue_task` → `claim_task` → `complete_task` → `reviewed_task` → `accept_task` まで、他セッションの介入なしに一人で完走できた。
+- `claim_task` / `complete_task` は `role-policy.md` 上「manager 禁止」だが、MCP 実装ブロックの対象外（"当面は運用で制御"）のため、manager セッションのままでも通ってしまう。
+- 一方 `reviewed_task` / `accept_task` / `add_task_comment` は RoleGuard で正しく弾かれる（管理外ロールから呼ぶと `Forbidden: Agent does not have required role`）。
+- `complete_story` は配下の Task が `doing`（未 accept）のままでもエラーなく `done` に遷移した。Story 完了と Task 完了の整合チェックはない。
+- `reject_task` → 再 `claim_task` の遷移では `rejectReason` と `resumeSourceStatus: "rejected"` が保持される。差し戻し理由を見ながら再着手できるのは良い設計。
+
+### 懸念
+
+- レビューゲート（reviewer による技術検証、manager による最終受入）が製品の核となる価値のはずだが、上記の通り「1 セッションが複数ロールを持てる」+「claim/complete が未ガード」の組み合わせで、実質的に自作自演が可能になっている。単なる規約（role-policy.md の「禁止される操作」）に依存しており、MCP レベルでは守られていない。
+- Story の完了判定が子 Task の状態を見ていないため、「Story は done だが Task は doing のまま」という不整合状態を作れる。
+
+### 改善案
+
+- `assign_project_role` を「1 セッション・1 プロジェクトにつき 1 ロールまで」に制限するか、少なくとも複数ロール保持時は警告を返す。
+- `claim_task` / `complete_task` も RoleGuard で worker 限定にする（"運用で制御" をやめて実装ブロックに昇格させる）。
+- `complete_story` 実行時に、配下 Task が全て `accepted`（または `canceled`）であることを検証する。

@@ -2,13 +2,15 @@
 name: implement-task
 description: 割り当てられた task を、既存構成・設計原則・実装品質を守りながらレビュー可能な状態まで実装する。
 status: active
-version: 3
+version: 4
 allowRoles: [worker]
 requiredKnowledge:
   - principles/development-principles.md
   - principles/ai-native-ddd.md
   - principles/frontend-architecture.md
   - tips/task-writing.md
+  - tips/verification.md
+  - tips/self-review.md
 requiredTools:
   - list_tasks
   - claim_task
@@ -35,8 +37,10 @@ requiredTools:
 7. フロントエンドを変更する場合は、`components` `features` `app` 配下の類似画面・類似要素を最低 1 回探索する。
 8. 実装前に FileChangePlan を作成し、再利用候補・採用可否・採用しない理由を必ず残す。非自明な変更では Markdown 形式の `add_task_comment` で共有する。
 9. FileChangePlan に沿って、最小差分で実装・テスト・リファクタリングを行う。
-10. 実施内容・判断理由・再利用判断・検証結果・未解決事項を Markdown 形式の `add_task_comment` で共有する。
-11. レビュー可能と判断したら `complete_task` で `in_review` に進める。
+10. `knowledge/tips/verification.md` に従って検証を行い、実行内容と実際の結果を確認する。
+11. `knowledge/tips/self-review.md` に従い、`complete_task` の前に reviewer の視点で自分の差分をセルフレビューする。
+12. 実施内容・判断理由・再利用判断・検証結果・セルフレビューで気づいた点・未解決事項を Markdown 形式の `add_task_comment` で共有する。
+13. レビュー可能と判断したら `complete_task` で `in_review` に進める。
 
 ## FileChangePlan
 
@@ -86,6 +90,7 @@ requiredTools:
 ## Success Criteria
 
 - task の完了条件を満たす実装と検証結果が揃っている。
+- `complete_task` 前にセルフレビューを行い、気づいた懸念がコメントに残っている、または解消されている。
 - 変更理由・トレードオフ・確認手順がコメントで追跡できる。
 - 新規ファイルや新規ディレクトリを作った場合、その必要性が説明されている。
 - 既存探索の結果と、再利用する / しない判断理由がコメントまたは FileChangePlan で追跡できる。
@@ -96,6 +101,7 @@ requiredTools:
 
 - task を `claim` せずに作業を始め、担当状態が不整合になる。
 - 完了条件を満たしていないのに `complete_task` へ進める。
+- セルフレビューをせず、または型チェック/ビルド通過だけを検証扱いにして `complete_task` へ進める。
 - 原則を無視して場当たり的に実装し、責務が崩壊する。
 - 既存構成を確認せずに独自のディレクトリやファイル構成を作る。
 - 再利用候補を調べた記録を残さずに、新規 component や新規ファイルを作る。
