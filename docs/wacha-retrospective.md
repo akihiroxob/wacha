@@ -87,3 +87,18 @@
 - `assign_project_role` を「1 セッション・1 プロジェクトにつき 1 ロールまで」に制限するか、少なくとも複数ロール保持時は警告を返す。
 - `claim_task` / `complete_task` も RoleGuard で worker 限定にする（"運用で制御" をやめて実装ブロックに昇格させる）。
 - `complete_story` 実行時に、配下 Task が全て `accepted`（または `canceled`）であることを検証する。
+
+## 2026-07-07 セッション喪失による専有ロールの恒久占有
+
+### 分かったこと
+
+- manager / reviewer は 1 プロジェクト 1 席の専有ロール（`RoleAssignmentService` の `SINGLE_ASSIGNMENT_ROLES`）。
+- セッションはインメモリで、サーバー再起動や失効で消える。一方 `project_membership` は SQLite に永続する。
+- このため再起動後、死んだセッションの membership が manager 席を占有し続け、新しいセッションからの `assign_project_role`（requestedRole: manager）は「not available」で恒久的に拒否される。実際に発生し、MCP 経由の復旧手段がないため DB の membership 行を直接削除して解消した。
+- `lastHeartbeatAt` は membership 作成時に設定されるが、以後更新されていない（生死判定に使えない状態）。
+- 補足: `assign_project_role` はプロジェクトを projectName ではなく baseDir で同定する。既存 baseDir に別名を渡すと、渡した projectName と description は無視されて既存プロジェクトに紐づく。エージェントが意図せず別プロジェクトに参加したと誤認しうる。
+
+### 対応
+
+- 検証ログの改善案（ロール分離の実装ブロック化・complete_story 整合チェック）と合わせて、Story「レビューゲートを実装レベルで保証する」（task 5 件）と Story「セッション喪失後に専有ロールを復旧可能にする」（task 2 件: heartbeat 更新、死に席の明け渡し）として登録済み。
+- 戦略面の背景は `docs/model-strategy.md` を参照。

@@ -22,6 +22,13 @@ knowledge / skill への変更と、その根拠になった提案・事象を�
 
 ---
 
+## 2026-07-12
+
+- 種別: adopted
+- 対象: `knowledge/tips/incremental-design.md`（新規）, `skill/design-review.md`（新規）, `skill/implement-task.md`（v5）, `skill/review-task.md`（v4）
+- 内容: 再設計を機会的でなく計画的に行う仕組みを追加。変更駆動（準備リファクタリング: 歪んだ最小差分になる場合は実装前に分割提案）と負債駆動（`[design-strain]` task による歪みの台帳）の 2 トリガーを定義し、シグナルの評価と再設計 Story 化は manager の `design-review` skill に集約。worker / reviewer は記録までが責務（センサーと判断の分離）。
+- 根拠: 最小差分ルール下で弱いモデルの最小改修が積み重なり設計負債が単調増加する懸念（2026-07-12 の議論）。XP のシンプル設計＋継続的リファクタリングを、機会的リファクタリング禁止を維持したまま運用化した。
+
 ## 2026-07-07
 
 - 種別: adopted
