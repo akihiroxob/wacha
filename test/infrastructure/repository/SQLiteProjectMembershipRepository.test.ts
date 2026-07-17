@@ -56,6 +56,19 @@ test("SQLiteProjectMembershipRepository.deleteBySessionId removes all membership
   assert.equal(worker2Memberships.length, 1);
 });
 
+test("SQLiteProjectMembershipRepository.updateHeartbeatBySessionId updates all memberships for session", async () => {
+  const project = await projectRepository.create("Wacha", null, "repo/wacha");
+  await repository.create(project.id, "worker-1", ProjectRole.MANAGER);
+  await repository.create(project.id, "worker-2", ProjectRole.WORKER);
+
+  await repository.updateHeartbeatBySessionId("worker-1", 9999);
+
+  const worker1Memberships = await repository.findBySessionId("worker-1");
+  const worker2Memberships = await repository.findBySessionId("worker-2");
+  assert.equal(worker1Memberships[0]?.lastHeartbeatAt, 9999);
+  assert.notEqual(worker2Memberships[0]?.lastHeartbeatAt, 9999);
+});
+
 test("SQLiteProjectMembershipRepository.save updates heartbeat", async () => {
   const project = await projectRepository.create("Wacha", null, "repo/wacha");
   const membership = await repository.create(project.id, "worker-1", ProjectRole.MANAGER);

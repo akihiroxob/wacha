@@ -29,6 +29,7 @@
 
 `PORT` を指定すると待ち受けポートを変更できます。
 `WACHA_DB_PATH` を指定すると SQLite の保存先を変更できます。
+`WACHA_SEAT_STALE_MS` を指定すると専有ロール（manager / reviewer）席の明け渡し閾値を変更できます（既定 1800000 = 30 分）。session が消えた、または最終 heartbeat がこの閾値より古い membership の席は、別セッションの `assign_project_role` 時に自動で明け渡されます。
 
 ## 使うタイミング
 

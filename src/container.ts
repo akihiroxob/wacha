@@ -76,10 +76,16 @@ export const editStoryUseCase = new EditStoryUseCase(storyRepository);
 export const deleteStoryUseCase = new DeleteStoryUseCase(storyRepository, taskRepository);
 export const completeStoryUseCase = new CompleteStoryUseCase(storyRepository);
 export const cancelStoryUseCase = new CancelStoryUseCase(storyRepository);
+// 専有ロール(manager/reviewer)席の解放判定: セッションが現存しない、または heartbeat がこの閾値より古い場合に明け渡す
+const seatStaleMs = Number(process.env.WACHA_SEAT_STALE_MS ?? 30 * 60 * 1000);
 export const assignProjectRoleUseCase = new AssignProjectRoleUseCase(
   projectRepository,
   projectMembershipRepository,
   roleAssignmentService,
+  {
+    isSessionLive: (sessionId) => sessionService.getSessionBySessionId(sessionId) !== undefined,
+    seatStaleMs,
+  },
 );
 export const listProjectUseCase = new ListProjectUseCase(projectRepository);
 export const getProjectUseCase = new GetProjectUseCase(projectRepository);

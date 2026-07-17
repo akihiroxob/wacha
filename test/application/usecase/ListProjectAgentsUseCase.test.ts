@@ -49,6 +49,10 @@ class InMemoryProjectMembershipRepository implements ProjectMembershipRepository
     throw new Error("not implemented");
   }
 
+  async updateHeartbeatBySessionId(): Promise<void> {
+    throw new Error("not implemented");
+  }
+
   async delete(): Promise<void> {
     throw new Error("not implemented");
   }

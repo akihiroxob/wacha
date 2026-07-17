@@ -17,6 +17,10 @@ export class MembershipService {
     await this.projectMembershipRepository.deleteBySessionId(sessionId);
   }
 
+  async touchHeartbeatBySessionId(sessionId: string): Promise<void> {
+    await this.projectMembershipRepository.updateHeartbeatBySessionId(sessionId, Date.now());
+  }
+
   async clear(): Promise<void> {
     await this.projectMembershipRepository.clear();
   }

@@ -103,6 +103,14 @@ class InMemoryProjectMembershipRepository implements ProjectMembershipRepository
     this.projectMemberships.set(projectMembership.id, projectMembership);
   }
 
+  async updateHeartbeatBySessionId(sessionId: string, timestamp: number): Promise<void> {
+    for (const membership of this.projectMemberships.values()) {
+      if (membership.sessionId === sessionId) {
+        membership.heartbeat(timestamp);
+      }
+    }
+  }
+
   async delete(projectMembershipId: string): Promise<void> {
     this.projectMemberships.delete(projectMembershipId);
   }
@@ -208,4 +216,93 @@ test("AssignProjectRoleUseCase respects requested worker role", async () => {
   });
 
   assert.equal(result.projectMembership.role, ProjectRole.WORKER);
+});
+
+test("AssignProjectRoleUseCase releases an exclusive seat held by a dead session", async () => {
+  const projectRepository = new InMemoryProjectRepository();
+  const membershipRepository = new InMemoryProjectMembershipRepository();
+  const staleUseCase = new AssignProjectRoleUseCase(
+    projectRepository,
+    membershipRepository,
+    new RoleAssignmentService(),
+    { isSessionLive: (sessionId) => sessionId !== "dead-session", seatStaleMs: 60_000 },
+  );
+
+  await staleUseCase.execute({
+    baseDir: "repo/wacha",
+    projectName: "Wacha",
+    sessionId: "dead-session",
+    requestedRole: ProjectRole.MANAGER,
+  });
+
+  const result = await staleUseCase.execute({
+    baseDir: "repo/wacha",
+    projectName: "Wacha",
+    sessionId: "session-2",
+    requestedRole: ProjectRole.MANAGER,
+  });
+
+  assert.equal(result.projectMembership.role, ProjectRole.MANAGER);
+  assert.equal(result.projectMembership.sessionId, "session-2");
+  const deadMemberships = await membershipRepository.findBySessionId("dead-session");
+  assert.equal(deadMemberships.length, 0);
+});
+
+test("AssignProjectRoleUseCase releases an exclusive seat when heartbeat is stale", async () => {
+  const projectRepository = new InMemoryProjectRepository();
+  const membershipRepository = new InMemoryProjectMembershipRepository();
+  const useCase = new AssignProjectRoleUseCase(
+    projectRepository,
+    membershipRepository,
+    new RoleAssignmentService(),
+    // 生存はしているが heartbeat(1000) が閾値より古いセッションは席を明け渡す
+    { isSessionLive: () => true, seatStaleMs: 60_000 },
+  );
+
+  await useCase.execute({
+    baseDir: "repo/wacha",
+    projectName: "Wacha",
+    sessionId: "idle-session",
+    requestedRole: ProjectRole.MANAGER,
+  });
+
+  const result = await useCase.execute({
+    baseDir: "repo/wacha",
+    projectName: "Wacha",
+    sessionId: "session-2",
+    requestedRole: ProjectRole.MANAGER,
+  });
+
+  assert.equal(result.projectMembership.role, ProjectRole.MANAGER);
+  assert.equal(result.projectMembership.sessionId, "session-2");
+});
+
+test("AssignProjectRoleUseCase keeps an exclusive seat held by a live session with fresh heartbeat", async () => {
+  const projectRepository = new InMemoryProjectRepository();
+  const membershipRepository = new InMemoryProjectMembershipRepository();
+  const useCase = new AssignProjectRoleUseCase(
+    projectRepository,
+    membershipRepository,
+    new RoleAssignmentService(),
+    { isSessionLive: () => true, seatStaleMs: 60_000 },
+  );
+
+  await useCase.execute({
+    baseDir: "repo/wacha",
+    projectName: "Wacha",
+    sessionId: "session-1",
+    requestedRole: ProjectRole.MANAGER,
+  });
+  await membershipRepository.updateHeartbeatBySessionId("session-1", Date.now());
+
+  await assert.rejects(
+    () =>
+      useCase.execute({
+        baseDir: "repo/wacha",
+        projectName: "Wacha",
+        sessionId: "session-2",
+        requestedRole: ProjectRole.MANAGER,
+      }),
+    /not available/,
+  );
 });

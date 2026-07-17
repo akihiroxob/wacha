@@ -22,6 +22,27 @@ export class RoleAssignmentService {
     throw new Error("No available role for sessionId: " + sessionId);
   }
 
+  /**
+   * 死んだ(または heartbeat が閾値より古い)セッションが占有している専有ロール席を検出する。
+   * 呼び出し元セッション自身の membership は解放対象にしない。
+   */
+  findReleasableExclusiveMemberships(
+    projectMemberships: ProjectMembership[],
+    requesterSessionId: string,
+    isSessionLive: (sessionId: string) => boolean,
+    now: number,
+    staleThresholdMs: number,
+  ): ProjectMembership[] {
+    return projectMemberships.filter(
+      (projectMembership) =>
+        SINGLE_ASSIGNMENT_ROLES.includes(projectMembership.role) &&
+        projectMembership.sessionId !== requesterSessionId &&
+        (!isSessionLive(projectMembership.sessionId) ||
+          projectMembership.lastHeartbeatAt === null ||
+          now - projectMembership.lastHeartbeatAt > staleThresholdMs),
+    );
+  }
+
   resolveRequestedRole(
     projectMemberships: ProjectMembership[],
     sessionId: string,

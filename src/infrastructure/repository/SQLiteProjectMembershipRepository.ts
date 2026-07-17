@@ -142,6 +142,13 @@ export class SQLiteProjectMembershipRepository implements ProjectMembershipRepos
       .execute();
   }
 
+  async updateHeartbeatBySessionId(sessionId: string, timestamp: number): Promise<void> {
+    await DatabaseClient.updateTable("project_membership")
+      .set({ last_heartbeat_at: timestamp })
+      .where("session_id", "=", sessionId)
+      .execute();
+  }
+
   async delete(projectMembershipId: string): Promise<void> {
     await DatabaseClient.deleteFrom("project_membership")
       .where("id", "=", projectMembershipId)

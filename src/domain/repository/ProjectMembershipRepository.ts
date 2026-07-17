@@ -12,6 +12,7 @@ export interface ProjectMembershipRepository {
   ): Promise<ProjectMembership | null>;
   create(projectId: string, sessionId: string, role: ProjectRole): Promise<ProjectMembership>;
   save(projectMembership: ProjectMembership): Promise<void>;
+  updateHeartbeatBySessionId(sessionId: string, timestamp: number): Promise<void>;
   delete(projectMembershipId: string): Promise<void>;
   deleteBySessionId(sessionId: string): Promise<void>;
   clear(): Promise<void>;

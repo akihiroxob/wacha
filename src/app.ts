@@ -60,6 +60,10 @@ export const createApp = () => {
     if (sessionId) {
       const session = sessionService.getSessionBySessionId(sessionId);
       if (!session) throw new SessionInvalidError();
+      // heartbeat更新は失敗してもリクエスト本体を失敗させない
+      membershipService.touchHeartbeatBySessionId(sessionId).catch((error) => {
+        console.error(`Failed to update heartbeat for session ${sessionId}`, error);
+      });
       return session.transport.handleRequest(c.req.raw);
     }
 

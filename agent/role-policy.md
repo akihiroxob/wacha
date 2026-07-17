@@ -164,6 +164,14 @@ role が必要な tool を呼ぶ時点で role 未取得により処理できな
 
 この文書は WACHA の role 運用ルールを示すためのものであり、session 再初期化エラー自体に WACHA 固有の role 復旧手順を埋め込む前提は取らない。
 
+### 専有ロール席の明け渡し
+
+`manager` / `reviewer` は 1 プロジェクト 1 席の専有ロールである。席を持つ membership の session がサーバー上に存在しない、または最終 heartbeat が閾値（環境変数 `WACHA_SEAT_STALE_MS`、既定 30 分）より古い場合、別セッションからの `assign_project_role` 要求時にその席は自動で明け渡される。
+
+- heartbeat は MCP リクエストのたびにサーバー側で更新される
+- 生きているセッション（現存し、heartbeat が閾値内）が席を持つ場合、要求は従来どおり拒否される
+- これは role の自動継承ではない。新しいセッションが `assign_project_role` を明示的に呼んだ時にだけ発生する
+
 ## MCP レベルの拒否仕様
 
 role に許可されていない tool を呼んだ場合、MCP はエラーを返す。
