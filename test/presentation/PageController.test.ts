@@ -82,6 +82,52 @@ test("POST /api/projects/:projectId/stories creates a story", async () => {
   assert.equal(body.story.status, "todo");
 });
 
+test("POST /api/projects/:projectId/stories/:storyId/move swaps priority with the neighbor", async () => {
+  const project = await projectRepository.create("Wacha", null, "repo/wacha");
+  const storyA = await storyRepository.create(project.id, "Story A", null);
+  const storyB = await storyRepository.create(project.id, "Story B", null);
+
+  const res = await app.request(
+    `/api/projects/${project.id}/stories/${storyB.id}/move`,
+    jsonInit("POST", { direction: "up" }),
+  );
+  assert.equal(res.status, 200);
+
+  const detailRes = await app.request(`/api/projects/${project.id}`);
+  const detail = await detailRes.json();
+  assert.deepEqual(
+    detail.stories.map((story: { id: string }) => story.id),
+    [storyB.id, storyA.id],
+  );
+});
+
+test("POST move at the top edge is a no-op", async () => {
+  const project = await projectRepository.create("Wacha", null, "repo/wacha");
+  const storyA = await storyRepository.create(project.id, "Story A", null);
+  await storyRepository.create(project.id, "Story B", null);
+
+  const res = await app.request(
+    `/api/projects/${project.id}/stories/${storyA.id}/move`,
+    jsonInit("POST", { direction: "up" }),
+  );
+  assert.equal(res.status, 200);
+
+  const detailRes = await app.request(`/api/projects/${project.id}`);
+  const detail = await detailRes.json();
+  assert.equal(detail.stories[0].id, storyA.id);
+});
+
+test("POST move with invalid direction returns 400", async () => {
+  const project = await projectRepository.create("Wacha", null, "repo/wacha");
+  const story = await storyRepository.create(project.id, "Story A", null);
+
+  const res = await app.request(
+    `/api/projects/${project.id}/stories/${story.id}/move`,
+    jsonInit("POST", { direction: "sideways" }),
+  );
+  assert.equal(res.status, 400);
+});
+
 test("POST /api/projects/:projectId/stories without title returns 400", async () => {
   const project = await projectRepository.create("Wacha", null, "repo/wacha");
 

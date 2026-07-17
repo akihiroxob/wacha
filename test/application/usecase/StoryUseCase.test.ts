@@ -149,6 +149,42 @@ test("ListStoryUseCase returns project stories in created order", async () => {
   assert.equal(result.stories[1]?.id, "story-2");
 });
 
+test("ListStoryUseCase orders stories by sortOrder before createdAt", async () => {
+  const repo = new InMemoryStoryRepository([
+    new Story("story-1", "project-1", "Story 1", null, StoryStatus.TODO, 1000, 1000, 2),
+    new Story("story-2", "project-1", "Story 2", null, StoryStatus.TODO, 2000, 2000, 1),
+  ]);
+
+  const result = await new ListStoryUseCase(repo).execute("project-1");
+
+  assert.deepEqual(
+    result.stories.map((story) => story.id),
+    ["story-2", "story-1"],
+  );
+});
+
+test("EditStoryUseCase updates sortOrder when specified", async () => {
+  const story = createStory("story-1", StoryStatus.TODO, 1000);
+  const repo = new InMemoryStoryRepository([story]);
+
+  const updated = await new EditStoryUseCase(repo).execute(
+    "project-1",
+    story.id,
+    story.title,
+    story.description,
+    9,
+  );
+  assert.equal(updated.sortOrder, 9);
+
+  const unchanged = await new EditStoryUseCase(repo).execute(
+    "project-1",
+    story.id,
+    story.title,
+    story.description,
+  );
+  assert.equal(unchanged.sortOrder, 9);
+});
+
 test("ListStoryUseCase filters stories by status", async () => {
   const repo = new InMemoryStoryRepository([
     createStory("story-1", StoryStatus.TODO, 1000),

@@ -217,7 +217,54 @@ test("ListTaskUseCase returns tasks for the specified project", async () => {
   assert.equal(result.summary.byStatus[TaskStatus.CANCELED], 0);
   assert.equal(result.summary.lastUpdatedAt, 2000);
   assert.equal(result.tasks.length, 2);
-  assert.equal(result.tasks[0]?.id, "task-2");
+  // sortOrder 未設定(同値)の場合は createdAt 順で安定する
+  assert.equal(result.tasks[0]?.id, "task-1");
+});
+
+test("ListTaskUseCase orders tasks by story priority then task priority, standalone last", async () => {
+  const makeTask = (id: string, storyId: string | null, sortOrder: number) =>
+    new Task(id, "project-1", storyId, id, null, TaskStatus.TODO, null, null, null, 1000, 1000, sortOrder);
+  const taskRepo = new InMemoryTaskRepository([
+    makeTask("standalone", null, 1),
+    makeTask("story2-task", "story-2", 1),
+    makeTask("story1-task-b", "story-1", 5),
+    makeTask("story1-task-a", "story-1", 2),
+  ]);
+  const storyRepo = new InMemoryStoryRepository([
+    new Story("story-1", "project-1", "Story 1", null, StoryStatus.TODO, 1000, 1000, 1),
+    new Story("story-2", "project-1", "Story 2", null, StoryStatus.TODO, 1000, 1000, 2),
+  ]);
+
+  const result = await new ListTaskUseCase(taskRepo, storyRepo).execute("project-1");
+
+  assert.deepEqual(
+    result.tasks.map((task) => task.id),
+    ["story1-task-a", "story1-task-b", "story2-task", "standalone"],
+  );
+});
+
+test("EditTaskUseCase updates sortOrder when specified", async () => {
+  const task = createTask(TaskStatus.TODO);
+  const repo = new InMemoryTaskRepository([task]);
+
+  const updated = await new EditTaskUseCase(repo).execute(
+    "project-1",
+    task.id,
+    task.title,
+    task.description,
+    7,
+  );
+
+  assert.equal(updated.sortOrder, 7);
+
+  // 未指定なら順位は変わらない
+  const unchanged = await new EditTaskUseCase(repo).execute(
+    "project-1",
+    task.id,
+    task.title,
+    task.description,
+  );
+  assert.equal(unchanged.sortOrder, 7);
 });
 
 test("IssueTaskUseCase creates a todo task", async () => {

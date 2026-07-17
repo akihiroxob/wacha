@@ -61,8 +61,8 @@
   - 用途: 新しい Story を作成する
   - Arguments: `{ "projectId": string, "title": string, "description"?: string }`
 - `edit_story`
-  - 用途: 既存 Story の title / description を更新する
-  - Arguments: `{ "projectId": string, "storyId": string, "title": string, "description"?: string }`
+  - 用途: 既存 Story の title / description / 優先順位を更新する
+  - Arguments: `{ "projectId": string, "storyId": string, "title": string, "description"?: string, "sortOrder"?: number }`
 - `complete_story`
   - 用途: `doing` の Story を `done` に進める
   - Arguments: `{ "storyId": string }`
@@ -76,8 +76,8 @@
   - 用途: 新しいタスクを作成する
   - Arguments: `{ "title": string, "description"?: string, "projectId": string, "storyId"?: string }`
 - `edit_task`
-  - 用途: 既存 Task の title / description を更新する
-  - Arguments: `{ "projectId": string, "taskId": string, "title": string, "description"?: string }`
+  - 用途: 既存 Task の title / description / 優先順位を更新する
+  - Arguments: `{ "projectId": string, "taskId": string, "title": string, "description"?: string, "sortOrder"?: number }`
 - `claim_task`
   - 用途: `todo` または `rejected` のタスクを現在の session に割り当て、`doing` に進める
   - 備考: worker 専用（MCP レベルでブロック）
@@ -128,6 +128,8 @@
 ## 運用ガイド
 
 - 重複タスクを作らないため、まず `list_tasks` を確認する
+- `list_stories` / `list_tasks` は優先順位（`sortOrder`、小さいほど優先）順で返る。次に着手する作業は一覧の先頭から選ぶ
+- 優先順位の変更は manager が `edit_story` / `edit_task` の `sortOrder` で行う
 - タスク名は短く、何をするか分かる表現にする
 - 既存の Story / Task に紐づかない直接依頼や follow-up は、`issue_task` で単発 Task を作成してから進める
 - `complete_task` は本当にレビュー可能な状態になってから呼ぶ

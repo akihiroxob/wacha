@@ -3,7 +3,13 @@ import { StoryRepository } from "@domain/repository/StoryRepository.ts";
 export class EditStoryUseCase {
   constructor(private storyRepository: StoryRepository) {}
 
-  async execute(projectId: string, storyId: string, title: string, description: string | null) {
+  async execute(
+    projectId: string,
+    storyId: string,
+    title: string,
+    description: string | null,
+    sortOrder?: number | null,
+  ) {
     const story = await this.storyRepository.findById(storyId);
     if (!story) {
       throw new Error("Story not found");
@@ -15,6 +21,9 @@ export class EditStoryUseCase {
 
     story.changeTitle(title);
     story.changeDescription(description ?? "");
+    if (typeof sortOrder === "number") {
+      story.changeSortOrder(sortOrder);
+    }
 
     await this.storyRepository.save(story);
     return story;

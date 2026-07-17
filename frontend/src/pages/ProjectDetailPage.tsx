@@ -13,7 +13,7 @@ import { Button } from "@/components/Button";
 import { StoryCard } from "@/components/StoryCard";
 import { TaskCard } from "@/components/TaskCard";
 import { TaskDrawer } from "@/components/TaskDrawer";
-import { useDeleteStory, useProject } from "@/lib/queries";
+import { useDeleteStory, useMoveStory, useProject } from "@/lib/queries";
 import { ApiError } from "@/lib/api";
 import { formatAbsoluteTime, formatRelativeTime, HEARTBEAT_FRESH_MS } from "@/lib/time";
 
@@ -112,6 +112,7 @@ export const ProjectDetailPage = () => {
   const storyStatusFilter = searchParams.get("storyStatus") === "all" ? "all" : "active";
   const { data, isPending, error } = useProject(projectId);
   const deleteStory = useDeleteStory(projectId);
+  const moveStory = useMoveStory(projectId);
 
   if (isPending) {
     return (
@@ -392,6 +393,26 @@ export const ProjectDetailPage = () => {
                           <StoryCard story={story} taskCount={storyTasks.length} embedded />
                         </div>
                         <div className="flex shrink-0 items-start gap-2">
+                          <button
+                            type="button"
+                            aria-label="優先順位を上げる"
+                            onClick={() => moveStory.mutate({ storyId: story.id, direction: "up" })}
+                            disabled={moveStory.isPending}
+                            className="rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50 disabled:opacity-50"
+                          >
+                            ↑
+                          </button>
+                          <button
+                            type="button"
+                            aria-label="優先順位を下げる"
+                            onClick={() =>
+                              moveStory.mutate({ storyId: story.id, direction: "down" })
+                            }
+                            disabled={moveStory.isPending}
+                            className="rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50 disabled:opacity-50"
+                          >
+                            ↓
+                          </button>
                           <Link
                             to={`/project/${project.id}/story/${story.id}/edit`}
                             className="rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50"

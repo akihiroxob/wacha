@@ -37,6 +37,11 @@ export class PageController {
     return typeof value === "string" ? value.trim() : "";
   }
 
+  private readSortOrderField(body: Record<string, unknown>): number | null {
+    const value = body["sortOrder"];
+    return typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : null;
+  }
+
   private async getProjectOrThrow(projectId: string | undefined) {
     if (!projectId) throw new ValidationError("projectId is required");
     const project = await getProjectUseCase.execute(projectId);
@@ -107,15 +112,54 @@ export class PageController {
     const title = this.readTextField(jsonBody, "title");
     const description = this.readTextField(jsonBody, "description");
     if (title === "") throw new ValidationError("Title は必須です。");
+    const sortOrder = this.readSortOrderField(jsonBody);
 
     try {
-      await editStoryUseCase.execute(project.id, storyId, title, description || null);
+      await editStoryUseCase.execute(project.id, storyId, title, description || null, sortOrder);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to update story";
       throw new ValidationError(message);
     }
 
     const body: OkResponse = { ok: true };
+    return c.json(body);
+  }
+
+  async moveStory(c: Context) {
+    const project = await this.getProjectOrThrow(c.req.param("projectId"));
+    const storyId = c.req.param("storyId");
+    if (!storyId) throw new ValidationError("storyId is required");
+
+    const jsonBody = await this.readJsonBody(c);
+    const direction = jsonBody["direction"];
+    if (direction !== "up" && direction !== "down") {
+      throw new ValidationError("direction must be 'up' or 'down'");
+    }
+
+    // 優先順位順の一覧上で隣の story と sortOrder を入れ替える(MCP と同じ UseCase を使う)
+    const storyResult = await listStoryUseCase.execute(project.id);
+    const index = storyResult.stories.findIndex((story) => story.id === storyId);
+    if (index === -1) throw new NotFoundError("Story not found");
+
+    const neighbor = storyResult.stories[direction === "up" ? index - 1 : index + 1];
+    const body: OkResponse = { ok: true };
+    if (!neighbor) return c.json(body); // 端では何もしない
+
+    const story = storyResult.stories[index]!;
+    await editStoryUseCase.execute(
+      project.id,
+      story.id,
+      story.title,
+      story.description,
+      neighbor.sortOrder,
+    );
+    await editStoryUseCase.execute(
+      project.id,
+      neighbor.id,
+      neighbor.title,
+      neighbor.description,
+      story.sortOrder,
+    );
     return c.json(body);
   }
 
@@ -131,9 +175,10 @@ export class PageController {
     const title = this.readTextField(jsonBody, "title");
     const description = this.readTextField(jsonBody, "description");
     if (title === "") throw new ValidationError("Title は必須です。");
+    const sortOrder = this.readSortOrderField(jsonBody);
 
     try {
-      await editTaskUseCase.execute(project.id, taskId, title, description || null);
+      await editTaskUseCase.execute(project.id, taskId, title, description || null, sortOrder);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to update task";
       throw new ValidationError(message);

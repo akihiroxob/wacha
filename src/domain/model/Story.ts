@@ -9,6 +9,8 @@ export class Story {
     public status: StoryStatus,
     public createdAt: number,
     public updatedAt: number,
+    // 優先順位(小さいほど優先)。全順序で扱い、一覧はこの昇順で返す
+    public sortOrder: number = 0,
   ) {
     if (projectId.trim() === "") {
       throw new Error("story projectId cannot be empty");
@@ -28,6 +30,11 @@ export class Story {
 
   changeDescription(description: string) {
     this.description = description.trim() === "" ? null : description.trim();
+    this.updatedAt = Date.now();
+  }
+
+  changeSortOrder(sortOrder: number) {
+    this.sortOrder = sortOrder;
     this.updatedAt = Date.now();
   }
 

@@ -13,6 +13,7 @@ export interface TaskTable {
   assignee: string | null;
   reject_reason: string | null;
   resume_source_status: ResumeSourceStatus | null;
+  sort_order: Generated<number>;
   created_at: Generated<number>;
   updated_at: Generated<number>;
 }

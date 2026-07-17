@@ -29,6 +29,7 @@ export interface StoryDto {
   title: string;
   description: string | null;
   status: StoryStatus;
+  sortOrder: number;
   createdAt: number;
   updatedAt: number;
 }
@@ -43,6 +44,7 @@ export interface TaskDto {
   assignee: string | null;
   rejectReason: string | null;
   resumeSourceStatus: "todo" | "rejected" | null;
+  sortOrder: number;
   createdAt: number;
   updatedAt: number;
 }
@@ -89,11 +91,17 @@ export interface ProjectDetailResponse {
 export interface StoryInput {
   title: string;
   description?: string;
+  sortOrder?: number;
 }
 
 export interface TaskInput {
   title: string;
   description?: string;
+  sortOrder?: number;
+}
+
+export interface MoveStoryInput {
+  direction: "up" | "down";
 }
 
 export interface ReasonInput {

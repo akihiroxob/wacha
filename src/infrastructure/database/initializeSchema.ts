@@ -1,3 +1,4 @@
+import { sql } from "kysely";
 import { DatabaseClient } from "@database/SQLiteClient.ts";
 
 let initializePromise: Promise<void> | null = null;
@@ -6,11 +7,19 @@ async function addColumnIfMissing(
   table: string,
   column: string,
   dataType: "text" | "integer",
-): Promise<void> {
+  defaultTo?: number,
+): Promise<boolean> {
   try {
-    await DatabaseClient.schema.alterTable(table).addColumn(column, dataType).execute();
+    await DatabaseClient.schema
+      .alterTable(table)
+      .addColumn(column, dataType, (col) =>
+        defaultTo === undefined ? col : col.notNull().defaultTo(defaultTo),
+      )
+      .execute();
+    return true;
   } catch {
     // duplicate column name: 既に追加済み
+    return false;
   }
 }
 
@@ -39,6 +48,7 @@ export function initializeSchema(): Promise<void> {
       .addColumn("title", "text", (col) => col.notNull())
       .addColumn("description", "text")
       .addColumn("status", "text", (col) => col.notNull())
+      .addColumn("sort_order", "integer", (col) => col.notNull().defaultTo(0))
       .addColumn("created_at", "integer", (col) => col.notNull())
       .addColumn("updated_at", "integer", (col) => col.notNull())
       .addForeignKeyConstraint("story_project_fk", ["project_id"], "project", ["id"])
@@ -69,6 +79,7 @@ export function initializeSchema(): Promise<void> {
       .addColumn("assignee", "text")
       .addColumn("reject_reason", "text")
       .addColumn("resume_source_status", "text")
+      .addColumn("sort_order", "integer", (col) => col.notNull().defaultTo(0))
       .addColumn("created_at", "integer", (col) => col.notNull())
       .addColumn("updated_at", "integer", (col) => col.notNull())
       .addForeignKeyConstraint("task_project_fk", ["project_id"], "project", ["id"])
@@ -89,6 +100,30 @@ export function initializeSchema(): Promise<void> {
 
     // 既存DBへの後方互換カラム追加(列が既にある場合のエラーは無視する)
     await addColumnIfMissing("task_comment", "session_id", "text");
+
+    // sort_order: 追加直後の既存行は createdAt 順(同時刻は id 順)で 1 始まりに初期化する
+    const addedStorySortOrder = await addColumnIfMissing("story", "sort_order", "integer", 0);
+    if (addedStorySortOrder) {
+      await sql`
+        UPDATE story SET sort_order = (
+          SELECT COUNT(*) FROM story AS s2
+          WHERE s2.project_id = story.project_id
+            AND (s2.created_at < story.created_at
+              OR (s2.created_at = story.created_at AND s2.id <= story.id))
+        )
+      `.execute(DatabaseClient);
+    }
+    const addedTaskSortOrder = await addColumnIfMissing("task", "sort_order", "integer", 0);
+    if (addedTaskSortOrder) {
+      await sql`
+        UPDATE task SET sort_order = (
+          SELECT COUNT(*) FROM task AS t2
+          WHERE t2.project_id = task.project_id
+            AND (t2.created_at < task.created_at
+              OR (t2.created_at = task.created_at AND t2.id <= task.id))
+        )
+      `.execute(DatabaseClient);
+    }
 
     await DatabaseClient.schema
       .createIndex("idx_story_project_id")

@@ -40,6 +40,7 @@ export const createApp = () => {
   app.get("/api/projects/:projectId", PageCtrl.project.bind(PageCtrl));
   app.post("/api/projects/:projectId/stories", PageCtrl.createStory.bind(PageCtrl));
   app.put("/api/projects/:projectId/stories/:storyId", PageCtrl.updateStory.bind(PageCtrl));
+  app.post("/api/projects/:projectId/stories/:storyId/move", PageCtrl.moveStory.bind(PageCtrl));
   app.delete("/api/projects/:projectId/stories/:storyId", PageCtrl.deleteStory.bind(PageCtrl));
   app.put("/api/projects/:projectId/tasks/:taskId", PageCtrl.updateTask.bind(PageCtrl));
   app.delete("/api/projects/:projectId/tasks/:taskId", PageCtrl.deleteTask.bind(PageCtrl));
