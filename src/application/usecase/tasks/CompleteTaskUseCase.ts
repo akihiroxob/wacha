@@ -11,6 +11,16 @@ export class CompleteTaskUseCase {
       throw new Error(`the task(${taskId}) is not in doing status`);
     }
 
+    // 担当者自身の検証コメントがない task は in_review に進めない
+    const comments = await this.taskRepository.findCommentsByTaskId(taskId);
+    const hasAssigneeComment =
+      task.assignee !== null && comments.some((comment) => comment.sessionId === task.assignee);
+    if (!hasAssigneeComment) {
+      throw new Error(
+        `the task(${taskId}) has no comment from its assignee. Record implementation and verification notes with add_task_comment before calling complete_task`,
+      );
+    }
+
     task.complete();
     await this.taskRepository.save(task);
   }

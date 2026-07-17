@@ -52,6 +52,7 @@ export interface TaskCommentDto {
   taskId: string;
   body: string;
   author: string | null;
+  sessionId: string | null;
   createdAt: number;
 }
 

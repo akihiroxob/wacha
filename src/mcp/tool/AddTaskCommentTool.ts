@@ -6,6 +6,7 @@ type AddTaskCommentInput = {
   taskId: string;
   body: string;
   author?: string | null;
+  sessionId: string;
 };
 
 export const AddTaskCommentTool = {
@@ -18,8 +19,8 @@ export const AddTaskCommentTool = {
       author: z.string().optional().describe("Comment author"),
     },
   },
-  execute: async ({ taskId, body, author }: AddTaskCommentInput) => {
-    const comment = await addTaskCommentUseCase.execute(taskId, body, author ?? null);
+  execute: async ({ taskId, body, author, sessionId }: AddTaskCommentInput) => {
+    const comment = await addTaskCommentUseCase.execute(taskId, body, author ?? null, sessionId);
     return toTextResult({ comment }, `Added comment ${comment.id} to task ${taskId}.`);
   },
 };

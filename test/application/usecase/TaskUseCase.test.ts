@@ -66,13 +66,19 @@ class InMemoryTaskRepository implements TaskRepository {
     this.tasks.set(task.id, task);
   }
 
-  async addComment(taskId: string, body: string, author?: string | null): Promise<TaskComment> {
+  async addComment(
+    taskId: string,
+    body: string,
+    author?: string | null,
+    sessionId?: string | null,
+  ): Promise<TaskComment> {
     const comment = new TaskComment(
       `comment-${this.comments.length + 1}`,
       taskId,
       body,
       author ?? null,
       1000 + this.comments.length,
+      sessionId ?? null,
     );
     this.comments.push(comment);
     return comment;
@@ -343,14 +349,41 @@ test("ClaimTaskUseCase keeps a manually claimed story in doing", async () => {
   assert.equal(savedStory?.status, StoryStatus.DOING);
 });
 
-test("CompleteTaskUseCase completes a doing task", async () => {
+test("CompleteTaskUseCase completes a doing task with an assignee comment", async () => {
   const task = createTask(TaskStatus.DOING);
+  task.assignee = "worker-1";
   const repo = new InMemoryTaskRepository([task]);
+  await repo.addComment(task.id, "実施内容と検証結果", null, "worker-1");
 
   await new CompleteTaskUseCase(repo).execute(task.id);
 
   const savedTask = await repo.findById(task.id);
   assert.equal(savedTask?.status, TaskStatus.IN_REVIEW);
+});
+
+test("CompleteTaskUseCase blocks completion without an assignee comment", async () => {
+  const task = createTask(TaskStatus.DOING);
+  task.assignee = "worker-1";
+  const repo = new InMemoryTaskRepository([task]);
+
+  await assert.rejects(
+    () => new CompleteTaskUseCase(repo).execute(task.id),
+    /no comment from its assignee/,
+  );
+  const savedTask = await repo.findById(task.id);
+  assert.equal(savedTask?.status, TaskStatus.DOING);
+});
+
+test("CompleteTaskUseCase ignores comments from other sessions", async () => {
+  const task = createTask(TaskStatus.DOING);
+  task.assignee = "worker-1";
+  const repo = new InMemoryTaskRepository([task]);
+  await repo.addComment(task.id, "reviewerの補足", null, "reviewer-1");
+
+  await assert.rejects(
+    () => new CompleteTaskUseCase(repo).execute(task.id),
+    /no comment from its assignee/,
+  );
 });
 
 test("ReviewedTaskUseCase moves an in_review task to wait_accept", async () => {
@@ -359,6 +392,44 @@ test("ReviewedTaskUseCase moves an in_review task to wait_accept", async () => {
 
   await new ReviewedTaskUseCase(repo).execute(task.id);
 
+  const savedTask = await repo.findById(task.id);
+  assert.equal(savedTask?.status, TaskStatus.WAIT_ACCEPT);
+});
+
+test("ReviewedTaskUseCase blocks review by the task assignee", async () => {
+  // ロールを worker → reviewer に置き換えても assignee は変わらないため、この比較で自己レビューを防げる
+  const task = createTask(TaskStatus.IN_REVIEW);
+  task.assignee = "worker-1";
+  const repo = new InMemoryTaskRepository([task]);
+
+  await assert.rejects(
+    () => new ReviewedTaskUseCase(repo).execute(task.id, "worker-1"),
+    /cannot be reviewed by its own assignee/,
+  );
+  const savedTask = await repo.findById(task.id);
+  assert.equal(savedTask?.status, TaskStatus.IN_REVIEW);
+});
+
+test("ReviewedTaskUseCase allows review by a different session", async () => {
+  const task = createTask(TaskStatus.IN_REVIEW);
+  task.assignee = "worker-1";
+  const repo = new InMemoryTaskRepository([task]);
+
+  await new ReviewedTaskUseCase(repo).execute(task.id, "reviewer-1");
+
+  const savedTask = await repo.findById(task.id);
+  assert.equal(savedTask?.status, TaskStatus.WAIT_ACCEPT);
+});
+
+test("AcceptTaskUseCase blocks acceptance by the task assignee", async () => {
+  const task = createTask(TaskStatus.WAIT_ACCEPT);
+  task.assignee = "worker-1";
+  const repo = new InMemoryTaskRepository([task]);
+
+  await assert.rejects(
+    () => new AcceptTaskUseCase(repo).execute(task.id, "worker-1"),
+    /cannot be accepted by its own assignee/,
+  );
   const savedTask = await repo.findById(task.id);
   assert.equal(savedTask?.status, TaskStatus.WAIT_ACCEPT);
 });

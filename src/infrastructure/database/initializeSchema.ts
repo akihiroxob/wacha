@@ -2,6 +2,18 @@ import { DatabaseClient } from "@database/SQLiteClient.ts";
 
 let initializePromise: Promise<void> | null = null;
 
+async function addColumnIfMissing(
+  table: string,
+  column: string,
+  dataType: "text" | "integer",
+): Promise<void> {
+  try {
+    await DatabaseClient.schema.alterTable(table).addColumn(column, dataType).execute();
+  } catch {
+    // duplicate column name: 既に追加済み
+  }
+}
+
 export function initializeSchema(): Promise<void> {
   if (initializePromise) {
     return initializePromise;
@@ -70,9 +82,13 @@ export function initializeSchema(): Promise<void> {
       .addColumn("task_id", "text", (col) => col.notNull())
       .addColumn("body", "text", (col) => col.notNull())
       .addColumn("author", "text")
+      .addColumn("session_id", "text")
       .addColumn("created_at", "integer", (col) => col.notNull())
       .addForeignKeyConstraint("task_comment_task_fk", ["task_id"], "task", ["id"])
       .execute();
+
+    // 既存DBへの後方互換カラム追加(列が既にある場合のエラーは無視する)
+    await addColumnIfMissing("task_comment", "session_id", "text");
 
     await DatabaseClient.schema
       .createIndex("idx_story_project_id")

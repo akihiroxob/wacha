@@ -195,6 +195,52 @@ test("CompleteStoryUseCase moves a doing story to done", async () => {
   assert.equal(savedStory?.status, StoryStatus.DONE);
 });
 
+function createStoryTask(id: string, status: TaskStatus) {
+  return new Task(id, "project-1", "story-1", `Task ${id}`, null, status, null, null, null, 1000, 1000);
+}
+
+test("CompleteStoryUseCase blocks completion while child tasks are unsettled", async () => {
+  const story = createStory("story-1", StoryStatus.DOING, 1000);
+  const storyRepo = new InMemoryStoryRepository([story]);
+  const taskRepo = new InMemoryTaskRepository([
+    createStoryTask("task-1", TaskStatus.ACCEPTED),
+    createStoryTask("task-2", TaskStatus.DOING),
+    createStoryTask("task-3", TaskStatus.IN_REVIEW),
+  ]);
+
+  await assert.rejects(
+    () => new CompleteStoryUseCase(storyRepo, taskRepo).execute(story.id),
+    /still has 2 unsettled task/,
+  );
+  const savedStory = await storyRepo.findById(story.id);
+  assert.equal(savedStory?.status, StoryStatus.DOING);
+});
+
+test("CompleteStoryUseCase completes when all child tasks are accepted or canceled", async () => {
+  const story = createStory("story-1", StoryStatus.DOING, 1000);
+  const storyRepo = new InMemoryStoryRepository([story]);
+  const taskRepo = new InMemoryTaskRepository([
+    createStoryTask("task-1", TaskStatus.ACCEPTED),
+    createStoryTask("task-2", TaskStatus.CANCELED),
+  ]);
+
+  await new CompleteStoryUseCase(storyRepo, taskRepo).execute(story.id);
+
+  const savedStory = await storyRepo.findById(story.id);
+  assert.equal(savedStory?.status, StoryStatus.DONE);
+});
+
+test("CompleteStoryUseCase completes a doing story without child tasks", async () => {
+  const story = createStory("story-1", StoryStatus.DOING, 1000);
+  const storyRepo = new InMemoryStoryRepository([story]);
+  const taskRepo = new InMemoryTaskRepository();
+
+  await new CompleteStoryUseCase(storyRepo, taskRepo).execute(story.id);
+
+  const savedStory = await storyRepo.findById(story.id);
+  assert.equal(savedStory?.status, StoryStatus.DONE);
+});
+
 test("CancelStoryUseCase moves a doing story to canceled", async () => {
   const story = createStory("story-1", StoryStatus.DOING, 1000);
   const repo = new InMemoryStoryRepository([story]);

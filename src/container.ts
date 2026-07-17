@@ -74,7 +74,7 @@ export const listStoryUseCase = new ListStoryUseCase(storyRepository);
 export const issueStoryUseCase = new IssueStoryUseCase(storyRepository);
 export const editStoryUseCase = new EditStoryUseCase(storyRepository);
 export const deleteStoryUseCase = new DeleteStoryUseCase(storyRepository, taskRepository);
-export const completeStoryUseCase = new CompleteStoryUseCase(storyRepository);
+export const completeStoryUseCase = new CompleteStoryUseCase(storyRepository, taskRepository);
 export const cancelStoryUseCase = new CancelStoryUseCase(storyRepository);
 // 専有ロール(manager/reviewer)席の解放判定: セッションが現存しない、または heartbeat がこの閾値より古い場合に明け渡す
 const seatStaleMs = Number(process.env.WACHA_SEAT_STALE_MS ?? 30 * 60 * 1000);

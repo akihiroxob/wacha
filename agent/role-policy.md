@@ -51,6 +51,18 @@
 - `edit_task`
 - `accept_task`
 
+以下の tool は `worker` 以外からの呼び出しを拒否する。
+
+- `claim_task`
+- `complete_task`
+
+## セッションとロールの制約
+
+- 1 セッションは 1 プロジェクトにつき 1 ロールのみ保持する。`assign_project_role` で別ロールを要求した場合、membership は追加ではなく置き換えになる
+- task の担当者（assignee）自身は、その task の `reviewed_task` / `accept_task` を実行できない（自己レビュー・自己受入の禁止）。ロールを置き換えても assignee は変わらないため、ロール切り替えでは回避できない
+- `complete_task` は、担当者自身が投稿した task comment（実施内容・検証結果）が 1 件以上ないと実行できない
+- `complete_story` は、配下の task が全て `accepted` / `canceled` になるまで実行できない
+
 ## 権限表
 
 次の表は、当面の「MCP 実装ブロック」と「運用上の期待」を分けて示す。
@@ -67,8 +79,8 @@
 | `list_tasks`          | allow   | allow    | allow  | no               | 参照系                                  |
 | `issue_task`          | allow   | allow    | allow  | yes              | 単発 Task 作成 tool として解放する |
 | `edit_task`           | allow   | deny     | deny   | yes              | Task 編集は manager のみ                     |
-| `claim_task`          | deny    | deny     | allow  | no               | 当面は運用で制御                        |
-| `complete_task`       | deny    | deny     | allow  | no               | 当面は運用で制御                        |
+| `claim_task`          | deny    | deny     | allow  | yes              | worker 専用として実装ブロック           |
+| `complete_task`       | deny    | deny     | allow  | yes              | worker 専用。担当者コメント必須         |
 | `reviewed_task`       | deny    | allow    | deny   | yes              | reviewer 承認で `wait_accept` に進める  |
 | `accept_task`         | allow   | deny     | deny   | yes              | 最終受入は manager のみ                 |
 | `reject_task`         | allow   | allow    | deny   | no               | reviewer は実装観点の差し戻しに使う     |

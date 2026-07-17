@@ -21,4 +21,9 @@ export class ProjectMembership {
   heartbeat(timestamp = Date.now()) {
     this.lastHeartbeatAt = timestamp;
   }
+
+  changeRole(role: ProjectRole) {
+    this.role = role;
+    this.updatedAt = Date.now();
+  }
 }

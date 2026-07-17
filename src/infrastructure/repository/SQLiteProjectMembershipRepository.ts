@@ -126,20 +126,16 @@ export class SQLiteProjectMembershipRepository implements ProjectMembershipRepos
   }
 
   async save(projectMembership: ProjectMembership): Promise<void> {
-    const existingProjectMembership = await this.findByProjectIdSessionIdAndRole(
-      projectMembership.projectId,
-      projectMembership.sessionId,
-      projectMembership.role,
-    );
-    if (!existingProjectMembership) throw new Error("ProjectMembership not found");
-
-    await DatabaseClient.updateTable("project_membership")
+    const result = await DatabaseClient.updateTable("project_membership")
       .set({
+        role: projectMembership.role,
         last_heartbeat_at: projectMembership.lastHeartbeatAt,
         updated_at: projectMembership.updatedAt,
       })
       .where("id", "=", projectMembership.id)
-      .execute();
+      .executeTakeFirst();
+
+    if (result.numUpdatedRows === 0n) throw new Error("ProjectMembership not found");
   }
 
   async updateHeartbeatBySessionId(sessionId: string, timestamp: number): Promise<void> {

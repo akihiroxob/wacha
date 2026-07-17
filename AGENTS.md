@@ -80,15 +80,19 @@
   - Arguments: `{ "projectId": string, "taskId": string, "title": string, "description"?: string }`
 - `claim_task`
   - 用途: `todo` または `rejected` のタスクを現在の session に割り当て、`doing` に進める
+  - 備考: worker 専用（MCP レベルでブロック）
   - Arguments: `{ "taskId": string }`
 - `complete_task`
   - 用途: `doing` のタスクを `in_review` に進める
+  - 備考: worker 専用（MCP レベルでブロック）。担当者自身の task comment（検証結果）が 1 件もない場合はエラーになる
   - Arguments: `{ "taskId": string }`
 - `reviewed_task`
   - 用途: `in_review` のタスクを `wait_accept` に進める
+  - 備考: 担当者自身は実行できない（自己レビュー禁止）
   - Arguments: `{ "taskId": string }`
 - `accept_task`
   - 用途: `in_review` または `wait_accept` のタスクを `accepted` に進める
+  - 備考: 担当者自身は実行できない（自己受入禁止）
   - Arguments: `{ "taskId": string }`
 - `reject_task`
   - 用途: `in_review` または `wait_accept` のタスクを `rejected` に進める
@@ -102,6 +106,7 @@
   - Arguments: `{ "taskId": string }`
 - `assign_project_role`
   - 用途: プロジェクトに対するメンバーの役割を割り当てる
+  - 備考: 1 セッションは 1 プロジェクトにつき 1 ロールのみ保持する。別ロールを要求すると置き換えになる（行は増えない）
   - Arguments: `{ "baseDir": string, "projectName": string, "description"?: string, "requestedRole"?: "manager" | "reviewer" | "worker" }`
 - `get_role_instructions`
   - 用途: role ごとの運用ルールを取得する
@@ -126,6 +131,8 @@
 - タスク名は短く、何をするか分かる表現にする
 - 既存の Story / Task に紐づかない直接依頼や follow-up は、`issue_task` で単発 Task を作成してから進める
 - `complete_task` は本当にレビュー可能な状態になってから呼ぶ
+- `complete_task` の前に、実施内容と検証結果を `add_task_comment` で必ず残す（コメントがないとサーバー側で拒否される）
+- `complete_story` は配下の Task が全て `accepted` / `canceled` になるまで実行できない
 - 追加対応が必要な場合は、状態を曖昧にせず `reject_task` を使う
 - Story が `doing` になるのは、Story 配下の Task が `claim_task` で着手されたとき
 - コメント本文は Markdown 前提で扱うが、厳密な Markdown 構文検証は今回必須ではない

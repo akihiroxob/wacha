@@ -79,26 +79,43 @@ export const createMcpServer = (context: ToolContext) => {
     EditTaskTool.config,
     withRoleGuard([ProjectRole.MANAGER], context, EditTaskTool.execute),
   );
-  server.registerTool("claim_task", ClaimTaskTool.config, (args) =>
-    ClaimTaskTool.execute({ ...args, sessionId: context.sessionId }),
+  server.registerTool(
+    "claim_task",
+    ClaimTaskTool.config,
+    withRoleGuard([ProjectRole.WORKER], context, (args: { taskId: string }) =>
+      ClaimTaskTool.execute({ ...args, sessionId: context.sessionId }),
+    ),
   );
-  server.registerTool("complete_task", CompleteTaskTool.config, CompleteTaskTool.execute);
+  server.registerTool(
+    "complete_task",
+    CompleteTaskTool.config,
+    withRoleGuard([ProjectRole.WORKER], context, CompleteTaskTool.execute),
+  );
   server.registerTool(
     "reviewed_task",
     ReviewedTaskTool.config,
-    withRoleGuard([ProjectRole.REVIEWER], context, ReviewedTaskTool.execute),
+    withRoleGuard([ProjectRole.REVIEWER], context, (args: { taskId: string }) =>
+      ReviewedTaskTool.execute({ ...args, sessionId: context.sessionId }),
+    ),
   );
 
   server.registerTool(
     "accept_task",
     AcceptTaskTool.config,
-    withRoleGuard([ProjectRole.MANAGER], context, AcceptTaskTool.execute),
+    withRoleGuard([ProjectRole.MANAGER], context, (args: { taskId: string }) =>
+      AcceptTaskTool.execute({ ...args, sessionId: context.sessionId }),
+    ),
   );
   server.registerTool("reject_task", RejectTaskTool.config, RejectTaskTool.execute);
   server.registerTool(
     "add_task_comment",
     AddTaskCommentTool.config,
-    withRoleGuard([ProjectRole.REVIEWER, ProjectRole.WORKER], context, AddTaskCommentTool.execute),
+    withRoleGuard(
+      [ProjectRole.REVIEWER, ProjectRole.WORKER],
+      context,
+      (args: { taskId: string; body: string; author?: string }) =>
+        AddTaskCommentTool.execute({ ...args, sessionId: context.sessionId }),
+    ),
   );
   server.registerTool(
     "list_task_comments",

@@ -63,26 +63,49 @@ export class AssignProjectRoleUseCase {
     const projectMemberships = allMemberships.filter(
       (membership) => !releasableMemberships.includes(membership),
     );
+
+    // 1セッション1プロジェクト1ロール: 自セッションの membership は常に1行に保つ
+    const ownMemberships = projectMemberships.filter(
+      (membership) => membership.sessionId === input.sessionId,
+    );
+    const otherMemberships = projectMemberships.filter(
+      (membership) => membership.sessionId !== input.sessionId,
+    );
+    const createdProject = existingProject === null;
+
+    // 要求ロールなしで既にロールを持つ場合、または同一ロールの再要求は現状維持
+    const reusableMembership = input.requestedRole
+      ? ownMemberships.find((membership) => membership.role === input.requestedRole)
+      : ownMemberships[0];
+    if (reusableMembership) {
+      await this.pruneExtraMemberships(ownMemberships, reusableMembership);
+      return {
+        project,
+        projectMembership: reusableMembership,
+        createdProject,
+        createdProjectMembership: false,
+      };
+    }
+
+    // 空き判定は自セッションの席を除いて行う(置き換え時に自分の席と競合させない)
     const role = input.requestedRole
       ? this.roleAssignmentService.resolveRequestedRole(
-          projectMemberships,
+          otherMemberships,
           input.sessionId,
           input.requestedRole,
         )
-      : this.roleAssignmentService.suggestRole(projectMemberships, input.sessionId);
+      : this.roleAssignmentService.suggestRole(otherMemberships, input.sessionId);
 
-    const existingMembership =
-      await this.projectMembershipRepository.findByProjectIdSessionIdAndRole(
-        project.id,
-        input.sessionId,
-        role,
-      );
-
-    if (existingMembership) {
+    const currentMembership = ownMemberships[0];
+    if (currentMembership) {
+      // 別ロールへの変更は行の追加ではなく置き換えにする
+      currentMembership.changeRole(role);
+      await this.projectMembershipRepository.save(currentMembership);
+      await this.pruneExtraMemberships(ownMemberships, currentMembership);
       return {
         project,
-        projectMembership: existingMembership,
-        createdProject: existingProject === null,
+        projectMembership: currentMembership,
+        createdProject,
         createdProjectMembership: false,
       };
     }
@@ -96,8 +119,20 @@ export class AssignProjectRoleUseCase {
     return {
       project,
       projectMembership,
-      createdProject: existingProject === null,
+      createdProject,
       createdProjectMembership: true,
     };
+  }
+
+  // 旧仕様で複数行になっている membership を1行に掃除する
+  private async pruneExtraMemberships(
+    ownMemberships: ProjectMembership[],
+    kept: ProjectMembership,
+  ): Promise<void> {
+    for (const membership of ownMemberships) {
+      if (membership.id !== kept.id) {
+        await this.projectMembershipRepository.delete(membership.id);
+      }
+    }
   }
 }

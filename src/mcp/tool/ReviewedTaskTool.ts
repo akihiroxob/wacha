@@ -4,6 +4,7 @@ import { reviewedTaskUseCase } from "@container";
 
 type ReviewedTaskInput = {
   taskId: string;
+  sessionId: string;
 };
 
 export const ReviewedTaskTool = {
@@ -14,8 +15,8 @@ export const ReviewedTaskTool = {
       taskId: z.string().min(1).describe("Task ID"),
     },
   },
-  execute: async ({ taskId }: ReviewedTaskInput) => {
-    await reviewedTaskUseCase.execute(taskId);
+  execute: async ({ taskId, sessionId }: ReviewedTaskInput) => {
+    await reviewedTaskUseCase.execute(taskId, sessionId);
     return toTextResult(
       { taskId, status: "wait_accept" },
       `Reviewed task ${taskId} and moved it to manager acceptance.`,

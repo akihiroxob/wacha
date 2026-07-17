@@ -218,6 +218,98 @@ test("AssignProjectRoleUseCase respects requested worker role", async () => {
   assert.equal(result.projectMembership.role, ProjectRole.WORKER);
 });
 
+test("AssignProjectRoleUseCase replaces the role instead of adding a second membership", async () => {
+  const projectRepository = new InMemoryProjectRepository();
+  const membershipRepository = new InMemoryProjectMembershipRepository();
+  const useCase = new AssignProjectRoleUseCase(
+    projectRepository,
+    membershipRepository,
+    new RoleAssignmentService(),
+  );
+
+  const first = await useCase.execute({
+    baseDir: "repo/wacha",
+    projectName: "Wacha",
+    sessionId: "session-1",
+    requestedRole: ProjectRole.MANAGER,
+  });
+
+  const second = await useCase.execute({
+    baseDir: "repo/wacha",
+    projectName: "Wacha",
+    sessionId: "session-1",
+    requestedRole: ProjectRole.WORKER,
+  });
+
+  assert.equal(second.projectMembership.role, ProjectRole.WORKER);
+  assert.equal(second.projectMembership.id, first.projectMembership.id);
+  const memberships = await membershipRepository.findBySessionId("session-1");
+  assert.equal(memberships.length, 1);
+  assert.equal(memberships[0]?.role, ProjectRole.WORKER);
+});
+
+test("AssignProjectRoleUseCase keeps the current role when no role is requested", async () => {
+  const projectRepository = new InMemoryProjectRepository();
+  const membershipRepository = new InMemoryProjectMembershipRepository();
+  const useCase = new AssignProjectRoleUseCase(
+    projectRepository,
+    membershipRepository,
+    new RoleAssignmentService(),
+  );
+
+  await useCase.execute({
+    baseDir: "repo/wacha",
+    projectName: "Wacha",
+    sessionId: "session-1",
+    requestedRole: ProjectRole.MANAGER,
+  });
+
+  const result = await useCase.execute({
+    baseDir: "repo/wacha",
+    projectName: "Wacha",
+    sessionId: "session-1",
+  });
+
+  assert.equal(result.projectMembership.role, ProjectRole.MANAGER);
+  assert.equal(result.createdProjectMembership, false);
+  const memberships = await membershipRepository.findBySessionId("session-1");
+  assert.equal(memberships.length, 1);
+});
+
+test("AssignProjectRoleUseCase rejects switching to an occupied exclusive seat", async () => {
+  const projectRepository = new InMemoryProjectRepository();
+  const membershipRepository = new InMemoryProjectMembershipRepository();
+  const useCase = new AssignProjectRoleUseCase(
+    projectRepository,
+    membershipRepository,
+    new RoleAssignmentService(),
+  );
+
+  await useCase.execute({
+    baseDir: "repo/wacha",
+    projectName: "Wacha",
+    sessionId: "session-1",
+    requestedRole: ProjectRole.MANAGER,
+  });
+  await useCase.execute({
+    baseDir: "repo/wacha",
+    projectName: "Wacha",
+    sessionId: "session-2",
+    requestedRole: ProjectRole.WORKER,
+  });
+
+  await assert.rejects(
+    () =>
+      useCase.execute({
+        baseDir: "repo/wacha",
+        projectName: "Wacha",
+        sessionId: "session-2",
+        requestedRole: ProjectRole.MANAGER,
+      }),
+    /not available/,
+  );
+});
+
 test("AssignProjectRoleUseCase releases an exclusive seat held by a dead session", async () => {
   const projectRepository = new InMemoryProjectRepository();
   const membershipRepository = new InMemoryProjectMembershipRepository();

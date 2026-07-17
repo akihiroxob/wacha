@@ -126,18 +126,24 @@ export class SQLiteTaskRepository implements TaskRepository {
       .execute();
   }
 
-  async addComment(taskId: string, body: string, author?: string | null): Promise<TaskComment> {
+  async addComment(
+    taskId: string,
+    body: string,
+    author?: string | null,
+    sessionId?: string | null,
+  ): Promise<TaskComment> {
     const row = await DatabaseClient.insertInto("task_comment")
       .values({
         id: crypto.randomUUID(),
         task_id: taskId,
         body: body.trim(),
         author: author ?? null,
+        session_id: sessionId ?? null,
         created_at: Date.now(),
       })
       .returningAll()
       .executeTakeFirstOrThrow();
-    return new TaskComment(row.id, row.task_id, row.body, row.author, row.created_at);
+    return new TaskComment(row.id, row.task_id, row.body, row.author, row.created_at, row.session_id);
   }
 
   async findCommentsByTaskId(taskId: string): Promise<TaskComment[]> {
@@ -152,7 +158,8 @@ export class SQLiteTaskRepository implements TaskRepository {
       .orderBy("created_at", "asc")
       .execute();
     return rows.map(
-      (row) => new TaskComment(row.id, row.task_id, row.body, row.author, row.created_at),
+      (row) =>
+        new TaskComment(row.id, row.task_id, row.body, row.author, row.created_at, row.session_id),
     );
   }
 

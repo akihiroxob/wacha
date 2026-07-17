@@ -3,5 +3,6 @@ export interface TaskCommentTable {
   task_id: string;
   body: string;
   author: string | null;
+  session_id: string | null;
   created_at: number;
 }
