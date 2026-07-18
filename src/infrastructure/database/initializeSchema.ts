@@ -146,12 +146,27 @@ export function initializeSchema(): Promise<void> {
       .column("session_id")
       .execute();
 
+    // 1セッション1プロジェクト1ロール: 旧 unique index(role込み)を置き換える。
+    // 旧仕様で複数ロール行があるDBは、最新の1行だけ残してから制約を張る
+    await sql`DROP INDEX IF EXISTS uq_project_membership_project_session_role`.execute(
+      DatabaseClient,
+    );
+    await sql`
+      DELETE FROM project_membership WHERE id NOT IN (
+        SELECT keep_id FROM (
+          SELECT id AS keep_id, ROW_NUMBER() OVER (
+            PARTITION BY project_id, session_id
+            ORDER BY updated_at DESC, created_at DESC, id
+          ) AS rn FROM project_membership
+        ) WHERE rn = 1
+      )
+    `.execute(DatabaseClient);
     await DatabaseClient.schema
-      .createIndex("uq_project_membership_project_session_role")
+      .createIndex("uq_project_membership_project_session")
       .ifNotExists()
       .unique()
       .on("project_membership")
-      .columns(["project_id", "session_id", "role"])
+      .columns(["project_id", "session_id"])
       .execute();
 
     await DatabaseClient.schema

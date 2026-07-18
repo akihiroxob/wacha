@@ -221,25 +221,28 @@ test("ListTaskUseCase returns tasks for the specified project", async () => {
   assert.equal(result.tasks[0]?.id, "task-1");
 });
 
-test("ListTaskUseCase orders tasks by story priority then task priority, standalone last", async () => {
+test("ListTaskUseCase orders tasks by story priority with standalone tasks compared on the same axis", async () => {
   const makeTask = (id: string, storyId: string | null, sortOrder: number) =>
     new Task(id, "project-1", storyId, id, null, TaskStatus.TODO, null, null, null, 1000, 1000, sortOrder);
   const taskRepo = new InMemoryTaskRepository([
-    makeTask("standalone", null, 1),
+    // 単発 task は自身の sortOrder が一次キーとして story の sortOrder と同列に比較される
+    makeTask("standalone-first", null, 1),
+    makeTask("standalone-middle", null, 3),
     makeTask("story2-task", "story-2", 1),
     makeTask("story1-task-b", "story-1", 5),
     makeTask("story1-task-a", "story-1", 2),
   ]);
   const storyRepo = new InMemoryStoryRepository([
-    new Story("story-1", "project-1", "Story 1", null, StoryStatus.TODO, 1000, 1000, 1),
-    new Story("story-2", "project-1", "Story 2", null, StoryStatus.TODO, 1000, 1000, 2),
+    new Story("story-1", "project-1", "Story 1", null, StoryStatus.TODO, 1000, 1000, 2),
+    new Story("story-2", "project-1", "Story 2", null, StoryStatus.TODO, 1000, 1000, 4),
   ]);
 
   const result = await new ListTaskUseCase(taskRepo, storyRepo).execute("project-1");
 
+  // 一次キー: standalone-first=1, story-1配下=2, standalone-middle=3, story-2配下=4
   assert.deepEqual(
     result.tasks.map((task) => task.id),
-    ["story1-task-a", "story1-task-b", "story2-task", "standalone"],
+    ["standalone-first", "story1-task-a", "story1-task-b", "standalone-middle", "story2-task"],
   );
 });
 

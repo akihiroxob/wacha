@@ -136,30 +136,31 @@ export class PageController {
       throw new ValidationError("direction must be 'up' or 'down'");
     }
 
-    // 優先順位順の一覧上で隣の story と sortOrder を入れ替える(MCP と同じ UseCase を使う)
+    // 優先順位順の一覧上で隣と位置を入れ替え、全体を連番で振り直す(MCP と同じ UseCase を使う)。
+    // 単純な sortOrder 交換だと同順位の隣同士で no-op になるため、位置ベースで確定させる
     const storyResult = await listStoryUseCase.execute(project.id);
-    const index = storyResult.stories.findIndex((story) => story.id === storyId);
+    const stories = [...storyResult.stories];
+    const index = stories.findIndex((story) => story.id === storyId);
     if (index === -1) throw new NotFoundError("Story not found");
 
-    const neighbor = storyResult.stories[direction === "up" ? index - 1 : index + 1];
+    const neighborIndex = direction === "up" ? index - 1 : index + 1;
     const body: OkResponse = { ok: true };
-    if (!neighbor) return c.json(body); // 端では何もしない
+    if (neighborIndex < 0 || neighborIndex >= stories.length) return c.json(body); // 端では何もしない
 
-    const story = storyResult.stories[index]!;
-    await editStoryUseCase.execute(
-      project.id,
-      story.id,
-      story.title,
-      story.description,
-      neighbor.sortOrder,
-    );
-    await editStoryUseCase.execute(
-      project.id,
-      neighbor.id,
-      neighbor.title,
-      neighbor.description,
-      story.sortOrder,
-    );
+    [stories[index], stories[neighborIndex]] = [stories[neighborIndex]!, stories[index]!];
+    for (let position = 0; position < stories.length; position++) {
+      const story = stories[position]!;
+      const sortOrder = position + 1;
+      if (story.sortOrder !== sortOrder) {
+        await editStoryUseCase.execute(
+          project.id,
+          story.id,
+          story.title,
+          story.description,
+          sortOrder,
+        );
+      }
+    }
     return c.json(body);
   }
 

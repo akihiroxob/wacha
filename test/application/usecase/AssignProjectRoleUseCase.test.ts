@@ -369,6 +369,36 @@ test("AssignProjectRoleUseCase releases an exclusive seat when heartbeat is stal
   assert.equal(result.projectMembership.sessionId, "session-2");
 });
 
+test("AssignProjectRoleUseCase does not touch stale seats of unrelated roles", async () => {
+  const projectRepository = new InMemoryProjectRepository();
+  const membershipRepository = new InMemoryProjectMembershipRepository();
+  const useCase = new AssignProjectRoleUseCase(
+    projectRepository,
+    membershipRepository,
+    new RoleAssignmentService(),
+    { isSessionLive: (sessionId) => sessionId !== "dead-manager", seatStaleMs: 60_000 },
+  );
+
+  await useCase.execute({
+    baseDir: "repo/wacha",
+    projectName: "Wacha",
+    sessionId: "dead-manager",
+    requestedRole: ProjectRole.MANAGER,
+  });
+
+  // worker を要求しても、無関係な manager の死に席は削除されない
+  await useCase.execute({
+    baseDir: "repo/wacha",
+    projectName: "Wacha",
+    sessionId: "session-2",
+    requestedRole: ProjectRole.WORKER,
+  });
+
+  const managerMemberships = await membershipRepository.findBySessionId("dead-manager");
+  assert.equal(managerMemberships.length, 1);
+  assert.equal(managerMemberships[0]?.role, ProjectRole.MANAGER);
+});
+
 test("AssignProjectRoleUseCase keeps an exclusive seat held by a live session with fresh heartbeat", async () => {
   const projectRepository = new InMemoryProjectRepository();
   const membershipRepository = new InMemoryProjectMembershipRepository();

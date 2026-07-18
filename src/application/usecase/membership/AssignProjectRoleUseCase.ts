@@ -49,20 +49,7 @@ export class AssignProjectRoleUseCase {
         input.baseDir,
       ));
 
-    const allMemberships = await this.projectMembershipRepository.findByProjectId(project.id);
-    const releasableMemberships = this.roleAssignmentService.findReleasableExclusiveMemberships(
-      allMemberships,
-      input.sessionId,
-      this.options.isSessionLive,
-      Date.now(),
-      this.options.seatStaleMs,
-    );
-    for (const releasableMembership of releasableMemberships) {
-      await this.projectMembershipRepository.delete(releasableMembership.id);
-    }
-    const projectMemberships = allMemberships.filter(
-      (membership) => !releasableMemberships.includes(membership),
-    );
+    const projectMemberships = await this.projectMembershipRepository.findByProjectId(project.id);
 
     // 1セッション1プロジェクト1ロール: 自セッションの membership は常に1行に保つ
     const ownMemberships = projectMemberships.filter(
@@ -87,14 +74,31 @@ export class AssignProjectRoleUseCase {
       };
     }
 
-    // 空き判定は自セッションの席を除いて行う(置き換え時に自分の席と競合させない)
+    // 空き判定は自セッションの席を除いて行う(置き換え時に自分の席と競合させない)。
+    // 死んだ/失効したセッションの専有席は liveness により空き扱いになる
+    const liveness = {
+      isSessionLive: this.options.isSessionLive,
+      now: Date.now(),
+      staleThresholdMs: this.options.seatStaleMs,
+    };
     const role = input.requestedRole
       ? this.roleAssignmentService.resolveRequestedRole(
           otherMemberships,
           input.sessionId,
           input.requestedRole,
+          liveness,
         )
-      : this.roleAssignmentService.suggestRole(otherMemberships, input.sessionId);
+      : this.roleAssignmentService.suggestRole(otherMemberships, input.sessionId, liveness);
+
+    // 解放の永続化は、実際に取得するロールの席に限定して行う
+    const releasableSeatHolders = this.roleAssignmentService.findReleasableSeatHolders(
+      otherMemberships,
+      role,
+      liveness,
+    );
+    for (const releasableSeatHolder of releasableSeatHolders) {
+      await this.projectMembershipRepository.delete(releasableSeatHolder.id);
+    }
 
     const currentMembership = ownMemberships[0];
     if (currentMembership) {

@@ -21,18 +21,19 @@ export class ListTaskUseCase {
   async execute(projectId: string): Promise<ListTaskUseCaseResult> {
     const tasks = await this.taskRepository.findByProjectId(projectId);
 
-    // 優先順位順: 親 story の sortOrder → task 自身の sortOrder。単発 task は末尾に自身の順で並ぶ
+    // 優先順位順: 一次キーは「親 story の sortOrder、単発 task は自身の sortOrder」で同列に比較し、
+    // 二次キーで task 自身の sortOrder を使う
     const stories = this.storyRepository
       ? await this.storyRepository.findByProjectId(projectId)
       : [];
     const storySortOrders = new Map(stories.map((story) => [story.id, story.sortOrder]));
-    const storyKeyOf = (task: Task) =>
+    const primaryKeyOf = (task: Task) =>
       task.storyId !== null
         ? (storySortOrders.get(task.storyId) ?? Number.MAX_SAFE_INTEGER)
-        : Number.MAX_SAFE_INTEGER;
+        : task.sortOrder;
     const sortedTasks = [...tasks].sort(
       (a: Task, b: Task) =>
-        storyKeyOf(a) - storyKeyOf(b) || a.sortOrder - b.sortOrder || a.createdAt - b.createdAt,
+        primaryKeyOf(a) - primaryKeyOf(b) || a.sortOrder - b.sortOrder || a.createdAt - b.createdAt,
     );
     const lastUpdatedAt = tasks.reduce<number | null>(
       (max, task) => (max === null || task.updatedAt > max ? task.updatedAt : max),

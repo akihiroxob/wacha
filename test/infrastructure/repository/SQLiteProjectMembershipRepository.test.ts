@@ -32,19 +32,22 @@ test("SQLiteProjectMembershipRepository.create persists membership", async () =>
 
 test("SQLiteProjectMembershipRepository.findByProjectIdAndSessionId filters memberships", async () => {
   const project = await projectRepository.create("Wacha", null, "repo/wacha");
+  const otherProject = await projectRepository.create("Other", null, "repo/other");
   await repository.create(project.id, "worker-1", ProjectRole.MANAGER);
-  await repository.create(project.id, "worker-1", ProjectRole.WORKER);
+  await repository.create(otherProject.id, "worker-1", ProjectRole.WORKER);
   await repository.create(project.id, "worker-2", ProjectRole.WORKER);
 
   const memberships = await repository.findByProjectIdAndSessionId(project.id, "worker-1");
 
-  assert.equal(memberships.length, 2);
+  assert.equal(memberships.length, 1);
+  assert.equal(memberships[0]?.role, ProjectRole.MANAGER);
 });
 
 test("SQLiteProjectMembershipRepository.deleteBySessionId removes all memberships for session", async () => {
   const project = await projectRepository.create("Wacha", null, "repo/wacha");
+  const otherProject = await projectRepository.create("Other", null, "repo/other");
   await repository.create(project.id, "worker-1", ProjectRole.MANAGER);
-  await repository.create(project.id, "worker-1", ProjectRole.WORKER);
+  await repository.create(otherProject.id, "worker-1", ProjectRole.WORKER);
   await repository.create(project.id, "worker-2", ProjectRole.WORKER);
 
   await repository.deleteBySessionId("worker-1");
@@ -54,6 +57,29 @@ test("SQLiteProjectMembershipRepository.deleteBySessionId removes all membership
 
   assert.equal(worker1Memberships.length, 0);
   assert.equal(worker2Memberships.length, 1);
+});
+
+test("SQLiteProjectMembershipRepository enforces one row per project and session at the DB level", async () => {
+  const project = await projectRepository.create("Wacha", null, "repo/wacha");
+  await repository.create(project.id, "worker-1", ProjectRole.MANAGER);
+
+  // 並行 assign 等で UseCase の防御をすり抜けても、unique(project_id, session_id) が2行目を拒否する
+  await assert.rejects(() => repository.create(project.id, "worker-1", ProjectRole.WORKER));
+
+  const memberships = await repository.findByProjectIdAndSessionId(project.id, "worker-1");
+  assert.equal(memberships.length, 1);
+});
+
+test("SQLiteProjectMembershipRepository.save can replace the role on the unique row", async () => {
+  const project = await projectRepository.create("Wacha", null, "repo/wacha");
+  const membership = await repository.create(project.id, "worker-1", ProjectRole.MANAGER);
+
+  membership.changeRole(ProjectRole.WORKER);
+  await repository.save(membership);
+
+  const memberships = await repository.findByProjectIdAndSessionId(project.id, "worker-1");
+  assert.equal(memberships.length, 1);
+  assert.equal(memberships[0]?.role, ProjectRole.WORKER);
 });
 
 test("SQLiteProjectMembershipRepository.updateHeartbeatBySessionId updates all memberships for session", async () => {

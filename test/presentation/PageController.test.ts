@@ -101,6 +101,31 @@ test("POST /api/projects/:projectId/stories/:storyId/move swaps priority with th
   );
 });
 
+test("POST move works even when adjacent stories share the same sortOrder", async () => {
+  const project = await projectRepository.create("Wacha", null, "repo/wacha");
+  const storyA = await storyRepository.create(project.id, "Story A", null);
+  const storyB = await storyRepository.create(project.id, "Story B", null);
+
+  // edit_story 相当の操作で同順位が発生した状態を作る
+  await app.request(
+    `/api/projects/${project.id}/stories/${storyB.id}`,
+    jsonInit("PUT", { title: "Story B", sortOrder: storyA.sortOrder }),
+  );
+
+  const res = await app.request(
+    `/api/projects/${project.id}/stories/${storyB.id}/move`,
+    jsonInit("POST", { direction: "up" }),
+  );
+  assert.equal(res.status, 200);
+
+  const detailRes = await app.request(`/api/projects/${project.id}`);
+  const detail = await detailRes.json();
+  assert.deepEqual(
+    detail.stories.map((story: { id: string }) => story.id),
+    [storyB.id, storyA.id],
+  );
+});
+
 test("POST move at the top edge is a no-op", async () => {
   const project = await projectRepository.create("Wacha", null, "repo/wacha");
   const storyA = await storyRepository.create(project.id, "Story A", null);

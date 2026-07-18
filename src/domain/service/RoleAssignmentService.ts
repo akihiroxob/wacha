@@ -8,13 +8,24 @@ const RECOMMENDED_ROLE_ORDER: ProjectRole[] = [
   ProjectRole.WORKER,
 ];
 
+// 専有席の生死判定に使う文脈。未指定なら席の明け渡しは行わない(全席を生存扱い)
+export type SeatLiveness = {
+  isSessionLive: (sessionId: string) => boolean;
+  now: number;
+  staleThresholdMs: number;
+};
+
 export class RoleAssignmentService {
-  suggestRole(projectMemberships: ProjectMembership[], sessionId: string): ProjectRole {
+  suggestRole(
+    projectMemberships: ProjectMembership[],
+    sessionId: string,
+    liveness?: SeatLiveness,
+  ): ProjectRole {
     for (const role of RECOMMENDED_ROLE_ORDER) {
       if (this.workerAlreadyHasRole(projectMemberships, sessionId, role)) {
         continue;
       }
-      if (this.isRoleAvailable(projectMemberships, role)) {
+      if (this.isRoleAvailable(projectMemberships, role, liveness)) {
         return role;
       }
     }
@@ -22,43 +33,42 @@ export class RoleAssignmentService {
     throw new Error("No available role for sessionId: " + sessionId);
   }
 
-  /**
-   * 死んだ(または heartbeat が閾値より古い)セッションが占有している専有ロール席を検出する。
-   * 呼び出し元セッション自身の membership は解放対象にしない。
-   */
-  findReleasableExclusiveMemberships(
-    projectMemberships: ProjectMembership[],
-    requesterSessionId: string,
-    isSessionLive: (sessionId: string) => boolean,
-    now: number,
-    staleThresholdMs: number,
-  ): ProjectMembership[] {
-    return projectMemberships.filter(
-      (projectMembership) =>
-        SINGLE_ASSIGNMENT_ROLES.includes(projectMembership.role) &&
-        projectMembership.sessionId !== requesterSessionId &&
-        (!isSessionLive(projectMembership.sessionId) ||
-          projectMembership.lastHeartbeatAt === null ||
-          now - projectMembership.lastHeartbeatAt > staleThresholdMs),
-    );
-  }
-
   resolveRequestedRole(
     projectMemberships: ProjectMembership[],
     sessionId: string,
     requestedRole: ProjectRole,
+    liveness?: SeatLiveness,
   ): ProjectRole {
     if (this.workerAlreadyHasRole(projectMemberships, sessionId, requestedRole)) {
       return requestedRole;
     }
 
-    if (!this.isRoleAvailable(projectMemberships, requestedRole)) {
+    if (!this.isRoleAvailable(projectMemberships, requestedRole, liveness)) {
       throw new Error(
         `Requested role(${requestedRole}) is not available for sessionId: ${sessionId}`,
       );
     }
 
     return requestedRole;
+  }
+
+  /**
+   * 指定ロールの席のうち、明け渡し可能な(セッションが死んでいる、または heartbeat が失効した)
+   * membership を返す。解放の永続化は呼び出し側が行う。要求されたロールの席だけが対象で、
+   * 無関係なロールの席には触れない。
+   */
+  findReleasableSeatHolders(
+    projectMemberships: ProjectMembership[],
+    role: ProjectRole,
+    liveness: SeatLiveness,
+  ): ProjectMembership[] {
+    if (!SINGLE_ASSIGNMENT_ROLES.includes(role)) {
+      return [];
+    }
+    return projectMemberships.filter(
+      (projectMembership) =>
+        projectMembership.role === role && this.isSeatReleasable(projectMembership, liveness),
+    );
   }
 
   private workerAlreadyHasRole(
@@ -72,11 +82,32 @@ export class RoleAssignmentService {
     );
   }
 
-  private isRoleAvailable(projectMemberships: ProjectMembership[], role: ProjectRole): boolean {
+  private isRoleAvailable(
+    projectMemberships: ProjectMembership[],
+    role: ProjectRole,
+    liveness?: SeatLiveness,
+  ): boolean {
     if (!SINGLE_ASSIGNMENT_ROLES.includes(role)) {
       return true;
     }
 
-    return !projectMemberships.some((projectMembership) => projectMembership.role === role);
+    // 席を持つ全員が明け渡し可能なら、その席は空きとして扱う
+    return projectMemberships
+      .filter((projectMembership) => projectMembership.role === role)
+      .every(
+        (projectMembership) =>
+          liveness !== undefined && this.isSeatReleasable(projectMembership, liveness),
+      );
+  }
+
+  private isSeatReleasable(
+    projectMembership: ProjectMembership,
+    liveness: SeatLiveness,
+  ): boolean {
+    return (
+      !liveness.isSessionLive(projectMembership.sessionId) ||
+      projectMembership.lastHeartbeatAt === null ||
+      liveness.now - projectMembership.lastHeartbeatAt > liveness.staleThresholdMs
+    );
   }
 }
