@@ -3,7 +3,7 @@ import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { fileURLToPath } from "node:url";
-import { createStatelessMcpServer } from "@mcp/createStatelessMcpServer.ts";
+import { createMcpServer } from "@mcp/createMcpServer.ts";
 import { MCP_HEADER } from "@constants/McpHeader.ts";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import PageCtrl from "@controller/PageController.ts";
@@ -35,15 +35,42 @@ export const createApp = () => {
   // API Routes
   app.get("/api/projects", PageCtrl.index.bind(PageCtrl));
   app.get("/api/projects/:projectId", PageCtrl.project.bind(PageCtrl));
-  app.post("/api/projects/:projectId/stories", PageCtrl.createStory.bind(PageCtrl));
-  app.put("/api/projects/:projectId/stories/:storyId", PageCtrl.updateStory.bind(PageCtrl));
-  app.post("/api/projects/:projectId/stories/:storyId/move", PageCtrl.moveStory.bind(PageCtrl));
-  app.delete("/api/projects/:projectId/stories/:storyId", PageCtrl.deleteStory.bind(PageCtrl));
-  app.put("/api/projects/:projectId/tasks/:taskId", PageCtrl.updateTask.bind(PageCtrl));
-  app.delete("/api/projects/:projectId/tasks/:taskId", PageCtrl.deleteTask.bind(PageCtrl));
-  app.post("/api/projects/:projectId/tasks/:taskId/accept", PageCtrl.acceptTask.bind(PageCtrl));
-  app.post("/api/projects/:projectId/tasks/:taskId/reject", PageCtrl.rejectTask.bind(PageCtrl));
-  app.post("/api/projects/:projectId/tasks/:taskId/cancel", PageCtrl.cancelTask.bind(PageCtrl));
+  app.post(
+    "/api/projects/:projectId/stories",
+    PageCtrl.createStory.bind(PageCtrl),
+  );
+  app.put(
+    "/api/projects/:projectId/stories/:storyId",
+    PageCtrl.updateStory.bind(PageCtrl),
+  );
+  app.post(
+    "/api/projects/:projectId/stories/:storyId/move",
+    PageCtrl.moveStory.bind(PageCtrl),
+  );
+  app.delete(
+    "/api/projects/:projectId/stories/:storyId",
+    PageCtrl.deleteStory.bind(PageCtrl),
+  );
+  app.put(
+    "/api/projects/:projectId/tasks/:taskId",
+    PageCtrl.updateTask.bind(PageCtrl),
+  );
+  app.delete(
+    "/api/projects/:projectId/tasks/:taskId",
+    PageCtrl.deleteTask.bind(PageCtrl),
+  );
+  app.post(
+    "/api/projects/:projectId/tasks/:taskId/accept",
+    PageCtrl.acceptTask.bind(PageCtrl),
+  );
+  app.post(
+    "/api/projects/:projectId/tasks/:taskId/reject",
+    PageCtrl.rejectTask.bind(PageCtrl),
+  );
+  app.post(
+    "/api/projects/:projectId/tasks/:taskId/cancel",
+    PageCtrl.cancelTask.bind(PageCtrl),
+  );
   app.post(
     "/api/projects/:projectId/tasks/:taskId/comments",
     PageCtrl.addTaskComment.bind(PageCtrl),
@@ -57,13 +84,15 @@ export const createApp = () => {
     const match = authorization.match(/^Bearer\s+(.+)$/i);
     const principalId = match?.[1]?.trim();
     if (!principalId) {
-      throw new ValidationError("Authorization: Bearer <AgentName> is required");
+      throw new ValidationError(
+        "Authorization: Bearer <AgentName> is required",
+      );
     }
 
     const transport = new WebStandardStreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
     });
-    const server = createStatelessMcpServer(principalId);
+    const server = createMcpServer(principalId);
     await server.connect(transport);
     return transport.handleRequest(c.req.raw);
   });
@@ -77,8 +106,14 @@ export const createApp = () => {
   app.onError((err, c) => {
     console.error("Unexpected error:", err);
     if (c.req.path.startsWith("/api")) {
-      const status = err instanceof ValidationError ? 400 : err instanceof NotFoundError ? 404 : 500;
-      const message = err instanceof Error ? err.message : "Internal Server Error";
+      const status =
+        err instanceof ValidationError
+          ? 400
+          : err instanceof NotFoundError
+            ? 404
+            : 500;
+      const message =
+        err instanceof Error ? err.message : "Internal Server Error";
       return c.json({ error: { message } }, status);
     }
     const response = toMcpErrorResponse(err);
