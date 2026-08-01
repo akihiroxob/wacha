@@ -1,23 +1,16 @@
 // repositories
 import { SQLiteTaskRepository } from "@repository/SQLiteTaskRepository.ts";
 import { SQLiteProjectRepository } from "@repository/SQLiteProjectRepository.ts";
-import { SQLiteProjectMembershipRepository } from "@repository/SQLiteProjectMembershipRepository.ts";
+import { SQLiteProjectGrantRepository } from "@repository/SQLiteProjectGrantRepository.ts";
 import { SQLiteStoryRepository } from "@repository/SQLiteStoryRepository.ts";
-import { InMemorySessionRepository } from "@repository/InMemorySessionRepository.ts";
 import { FileSkillRepository } from "@repository/FileSkillRepository.ts";
 import { FileKnowledgeRepository } from "@repository/FileKnowledgeRepository.ts";
 // application services
-import { SessionService } from "@application/service/SessionService.ts";
-import { MembershipService } from "@application/service/MembershipService.ts";
 import { InstructionService } from "@application/service/InstructionService.ts";
-
-// domain service
-import { RoleAssignmentService } from "@domain/service/RoleAssignmentService.ts";
+import { TaskCoordinationService } from "@application/service/TaskCoordinationService.ts";
 
 // usecases
-// project role assignment
-import { AssignProjectRoleUseCase } from "@application/usecase/membership/AssignProjectRoleUseCase.ts";
-import { ListProjectAgentsUseCase } from "@application/usecase/membership/ListProjectAgentsUseCase.ts";
+import { ListProjectGrantsUseCase } from "@application/usecase/grants/ListProjectGrantsUseCase.ts";
 // project usecases[]
 import { GetProjectUseCase } from "@application/usecase/project/GetProjectUseCase.ts";
 import { ListProjectUseCase } from "@application/usecase/project/ListProjectUseCase.ts";
@@ -25,12 +18,8 @@ import { GetSkillContextUseCase } from "@application/usecase/skills/GetSkillCont
 import { ListSkillUseCase } from "@application/usecase/skills/ListSkillUseCase.ts";
 // task usecases
 import { ListTaskUseCase } from "@application/usecase/tasks/ListTaskUseCase.ts";
-import { IssueTaskUseCase } from "@application/usecase/tasks/IssueTaskUseCase.ts";
 import { EditTaskUseCase } from "@application/usecase/tasks/EditTaskUseCase.ts";
-import { ClaimTaskUseCase } from "@application/usecase/tasks/ClaimTaskUseCase.ts";
 import { CancelTaskUseCase } from "@application/usecase/tasks/CancelTaskUseCase.ts";
-import { CompleteTaskUseCase } from "@application/usecase/tasks/CompleteTaskUseCase.ts";
-import { ReviewedTaskUseCase } from "@application/usecase/tasks/ReviewedTaskUseCase.ts";
 import { AcceptTaskUseCase } from "@application/usecase/tasks/AcceptTaskUseCase.ts";
 import { RejectTaskUseCase } from "@application/usecase/tasks/RejectTaskUseCase.ts";
 import { DeleteTaskUseCase } from "@application/usecase/tasks/DeleteTaskUseCase.ts";
@@ -41,30 +30,21 @@ import { ListStoryUseCase } from "@application/usecase/stories/ListStoryUseCase.
 import { IssueStoryUseCase } from "@application/usecase/stories/IssueStoryUseCase.ts";
 import { EditStoryUseCase } from "@application/usecase/stories/EditStoryUseCase.ts";
 import { DeleteStoryUseCase } from "@application/usecase/stories/DeleteStoryUseCase.ts";
-import { CompleteStoryUseCase } from "@application/usecase/stories/CompleteStoryUseCase.ts";
-import { CancelStoryUseCase } from "@application/usecase/stories/CancelStoryUseCase.ts";
 
 // repositoriesのインスタンスを作成
 const taskRepository = new SQLiteTaskRepository();
 const projectRepository = new SQLiteProjectRepository();
-const projectMembershipRepository = new SQLiteProjectMembershipRepository();
+const projectGrantRepository = new SQLiteProjectGrantRepository();
 const storyRepository = new SQLiteStoryRepository();
 const skillRepository = new FileSkillRepository();
 const knowledgeRepository = new FileKnowledgeRepository();
-const roleAssignmentService = new RoleAssignmentService();
-const sessionRepository = new InMemorySessionRepository();
 
 // 依存性を注入してユースケースのインスタンスを作成
-export const sessionService = new SessionService(sessionRepository);
-export const membershipService = new MembershipService(projectMembershipRepository);
 export const instructionService = new InstructionService();
-export const listTaskUseCase = new ListTaskUseCase(taskRepository);
-export const issueTaskUseCase = new IssueTaskUseCase(taskRepository);
+export const taskCoordinationService = new TaskCoordinationService();
+export const listTaskUseCase = new ListTaskUseCase(taskRepository, storyRepository);
 export const editTaskUseCase = new EditTaskUseCase(taskRepository);
-export const claimTaskUseCase = new ClaimTaskUseCase(taskRepository, storyRepository);
 export const cancelTaskUseCase = new CancelTaskUseCase(taskRepository);
-export const completeTaskUseCase = new CompleteTaskUseCase(taskRepository);
-export const reviewedTaskUseCase = new ReviewedTaskUseCase(taskRepository);
 export const acceptTaskUseCase = new AcceptTaskUseCase(taskRepository, storyRepository);
 export const rejectTaskUseCase = new RejectTaskUseCase(taskRepository);
 export const deleteTaskUseCase = new DeleteTaskUseCase(taskRepository);
@@ -74,16 +54,9 @@ export const listStoryUseCase = new ListStoryUseCase(storyRepository);
 export const issueStoryUseCase = new IssueStoryUseCase(storyRepository);
 export const editStoryUseCase = new EditStoryUseCase(storyRepository);
 export const deleteStoryUseCase = new DeleteStoryUseCase(storyRepository, taskRepository);
-export const completeStoryUseCase = new CompleteStoryUseCase(storyRepository);
-export const cancelStoryUseCase = new CancelStoryUseCase(storyRepository);
-export const assignProjectRoleUseCase = new AssignProjectRoleUseCase(
-  projectRepository,
-  projectMembershipRepository,
-  roleAssignmentService,
-);
 export const listProjectUseCase = new ListProjectUseCase(projectRepository);
 export const getProjectUseCase = new GetProjectUseCase(projectRepository);
-export const listProjectAgentsUseCase = new ListProjectAgentsUseCase(projectMembershipRepository);
+export const listProjectGrantsUseCase = new ListProjectGrantsUseCase(projectGrantRepository);
 export const listSkillUseCase = new ListSkillUseCase(skillRepository);
 export const getSkillContextUseCase = new GetSkillContextUseCase(
   skillRepository,

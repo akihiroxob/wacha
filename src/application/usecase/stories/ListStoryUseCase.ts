@@ -15,7 +15,10 @@ export class ListStoryUseCase {
       ? stories.filter((story) => story.status === status)
       : stories;
     return {
-      stories: filteredStories.sort((a, b) => a.createdAt - b.createdAt),
+      // 優先順位(sortOrder)昇順。同値は createdAt で安定させる
+      stories: filteredStories.sort(
+        (a, b) => a.sortOrder - b.sortOrder || a.createdAt - b.createdAt,
+      ),
     };
   }
 }

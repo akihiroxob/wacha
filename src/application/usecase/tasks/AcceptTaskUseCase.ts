@@ -15,11 +15,15 @@ export class AcceptTaskUseCase {
       : null;
   }
 
-  async execute(taskId: string): Promise<void> {
+  async execute(taskId: string, acceptorSessionId?: string): Promise<void> {
     const task = await this.taskRepository.findById(taskId);
     if (!task) throw new Error(`the task(${taskId}) is not exists`);
     if (task.status !== TaskStatus.IN_REVIEW && task.status !== TaskStatus.WAIT_ACCEPT) {
       throw new Error(`the task(${taskId}) is not in acceptable review status`);
+    }
+    // 自己受入禁止: 担当者自身は accepted にできない
+    if (acceptorSessionId && task.assignee === acceptorSessionId) {
+      throw new Error(`the task(${taskId}) cannot be accepted by its own assignee`);
     }
 
     task.accept();

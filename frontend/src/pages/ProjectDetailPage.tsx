@@ -1,7 +1,7 @@
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import clsx from "clsx";
 import type {
-  AgentDto,
+  ProjectGrantDto,
   StoryDto,
   TaskDto,
   TaskCommentDto,
@@ -13,9 +13,9 @@ import { Button } from "@/components/Button";
 import { StoryCard } from "@/components/StoryCard";
 import { TaskCard } from "@/components/TaskCard";
 import { TaskDrawer } from "@/components/TaskDrawer";
-import { useDeleteStory, useProject } from "@/lib/queries";
+import { useDeleteStory, useMoveStory, useProject } from "@/lib/queries";
 import { ApiError } from "@/lib/api";
-import { formatAbsoluteTime, formatRelativeTime, HEARTBEAT_FRESH_MS } from "@/lib/time";
+import { formatAbsoluteTime, formatRelativeTime } from "@/lib/time";
 
 const isActiveStoryStatus = (status: StoryDto["status"]) =>
   status !== "done" && status !== "canceled";
@@ -55,35 +55,23 @@ const StatusSummaryChips = ({ summary }: { summary: TaskSummary }) => {
   );
 };
 
-const AgentChips = ({ agents }: { agents: AgentDto[] }) => {
-  if (agents.length === 0) {
-    return <p className="text-sm text-stone-400">接続中の agent はいません。</p>;
+const RoleGrantChips = ({ grants }: { grants: ProjectGrantDto[] }) => {
+  if (grants.length === 0) {
+    return <p className="text-sm text-stone-400">Role Grant はありません。</p>;
   }
-  const now = Date.now();
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {agents.map((agent) => {
-        const fresh =
-          agent.lastHeartbeatAt !== null && now - agent.lastHeartbeatAt < HEARTBEAT_FRESH_MS;
-        return (
-          <span
-            key={agent.id}
-            title={`${agent.sessionId}\nheartbeat: ${
-              agent.lastHeartbeatAt ? formatAbsoluteTime(agent.lastHeartbeatAt) : "なし"
-            }`}
-            className="inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-white px-3 py-1 text-xs text-stone-600"
-          >
-            <span
-              className={clsx(
-                "h-2 w-2 rounded-full",
-                fresh ? "bg-green-500" : "bg-stone-300",
-              )}
-            />
-            <span className="font-medium text-stone-800">{agent.role}</span>
-            <code className="text-[11px] text-stone-400">{agent.sessionId.slice(0, 8)}</code>
-          </span>
-        );
-      })}
+      {grants.map((grant) => (
+        <span
+          key={grant.id}
+          title={`${grant.principalId}\ngranted: ${formatAbsoluteTime(grant.createdAt)}`}
+          className="inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-white px-3 py-1 text-xs text-stone-600"
+        >
+          <span className="h-2 w-2 rounded-full bg-blue-500" />
+          <span className="font-medium text-stone-800">{grant.role}</span>
+          <code className="text-[11px] text-stone-400">{grant.principalId}</code>
+        </span>
+      ))}
     </div>
   );
 };
@@ -112,6 +100,7 @@ export const ProjectDetailPage = () => {
   const storyStatusFilter = searchParams.get("storyStatus") === "all" ? "all" : "active";
   const { data, isPending, error } = useProject(projectId);
   const deleteStory = useDeleteStory(projectId);
+  const moveStory = useMoveStory(projectId);
 
   if (isPending) {
     return (
@@ -147,7 +136,7 @@ export const ProjectDetailPage = () => {
     );
   }
 
-  const { project, tasks, comments, agents, summary } = data;
+  const { project, tasks, comments, grants, summary } = data;
 
   const stories =
     storyStatusFilter === "all"
@@ -249,7 +238,7 @@ export const ProjectDetailPage = () => {
           </div>
           <div className="mt-5 flex flex-col gap-3 border-t border-stone-100 pt-4">
             <StatusSummaryChips summary={summary} />
-            <AgentChips agents={agents} />
+            <RoleGrantChips grants={grants} />
           </div>
         </section>
 
@@ -392,6 +381,26 @@ export const ProjectDetailPage = () => {
                           <StoryCard story={story} taskCount={storyTasks.length} embedded />
                         </div>
                         <div className="flex shrink-0 items-start gap-2">
+                          <button
+                            type="button"
+                            aria-label="優先順位を上げる"
+                            onClick={() => moveStory.mutate({ storyId: story.id, direction: "up" })}
+                            disabled={moveStory.isPending}
+                            className="rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50 disabled:opacity-50"
+                          >
+                            ↑
+                          </button>
+                          <button
+                            type="button"
+                            aria-label="優先順位を下げる"
+                            onClick={() =>
+                              moveStory.mutate({ storyId: story.id, direction: "down" })
+                            }
+                            disabled={moveStory.isPending}
+                            className="rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50 disabled:opacity-50"
+                          >
+                            ↓
+                          </button>
                           <Link
                             to={`/project/${project.id}/story/${story.id}/edit`}
                             className="rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50"

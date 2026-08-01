@@ -1,5 +1,4 @@
 import { ValidationError } from "@application/error/ValidationError.ts";
-import { SessionInvalidError } from "@application/error/SessionInvalidError.ts";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 
 type McpErrorResponse = {
@@ -16,21 +15,6 @@ type McpErrorResponse = {
 };
 
 export const toMcpErrorResponse = (error: unknown): McpErrorResponse => {
-  if (error instanceof SessionInvalidError) {
-    return {
-      status: 400,
-      body: {
-        jsonrpc: "2.0",
-        error: {
-          code: error.rpcCode,
-          message: error.message,
-          data: error.rpcData,
-        },
-        id: null,
-      },
-    };
-  }
-
   const status = error instanceof ValidationError ? 400 : 500;
   const message = error instanceof Error ? error.message : "Internal Server Error";
 

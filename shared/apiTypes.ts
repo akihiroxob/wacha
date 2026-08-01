@@ -29,6 +29,7 @@ export interface StoryDto {
   title: string;
   description: string | null;
   status: StoryStatus;
+  sortOrder: number;
   createdAt: number;
   updatedAt: number;
 }
@@ -43,6 +44,7 @@ export interface TaskDto {
   assignee: string | null;
   rejectReason: string | null;
   resumeSourceStatus: "todo" | "rejected" | null;
+  sortOrder: number;
   createdAt: number;
   updatedAt: number;
 }
@@ -52,17 +54,16 @@ export interface TaskCommentDto {
   taskId: string;
   body: string;
   author: string | null;
+  sessionId: string | null;
   createdAt: number;
 }
 
-export interface AgentDto {
+export interface ProjectGrantDto {
   id: string;
   projectId: string;
-  sessionId: string;
+  principalId: string;
   role: ProjectRole;
-  lastHeartbeatAt: number | null;
   createdAt: number;
-  updatedAt: number;
 }
 
 export interface TaskSummary {
@@ -81,18 +82,24 @@ export interface ProjectDetailResponse {
   tasks: TaskDto[];
   comments: TaskCommentDto[];
   stories: StoryDto[];
-  agents: AgentDto[];
-  agentSummary: { total: number };
+  grants: ProjectGrantDto[];
+  grantSummary: { total: number; principals: number };
 }
 
 export interface StoryInput {
   title: string;
   description?: string;
+  sortOrder?: number;
 }
 
 export interface TaskInput {
   title: string;
   description?: string;
+  sortOrder?: number;
+}
+
+export interface MoveStoryInput {
+  direction: "up" | "down";
 }
 
 export interface ReasonInput {

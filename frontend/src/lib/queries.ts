@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   CommentInput,
   CreateStoryResponse,
+  MoveStoryInput,
   OkResponse,
   ProjectDetailResponse,
   ProjectListResponse,
@@ -43,6 +44,15 @@ export const useUpdateStory = (projectId: string) => {
   return useMutation({
     mutationFn: ({ storyId, ...input }: { storyId: string } & StoryInput) =>
       apiPut<OkResponse>(`/api/projects/${projectId}/stories/${storyId}`, input),
+    onSuccess: invalidate,
+  });
+};
+
+export const useMoveStory = (projectId: string) => {
+  const invalidate = useInvalidateProject(projectId);
+  return useMutation({
+    mutationFn: ({ storyId, direction }: { storyId: string } & MoveStoryInput) =>
+      apiPost<OkResponse>(`/api/projects/${projectId}/stories/${storyId}/move`, { direction }),
     onSuccess: invalidate,
   });
 };

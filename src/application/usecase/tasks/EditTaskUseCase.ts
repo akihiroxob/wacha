@@ -3,7 +3,13 @@ import { TaskRepository } from "@domain/repository/TaskRepository.ts";
 export class EditTaskUseCase {
   constructor(private taskRepository: TaskRepository) {}
 
-  async execute(projectId: string, taskId: string, title: string, description: string | null) {
+  async execute(
+    projectId: string,
+    taskId: string,
+    title: string,
+    description: string | null,
+    sortOrder?: number | null,
+  ) {
     const task = await this.taskRepository.findById(taskId);
     if (!task) {
       throw new Error("Task not found");
@@ -15,6 +21,9 @@ export class EditTaskUseCase {
 
     task.changeTitle(title);
     task.changeDescription(description ?? "");
+    if (typeof sortOrder === "number") {
+      task.changeSortOrder(sortOrder);
+    }
 
     await this.taskRepository.save(task);
     return task;

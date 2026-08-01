@@ -24,7 +24,6 @@ beforeEach(async () => {
   await initializeSchema();
   await DatabaseClient.deleteFrom("task_comment").execute();
   await DatabaseClient.deleteFrom("task").execute();
-  await DatabaseClient.deleteFrom("project_membership").execute();
   await DatabaseClient.deleteFrom("story").execute();
   await DatabaseClient.deleteFrom("project").execute();
 });
@@ -49,7 +48,7 @@ test("GET /api/projects/:projectId returns the aggregate detail", async () => {
   assert.equal(res.status, 200);
   const body = await res.json();
 
-  for (const key of ["project", "summary", "tasks", "comments", "stories", "agents", "agentSummary"]) {
+  for (const key of ["project", "summary", "tasks", "comments", "stories", "grants", "grantSummary"]) {
     assert.ok(key in body, `response should contain ${key}`);
   }
   assert.equal(body.project.id, project.id);
@@ -58,7 +57,7 @@ test("GET /api/projects/:projectId returns the aggregate detail", async () => {
   assert.equal(body.tasks.length, 1);
   assert.equal(body.comments.length, 1);
   assert.equal(body.stories.length, 1);
-  assert.equal(body.agentSummary.total, 0);
+  assert.equal(body.grantSummary.total, 0);
 });
 
 test("GET /api/projects/:projectId returns 404 for unknown project", async () => {
@@ -80,6 +79,77 @@ test("POST /api/projects/:projectId/stories creates a story", async () => {
   assert.equal(body.story.title, "New Story");
   assert.equal(body.story.description, "details");
   assert.equal(body.story.status, "todo");
+});
+
+test("POST /api/projects/:projectId/stories/:storyId/move swaps priority with the neighbor", async () => {
+  const project = await projectRepository.create("Wacha", null, "repo/wacha");
+  const storyA = await storyRepository.create(project.id, "Story A", null);
+  const storyB = await storyRepository.create(project.id, "Story B", null);
+
+  const res = await app.request(
+    `/api/projects/${project.id}/stories/${storyB.id}/move`,
+    jsonInit("POST", { direction: "up" }),
+  );
+  assert.equal(res.status, 200);
+
+  const detailRes = await app.request(`/api/projects/${project.id}`);
+  const detail = await detailRes.json();
+  assert.deepEqual(
+    detail.stories.map((story: { id: string }) => story.id),
+    [storyB.id, storyA.id],
+  );
+});
+
+test("POST move works even when adjacent stories share the same sortOrder", async () => {
+  const project = await projectRepository.create("Wacha", null, "repo/wacha");
+  const storyA = await storyRepository.create(project.id, "Story A", null);
+  const storyB = await storyRepository.create(project.id, "Story B", null);
+
+  // edit_story 相当の操作で同順位が発生した状態を作る
+  await app.request(
+    `/api/projects/${project.id}/stories/${storyB.id}`,
+    jsonInit("PUT", { title: "Story B", sortOrder: storyA.sortOrder }),
+  );
+
+  const res = await app.request(
+    `/api/projects/${project.id}/stories/${storyB.id}/move`,
+    jsonInit("POST", { direction: "up" }),
+  );
+  assert.equal(res.status, 200);
+
+  const detailRes = await app.request(`/api/projects/${project.id}`);
+  const detail = await detailRes.json();
+  assert.deepEqual(
+    detail.stories.map((story: { id: string }) => story.id),
+    [storyB.id, storyA.id],
+  );
+});
+
+test("POST move at the top edge is a no-op", async () => {
+  const project = await projectRepository.create("Wacha", null, "repo/wacha");
+  const storyA = await storyRepository.create(project.id, "Story A", null);
+  await storyRepository.create(project.id, "Story B", null);
+
+  const res = await app.request(
+    `/api/projects/${project.id}/stories/${storyA.id}/move`,
+    jsonInit("POST", { direction: "up" }),
+  );
+  assert.equal(res.status, 200);
+
+  const detailRes = await app.request(`/api/projects/${project.id}`);
+  const detail = await detailRes.json();
+  assert.equal(detail.stories[0].id, storyA.id);
+});
+
+test("POST move with invalid direction returns 400", async () => {
+  const project = await projectRepository.create("Wacha", null, "repo/wacha");
+  const story = await storyRepository.create(project.id, "Story A", null);
+
+  const res = await app.request(
+    `/api/projects/${project.id}/stories/${story.id}/move`,
+    jsonInit("POST", { direction: "sideways" }),
+  );
+  assert.equal(res.status, 400);
 });
 
 test("POST /api/projects/:projectId/stories without title returns 400", async () => {

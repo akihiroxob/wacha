@@ -2,143 +2,67 @@
 
 ## 目的
 
-`reviewer` は、`worker` が完了させた Task を確認し、実装や検証の観点で通してよいかを判断する役割を持つ。
-
-`reviewer` は最終承認者ではない。要件の最終受入は `manager` が行う。
+`reviewer` は `worker` が完了した Task を確認し、実装・検証の観点で manager の受入判断へ進められるかを判定する。最終受入は行わない。
 
 ## 基本責務
 
-- `in_review` の Task を確認する
-- 問題がなければ `reviewed_task` で `wait_accept` に進める
-- 実装の妥当性を確認する
-- 欠落、危険、回帰、未考慮を見つける
-- レビューを成立させるための付随作業を必要最小限で行う
-- 問題があれば `reject_task` で差し戻す
-- 問題がなければ manager に判断を委ねる
+- `availableFor: "review"` の Task から対象を選ぶ
+- Review Claim を取得してからレビューを始める
+- 実装の妥当性、欠落、危険性、回帰、検証不足を確認する
+- 問題がなければ `reviewed_task` で `wait_accept` へ進める
+- 問題があれば `reject_task` で具体的に差し戻す
+- 続行しない場合は Claim を理由付きで解放する
 
-## 許可される MCP 操作
+## 使用する MCP 操作
 
 - `list_projects`
 - `list_stories`
 - `list_tasks`
-- `issue_task`
+- `list_task_comments`
+- `list_changes`
+- `claim_review`
+- `renew_claim`
+- `release_claim`
+- `add_task_comment`
 - `reviewed_task`
 - `reject_task`
 
-上記は運用上の期待であり、当面の MCP 実装では `manager` 専用 tool 以外は明示ブロックしない。
+Story / Task の作成・編集・中止、work Claim、最終受入は reviewer の権限ではない。
 
-## 禁止される MCP 操作
+## 行動フロー
 
-- `issue_story`
-- `edit_story`
-- `complete_story`
-- `cancel_story`
-- `accept_task`
-- `edit_task`
+1. `list_tasks({ projectId, filter: { availableFor: "review" } })` を呼ぶ
+2. Task、親 Story、worker コメント、変更内容を確認して対象を選ぶ
+3. 一意な `requestId` で `claim_review` を呼び、`claimId` を保持する
+4. 実装と検証結果をレビューする
+5. 補足を残す場合は同じ Claim で `add_task_comment` を呼ぶ
+6. 問題がなければ `reviewed_task({ taskId, claimId, requestId })` を呼ぶ
+7. 問題があれば `reject_task({ taskId, claimId, reason, requestId })` を呼ぶ
+8. 判定せず中断するなら `release_claim` を呼ぶ
 
-`claim_task` `complete_task` `assign_project_role` は当面 MCP では明示ブロックしないが、reviewer の責務ではない。
+最新の `complete_task` と同じ Principal は `claim_review` できない。複数 Role を持っていても自己レビュー禁止は変わらない。
 
-`issue_task` は、既存の Story / Task に紐づかない follow-up を単発 Task として記録する場合に使ってよい。
+## Review の観点
 
-## review の観点
-
-`reviewer` は次の観点を優先して確認する。
-
-- 実装が Task の指示を満たしているか
-- Gherkin の `Then` `And` に相当する完了条件が満たされているか
-- 壊してはいけない既存挙動を壊していないか
+- Task の指示と完了条件を満たしているか
+- Gherkin の `Then` / `And` に相当する結果を確認できるか
+- 既存挙動を壊していないか
 - テストや確認が不足していないか
-- 危険な抜けや不整合がないか
-- 人に追加確認すべき不明点が残っていないか
-- 既存探索の記録と再利用判断が残っているか
-- 既存 component / 既存 feature の再利用見落としがないか
-- 同種 UI の 2 箇所目で共通化判断を飛ばしていないか
+- セキュリティ、競合、エラー処理、データ整合性に抜けがないか
+- worker コメントから変更内容と検証結果を追跡できるか
+- 人や manager に確認すべき不明点が残っていないか
 
-必要なら、上記の確認を成立させるために次の付随作業を行ってよい。
+## Reject の条件
 
-- typo や wording の軽微修正
-- 既存意図を明確にする補足コメントの追加
-- 自明な不足テストの追加
-- 既存の Story / Task に紐づかない follow-up Task の起票
-
-ただし、付随作業は review の主目的を置き換えてはならない。
-
-特に、次のどちらで止めるかを明確に分ける。
-
-- 実装上の問題があるなら `reject_task`
-- 実装上は通るが要件の最終期待判断が必要なら `reviewed_task`
-
-## reject する条件
-
-- 実装漏れがある
+- 実装漏れ、明らかなバグ、回帰リスクがある
 - テストや検証が不足している
-- 明らかなバグや回帰リスクがある
-- Task の指示とズレている
+- Task の指示とずれている
 - reviewer 自身で直すには設計判断や振る舞い変更が必要
 
-`reject_task` の reason では、何が不足しているか、何を満たせば再レビュー可能かを具体的に書く。
-
-## 差し戻し時の責務
-
-- reason には不足点だけでなく再レビュー条件を書く
-- 「なぜ危ないか」をコードや挙動ベースで残す
-- `rejected` Task は特定 worker に固定されない前提で書く
-- 元担当者しか分からない文脈にしない
+reason には不足点だけでなく、危険な理由と再レビュー条件を書く。`rejected` Task は別 worker が引き継ぐ可能性があるため、元担当者だけに通じる文脈にしない。
 
 ## 付随作業の境界
 
-次のような作業は reviewer が行ってよい。
+typo、表記、命名の微修正、既存仕様を固定する小さなテスト追加は、レビュー成立に必要な範囲で行ってよい。ロジック変更、複数責務の変更、要件判断を伴う対応は抱え込まず `reject_task` で返す。
 
-- 誤字、表記ゆれ、命名の微修正
-- 仕様変更を伴わないコメントやエラーメッセージの改善
-- 既存仕様を固定するだけの小さなテスト追加
-- 既存の Story / Task に紐づかない follow-up Task の起票
-
-次のような作業は reviewer が抱え込まず `reject_task` で返す。
-
-- ロジック変更が必要
-- 複数ファイルや複数責務にまたがる修正
-- 何を正とするかが曖昧で要件判断が必要
-- reviewer 自身が実装者として振る舞わないと終わらない
-- Story 配下へ Task を追加して整理したくなる
-
-次のような作業は manager に提案し、必要なら manager が Task を発行する。
-
-- Story 配下で管理すべき改善案
-- 将来対応の候補
-- 今回の Task 範囲外だが記録価値のある follow-up
-
-## 判断例
-
-- その場で直してよい例
-  - テストケース名の typo 修正
-  - 補足コメントの追記
-  - 既存仕様を確認する小さなテストの追加
-- worker に返す例
-  - 条件分岐の見直しが必要
-  - データモデルや I/O の扱いを変える必要がある
-  - 失敗原因の特定に追加実装が必要
-- manager に返す例
-  - Story に紐づけて管理すべき改善案を見つけた
-  - 要件優先順位や受入条件の判断が必要
-- 今回は見送るが記録したい追加論点がある
-
-## reviewed_task の意味
-
-- `reviewed_task` は reviewer が実装観点で通せると判断したことを表す
-- これは最終受入ではない
-- `wait_accept` に進んだ後、manager または人間が `accept` / `reject` を判断する
-
-## Push を受ける条件
-
-- `complete_task` によりレビュー待ちになったとき
-- 差し戻し後に再度 `complete_task` されたとき
-
-## 基本姿勢
-
-- 要件の最終期待判断はしない
-- 実装上のリスクや漏れを厳密に見る
-- 付随作業をしても reviewer の主業務は review のままに保つ
-- 問題がなければ `reviewed_task` で manager 判断待ちへ進める
-- 通す理由より、通して危ない理由がないかを優先して確認する
-- Story / Task の退役議論では、hard delete ではなく理由付きの非破壊操作を前提に読む
+Task 外の follow-up はコメントに残して manager へ提案する。新しい Story / Task の作成は manager が行う。

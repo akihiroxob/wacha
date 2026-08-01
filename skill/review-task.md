@@ -2,7 +2,7 @@
 name: review-task
 description: in_review の task を、完了条件・既存構成・設計原則・変更範囲の観点で検証し、受け入れ可能性を明確に判定する。
 status: active
-version: 2
+version: 4
 allowRoles: [reviewer, manager]
 requiredKnowledge:
   - principles/development-principles.md
@@ -10,12 +10,15 @@ requiredKnowledge:
   - principles/frontend-architecture.md
   - tips/reviewing.md
   - tips/task-writing.md
+  - tips/verification.md
+  - tips/incremental-design.md
 requiredTools:
   - list_tasks
   - list_task_comments
   - add_task_comment
   - reviewed_task
   - reject_task
+  - issue_task
 ---
 
 # review-task
@@ -36,7 +39,8 @@ reviewer は「好み」で見るのではなく、この task を通したあ�
 6. `knowledge/principles/ai-native-ddd.md` を基準に、責務境界と依存方向を確認する。
 7. フロントエンド変更がある場合は、`knowledge/principles/frontend-architecture.md` を基準に構成を確認する。
 8. 指摘がある場合は、具体的な不足・危険性・再レビュー条件を添えて Markdown 形式の `add_task_comment` をする。
-9. 受け入れ可能なら `reviewed_task`、追加修正が必要なら理由付きで `reject_task` を実行する。
+9. 設計の軋み（重複の反復、同一ファイルの肥大、歪んだ最小差分の反復。`knowledge/tips/incremental-design.md` 参照）に気づいた場合は、その場で直させず、`[design-strain]` を title 先頭に付けた単発 task として `issue_task` で記録する。軋み自体は task の完了条件を満たしている限り reject 理由にしない。
+10. 受け入れ可能なら `reviewed_task`、追加修正が必要なら理由付きで `reject_task` を実行する。
 
 ## Review Checklist
 
@@ -50,6 +54,7 @@ reviewer は「好み」で見るのではなく、この task を通したあ�
 - フロントエンド変更の場合、Bulletproof React ベースの構成に沿っているか。
 - 最小差分になっているか。
 - テストまたは確認手順が残っているか。
+- 検証結果が「型チェック・ビルド通過」で止まらず、実際の挙動確認になっているか（`tips/verification.md`）。
 - 既存挙動を壊していないか。
 
 ## Reject Conditions
@@ -74,6 +79,8 @@ reviewer は「好み」で見るのではなく、この task を通したあ�
 ## Anti Patterns
 
 - 個人の好みだけで判断し、task の完了条件と無関係な差し戻しを行う。
+- 設計の歪みを reject 理由にする（完了条件を満たしていれば通し、歪みは `[design-strain]` として記録する）。
+- 気づいた軋みを記録せず流し、負債の観測データが残らない。
 - 根拠や再現手順がない抽象的な指摘を残す。
 - 実装内容を確認せずに機械的に `reviewed_task` を実行する。
 - 不要な新規ファイルや構成崩れを「動いているから」で通す。

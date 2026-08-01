@@ -101,6 +101,16 @@ docker compose down -v
 }
 ```
 
+Claude Code (CLI) の場合は次のコマンドで登録できます。
+
+```bash
+claude mcp add --transport http wacha http://localhost:51743/mcp
+```
+
+- `--scope local`（デフォルト、自分のみ）/ `--scope project`（`.mcp.json` にコミットしてチーム共有）/ `--scope user`（全プロジェクト横断）を選べます
+- 確認は `claude mcp list` / `claude mcp get wacha`、セッション内では `/mcp`
+- Claude Desktop は `claude_desktop_config.json` が stdio サーバーのみ対応のため、HTTP サーバーを使うには `mcp-remote` などの stdio ブリッジが必要です
+
 補足:
 
 - サーバ側の識別子は MCP の `sessionId` ベースです

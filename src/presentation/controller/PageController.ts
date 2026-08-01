@@ -11,7 +11,7 @@ import {
   listTaskUseCase,
   listProjectUseCase,
   getProjectUseCase,
-  listProjectAgentsUseCase,
+  listProjectGrantsUseCase,
   listStoryUseCase,
   issueStoryUseCase,
   editStoryUseCase,
@@ -35,6 +35,11 @@ export class PageController {
   private readTextField(body: Record<string, unknown>, key: string): string {
     const value = body[key];
     return typeof value === "string" ? value.trim() : "";
+  }
+
+  private readSortOrderField(body: Record<string, unknown>): number | null {
+    const value = body["sortOrder"];
+    return typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : null;
   }
 
   private async getProjectOrThrow(projectId: string | undefined) {
@@ -68,7 +73,7 @@ export class PageController {
       taskResult.tasks.map((task) => task.id),
     );
     const storyResult = await listStoryUseCase.execute(project.id);
-    const agentResult = await listProjectAgentsUseCase.execute(project.id);
+    const grantResult = await listProjectGrantsUseCase.execute(project.id);
 
     const body: ProjectDetailResponse = {
       project,
@@ -76,8 +81,8 @@ export class PageController {
       tasks: taskResult.tasks,
       comments: commentsResult.comments,
       stories: storyResult.stories,
-      agents: agentResult.agents,
-      agentSummary: agentResult.summary,
+      grants: grantResult.grants,
+      grantSummary: grantResult.summary,
     };
     return c.json(body);
   }
@@ -107,15 +112,55 @@ export class PageController {
     const title = this.readTextField(jsonBody, "title");
     const description = this.readTextField(jsonBody, "description");
     if (title === "") throw new ValidationError("Title は必須です。");
+    const sortOrder = this.readSortOrderField(jsonBody);
 
     try {
-      await editStoryUseCase.execute(project.id, storyId, title, description || null);
+      await editStoryUseCase.execute(project.id, storyId, title, description || null, sortOrder);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to update story";
       throw new ValidationError(message);
     }
 
     const body: OkResponse = { ok: true };
+    return c.json(body);
+  }
+
+  async moveStory(c: Context) {
+    const project = await this.getProjectOrThrow(c.req.param("projectId"));
+    const storyId = c.req.param("storyId");
+    if (!storyId) throw new ValidationError("storyId is required");
+
+    const jsonBody = await this.readJsonBody(c);
+    const direction = jsonBody["direction"];
+    if (direction !== "up" && direction !== "down") {
+      throw new ValidationError("direction must be 'up' or 'down'");
+    }
+
+    // 優先順位順の一覧上で隣と位置を入れ替え、全体を連番で振り直す(MCP と同じ UseCase を使う)。
+    // 単純な sortOrder 交換だと同順位の隣同士で no-op になるため、位置ベースで確定させる
+    const storyResult = await listStoryUseCase.execute(project.id);
+    const stories = [...storyResult.stories];
+    const index = stories.findIndex((story) => story.id === storyId);
+    if (index === -1) throw new NotFoundError("Story not found");
+
+    const neighborIndex = direction === "up" ? index - 1 : index + 1;
+    const body: OkResponse = { ok: true };
+    if (neighborIndex < 0 || neighborIndex >= stories.length) return c.json(body); // 端では何もしない
+
+    [stories[index], stories[neighborIndex]] = [stories[neighborIndex]!, stories[index]!];
+    for (let position = 0; position < stories.length; position++) {
+      const story = stories[position]!;
+      const sortOrder = position + 1;
+      if (story.sortOrder !== sortOrder) {
+        await editStoryUseCase.execute(
+          project.id,
+          story.id,
+          story.title,
+          story.description,
+          sortOrder,
+        );
+      }
+    }
     return c.json(body);
   }
 
@@ -131,9 +176,10 @@ export class PageController {
     const title = this.readTextField(jsonBody, "title");
     const description = this.readTextField(jsonBody, "description");
     if (title === "") throw new ValidationError("Title は必須です。");
+    const sortOrder = this.readSortOrderField(jsonBody);
 
     try {
-      await editTaskUseCase.execute(project.id, taskId, title, description || null);
+      await editTaskUseCase.execute(project.id, taskId, title, description || null, sortOrder);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to update task";
       throw new ValidationError(message);

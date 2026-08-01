@@ -13,7 +13,12 @@ export interface TaskRepository {
     storyId?: string,
   ): Promise<Task>;
   save(task: Task): Promise<void>;
-  addComment(taskId: string, body: string, author?: string | null): Promise<TaskComment>;
+  addComment(
+    taskId: string,
+    body: string,
+    author?: string | null,
+    sessionId?: string | null,
+  ): Promise<TaskComment>;
   findCommentsByTaskId(taskId: string): Promise<TaskComment[]>;
   findCommentsByTaskIds(taskIds: string[]): Promise<TaskComment[]>;
   delete(taskId: string): Promise<void>;

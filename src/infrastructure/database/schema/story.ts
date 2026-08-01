@@ -7,6 +7,7 @@ export interface StoryTable {
   title: string;
   description: string | null;
   status: StoryStatus;
+  sort_order: Generated<number>;
   created_at: Generated<number>;
   updated_at: Generated<number>;
 }

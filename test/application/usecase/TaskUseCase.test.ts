@@ -66,13 +66,19 @@ class InMemoryTaskRepository implements TaskRepository {
     this.tasks.set(task.id, task);
   }
 
-  async addComment(taskId: string, body: string, author?: string | null): Promise<TaskComment> {
+  async addComment(
+    taskId: string,
+    body: string,
+    author?: string | null,
+    sessionId?: string | null,
+  ): Promise<TaskComment> {
     const comment = new TaskComment(
       `comment-${this.comments.length + 1}`,
       taskId,
       body,
       author ?? null,
       1000 + this.comments.length,
+      sessionId ?? null,
     );
     this.comments.push(comment);
     return comment;
@@ -211,7 +217,57 @@ test("ListTaskUseCase returns tasks for the specified project", async () => {
   assert.equal(result.summary.byStatus[TaskStatus.CANCELED], 0);
   assert.equal(result.summary.lastUpdatedAt, 2000);
   assert.equal(result.tasks.length, 2);
-  assert.equal(result.tasks[0]?.id, "task-2");
+  // sortOrder 未設定(同値)の場合は createdAt 順で安定する
+  assert.equal(result.tasks[0]?.id, "task-1");
+});
+
+test("ListTaskUseCase orders tasks by story priority with standalone tasks compared on the same axis", async () => {
+  const makeTask = (id: string, storyId: string | null, sortOrder: number) =>
+    new Task(id, "project-1", storyId, id, null, TaskStatus.TODO, null, null, null, 1000, 1000, sortOrder);
+  const taskRepo = new InMemoryTaskRepository([
+    // 単発 task は自身の sortOrder が一次キーとして story の sortOrder と同列に比較される
+    makeTask("standalone-first", null, 1),
+    makeTask("standalone-middle", null, 3),
+    makeTask("story2-task", "story-2", 1),
+    makeTask("story1-task-b", "story-1", 5),
+    makeTask("story1-task-a", "story-1", 2),
+  ]);
+  const storyRepo = new InMemoryStoryRepository([
+    new Story("story-1", "project-1", "Story 1", null, StoryStatus.TODO, 1000, 1000, 2),
+    new Story("story-2", "project-1", "Story 2", null, StoryStatus.TODO, 1000, 1000, 4),
+  ]);
+
+  const result = await new ListTaskUseCase(taskRepo, storyRepo).execute("project-1");
+
+  // 一次キー: standalone-first=1, story-1配下=2, standalone-middle=3, story-2配下=4
+  assert.deepEqual(
+    result.tasks.map((task) => task.id),
+    ["standalone-first", "story1-task-a", "story1-task-b", "standalone-middle", "story2-task"],
+  );
+});
+
+test("EditTaskUseCase updates sortOrder when specified", async () => {
+  const task = createTask(TaskStatus.TODO);
+  const repo = new InMemoryTaskRepository([task]);
+
+  const updated = await new EditTaskUseCase(repo).execute(
+    "project-1",
+    task.id,
+    task.title,
+    task.description,
+    7,
+  );
+
+  assert.equal(updated.sortOrder, 7);
+
+  // 未指定なら順位は変わらない
+  const unchanged = await new EditTaskUseCase(repo).execute(
+    "project-1",
+    task.id,
+    task.title,
+    task.description,
+  );
+  assert.equal(unchanged.sortOrder, 7);
 });
 
 test("IssueTaskUseCase creates a todo task", async () => {
@@ -343,14 +399,41 @@ test("ClaimTaskUseCase keeps a manually claimed story in doing", async () => {
   assert.equal(savedStory?.status, StoryStatus.DOING);
 });
 
-test("CompleteTaskUseCase completes a doing task", async () => {
+test("CompleteTaskUseCase completes a doing task with an assignee comment", async () => {
   const task = createTask(TaskStatus.DOING);
+  task.assignee = "worker-1";
   const repo = new InMemoryTaskRepository([task]);
+  await repo.addComment(task.id, "実施内容と検証結果", null, "worker-1");
 
   await new CompleteTaskUseCase(repo).execute(task.id);
 
   const savedTask = await repo.findById(task.id);
   assert.equal(savedTask?.status, TaskStatus.IN_REVIEW);
+});
+
+test("CompleteTaskUseCase blocks completion without an assignee comment", async () => {
+  const task = createTask(TaskStatus.DOING);
+  task.assignee = "worker-1";
+  const repo = new InMemoryTaskRepository([task]);
+
+  await assert.rejects(
+    () => new CompleteTaskUseCase(repo).execute(task.id),
+    /no comment from its assignee/,
+  );
+  const savedTask = await repo.findById(task.id);
+  assert.equal(savedTask?.status, TaskStatus.DOING);
+});
+
+test("CompleteTaskUseCase ignores comments from other sessions", async () => {
+  const task = createTask(TaskStatus.DOING);
+  task.assignee = "worker-1";
+  const repo = new InMemoryTaskRepository([task]);
+  await repo.addComment(task.id, "reviewerの補足", null, "reviewer-1");
+
+  await assert.rejects(
+    () => new CompleteTaskUseCase(repo).execute(task.id),
+    /no comment from its assignee/,
+  );
 });
 
 test("ReviewedTaskUseCase moves an in_review task to wait_accept", async () => {
@@ -359,6 +442,44 @@ test("ReviewedTaskUseCase moves an in_review task to wait_accept", async () => {
 
   await new ReviewedTaskUseCase(repo).execute(task.id);
 
+  const savedTask = await repo.findById(task.id);
+  assert.equal(savedTask?.status, TaskStatus.WAIT_ACCEPT);
+});
+
+test("ReviewedTaskUseCase blocks review by the task assignee", async () => {
+  // ロールを worker → reviewer に置き換えても assignee は変わらないため、この比較で自己レビューを防げる
+  const task = createTask(TaskStatus.IN_REVIEW);
+  task.assignee = "worker-1";
+  const repo = new InMemoryTaskRepository([task]);
+
+  await assert.rejects(
+    () => new ReviewedTaskUseCase(repo).execute(task.id, "worker-1"),
+    /cannot be reviewed by its own assignee/,
+  );
+  const savedTask = await repo.findById(task.id);
+  assert.equal(savedTask?.status, TaskStatus.IN_REVIEW);
+});
+
+test("ReviewedTaskUseCase allows review by a different session", async () => {
+  const task = createTask(TaskStatus.IN_REVIEW);
+  task.assignee = "worker-1";
+  const repo = new InMemoryTaskRepository([task]);
+
+  await new ReviewedTaskUseCase(repo).execute(task.id, "reviewer-1");
+
+  const savedTask = await repo.findById(task.id);
+  assert.equal(savedTask?.status, TaskStatus.WAIT_ACCEPT);
+});
+
+test("AcceptTaskUseCase blocks acceptance by the task assignee", async () => {
+  const task = createTask(TaskStatus.WAIT_ACCEPT);
+  task.assignee = "worker-1";
+  const repo = new InMemoryTaskRepository([task]);
+
+  await assert.rejects(
+    () => new AcceptTaskUseCase(repo).execute(task.id, "worker-1"),
+    /cannot be accepted by its own assignee/,
+  );
   const savedTask = await repo.findById(task.id);
   assert.equal(savedTask?.status, TaskStatus.WAIT_ACCEPT);
 });

@@ -3,15 +3,12 @@ import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { fileURLToPath } from "node:url";
-import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
-import { createMcpServer } from "@mcp/createMcpServer.ts";
+import { createStatelessMcpServer } from "@mcp/createStatelessMcpServer.ts";
 import { MCP_HEADER } from "@constants/McpHeader.ts";
-import { sessionService, membershipService } from "@container";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import PageCtrl from "@controller/PageController.ts";
 import { ValidationError } from "@application/error/ValidationError.ts";
 import { NotFoundError } from "@application/error/NotFoundError.ts";
-import { SessionInvalidError } from "@application/error/SessionInvalidError.ts";
 import { toMcpErrorResponse } from "@mcp/utils/toMcpErrorResponse.ts";
 
 export const createApp = () => {
@@ -24,11 +21,11 @@ export const createApp = () => {
       allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
       allowHeaders: [
         "Content-Type",
-        MCP_HEADER.MCP_SESSION_ID,
+        "Authorization",
         MCP_HEADER.MCP_PROTOCOL_VERSION,
         MCP_HEADER.LAST_EVENT_ID,
       ],
-      exposeHeaders: [MCP_HEADER.MCP_SESSION_ID, MCP_HEADER.MCP_PROTOCOL_VERSION],
+      exposeHeaders: [MCP_HEADER.MCP_PROTOCOL_VERSION],
     }),
   );
 
@@ -40,6 +37,7 @@ export const createApp = () => {
   app.get("/api/projects/:projectId", PageCtrl.project.bind(PageCtrl));
   app.post("/api/projects/:projectId/stories", PageCtrl.createStory.bind(PageCtrl));
   app.put("/api/projects/:projectId/stories/:storyId", PageCtrl.updateStory.bind(PageCtrl));
+  app.post("/api/projects/:projectId/stories/:storyId/move", PageCtrl.moveStory.bind(PageCtrl));
   app.delete("/api/projects/:projectId/stories/:storyId", PageCtrl.deleteStory.bind(PageCtrl));
   app.put("/api/projects/:projectId/tasks/:taskId", PageCtrl.updateTask.bind(PageCtrl));
   app.delete("/api/projects/:projectId/tasks/:taskId", PageCtrl.deleteTask.bind(PageCtrl));
@@ -52,52 +50,22 @@ export const createApp = () => {
   );
   app.all("/api/*", (c) => c.json({ error: { message: "Not Found" } }, 404));
 
-  // MCP Route
+  // Stateless MCP Route. A fresh server/transport is created for every request;
+  // application identity comes only from the trusted-local Agent Name header.
   app.all("/mcp", async (c) => {
-    // Sessionがある場合の処理
-    //-----------------------------------------------------------------------------
-    const sessionId = c.req.header(MCP_HEADER.MCP_SESSION_ID);
-    if (sessionId) {
-      const session = sessionService.getSessionBySessionId(sessionId);
-      if (!session) throw new SessionInvalidError();
-      return session.transport.handleRequest(c.req.raw);
+    const authorization = c.req.header("Authorization") ?? "";
+    const match = authorization.match(/^Bearer\s+(.+)$/i);
+    const principalId = match?.[1]?.trim();
+    if (!principalId) {
+      throw new ValidationError("Authorization: Bearer <AgentName> is required");
     }
 
-    // Sessionがない場合の処理
-    //-----------------------------------------------------------------------------
-    const parsedBody = await c.req.raw
-      .clone()
-      .json()
-      .catch(() => null);
-    if (!parsedBody) throw new ValidationError("Invalid JSON body");
-    if (!isInitializeRequest(parsedBody)) throw new ValidationError("Initialization required");
-
-    const initialSessionId = crypto.randomUUID();
-    const server = createMcpServer({ sessionId: initialSessionId });
     const transport = new WebStandardStreamableHTTPServerTransport({
-      sessionIdGenerator: () => initialSessionId,
-      onsessioninitialized: (initializedSessionId) => {
-        sessionService.registerSession(initializedSessionId, {
-          server,
-          transport,
-          sessionId: initializedSessionId,
-        });
-      },
-      onsessionclosed: (closedSessionId) => {
-        sessionService.removeSessionBySessionId(closedSessionId);
-        membershipService.removeMembershipBySessionId(closedSessionId).catch((error) => {
-          console.error(
-            `Failed to remove project memberships for session ${closedSessionId}`,
-            error,
-          );
-        });
-
-        console.info(`Session ${closedSessionId} closed and removed from session service`);
-      },
+      sessionIdGenerator: undefined,
     });
-
+    const server = createStatelessMcpServer(principalId);
     await server.connect(transport);
-    return transport.handleRequest(c.req.raw, { parsedBody });
+    return transport.handleRequest(c.req.raw);
   });
 
   app.get("/health", (c) => c.json({ status: "ok", service: "wacha-mcp" }));

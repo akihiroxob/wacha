@@ -15,6 +15,8 @@ export class Task {
     public resumeSourceStatus: ResumeSourceStatus | null,
     public createdAt: number,
     public updatedAt: number,
+    // 優先順位(小さいほど優先)。全順序で扱い、一覧はこの昇順で返す
+    public sortOrder: number = 0,
   ) {
     if (projectId.trim() === "") {
       throw new Error("task projectId cannot be empty");
@@ -34,6 +36,11 @@ export class Task {
 
   changeDescription(description: string) {
     this.description = description.trim() === "" ? null : description;
+    this.updatedAt = Date.now();
+  }
+
+  changeSortOrder(sortOrder: number) {
+    this.sortOrder = sortOrder;
     this.updatedAt = Date.now();
   }
 
