@@ -36,6 +36,14 @@ export const createApp = () => {
   app.get("/api/projects", PageCtrl.index.bind(PageCtrl));
   app.get("/api/projects/:projectId", PageCtrl.project.bind(PageCtrl));
   app.post(
+    "/api/projects/:projectId/grants",
+    PageCtrl.grantProjectRole.bind(PageCtrl),
+  );
+  app.delete(
+    "/api/projects/:projectId/grants",
+    PageCtrl.revokeProjectRole.bind(PageCtrl),
+  );
+  app.post(
     "/api/projects/:projectId/stories",
     PageCtrl.createStory.bind(PageCtrl),
   );

@@ -1,6 +1,7 @@
 import { Context } from "hono";
 import { ValidationError } from "@application/error/ValidationError.ts";
 import { NotFoundError } from "@application/error/NotFoundError.ts";
+import { ProjectRole, type ProjectRole as ProjectRoleValue } from "@constants/ProjectRole.ts";
 import type {
   CreateStoryResponse,
   OkResponse,
@@ -12,6 +13,8 @@ import {
   listProjectUseCase,
   getProjectUseCase,
   listProjectGrantsUseCase,
+  grantProjectRoleUseCase,
+  revokeProjectRoleUseCase,
   listStoryUseCase,
   issueStoryUseCase,
   editStoryUseCase,
@@ -26,6 +29,12 @@ import {
 } from "@container";
 
 export class PageController {
+  private readonly assignableRoles = [
+    ProjectRole.WORKER,
+    ProjectRole.REVIEWER,
+    ProjectRole.MANAGER,
+  ] as const;
+
   private async readJsonBody(c: Context): Promise<Record<string, unknown>> {
     const body = await c.req.json().catch(() => null);
     if (!body || typeof body !== "object") throw new ValidationError("Invalid JSON body");
@@ -40,6 +49,14 @@ export class PageController {
   private readSortOrderField(body: Record<string, unknown>): number | null {
     const value = body["sortOrder"];
     return typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : null;
+  }
+
+  private readProjectRole(body: Record<string, unknown>): ProjectRoleValue {
+    const role = this.readTextField(body, "role");
+    if (!this.assignableRoles.includes(role as (typeof this.assignableRoles)[number])) {
+      throw new ValidationError("Role must be worker, reviewer, or manager");
+    }
+    return role as ProjectRoleValue;
   }
 
   private async getProjectOrThrow(projectId: string | undefined) {
@@ -84,6 +101,30 @@ export class PageController {
       grants: grantResult.grants,
       grantSummary: grantResult.summary,
     };
+    return c.json(body);
+  }
+
+  async grantProjectRole(c: Context) {
+    const project = await this.getProjectOrThrow(c.req.param("projectId"));
+    const jsonBody = await this.readJsonBody(c);
+    const principalId = this.readTextField(jsonBody, "principalId");
+    if (principalId === "") throw new ValidationError("Agent name is required");
+    const role = this.readProjectRole(jsonBody);
+
+    await grantProjectRoleUseCase.execute(project.id, principalId, role);
+    const body: OkResponse = { ok: true };
+    return c.json(body, 201);
+  }
+
+  async revokeProjectRole(c: Context) {
+    const project = await this.getProjectOrThrow(c.req.param("projectId"));
+    const jsonBody = await this.readJsonBody(c);
+    const principalId = this.readTextField(jsonBody, "principalId");
+    if (principalId === "") throw new ValidationError("Agent name is required");
+    const role = this.readProjectRole(jsonBody);
+
+    await revokeProjectRoleUseCase.execute(project.id, principalId, role);
+    const body: OkResponse = { ok: true };
     return c.json(body);
   }
 

@@ -11,6 +11,8 @@ import { TaskCoordinationService } from "@application/service/TaskCoordinationSe
 
 // usecases
 import { ListProjectGrantsUseCase } from "@application/usecase/grants/ListProjectGrantsUseCase.ts";
+import { GrantProjectRoleUseCase } from "@application/usecase/grants/GrantProjectRoleUseCase.ts";
+import { RevokeProjectRoleUseCase } from "@application/usecase/grants/RevokeProjectRoleUseCase.ts";
 // project usecases[]
 import { GetProjectUseCase } from "@application/usecase/project/GetProjectUseCase.ts";
 import { ListProjectUseCase } from "@application/usecase/project/ListProjectUseCase.ts";
@@ -57,6 +59,8 @@ export const deleteStoryUseCase = new DeleteStoryUseCase(storyRepository, taskRe
 export const listProjectUseCase = new ListProjectUseCase(projectRepository);
 export const getProjectUseCase = new GetProjectUseCase(projectRepository);
 export const listProjectGrantsUseCase = new ListProjectGrantsUseCase(projectGrantRepository);
+export const grantProjectRoleUseCase = new GrantProjectRoleUseCase(projectGrantRepository);
+export const revokeProjectRoleUseCase = new RevokeProjectRoleUseCase(projectGrantRepository);
 export const listSkillUseCase = new ListSkillUseCase(skillRepository);
 export const getSkillContextUseCase = new GetSkillContextUseCase(
   skillRepository,

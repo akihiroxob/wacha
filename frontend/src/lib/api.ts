@@ -32,4 +32,5 @@ const jsonInit = (method: string, body: unknown): RequestInit => ({
 export const apiGet = <T>(path: string) => request<T>(path);
 export const apiPost = <T>(path: string, body?: unknown) => request<T>(path, jsonInit("POST", body));
 export const apiPut = <T>(path: string, body?: unknown) => request<T>(path, jsonInit("PUT", body));
-export const apiDelete = <T>(path: string) => request<T>(path, { method: "DELETE" });
+export const apiDelete = <T>(path: string, body?: unknown) =>
+  request<T>(path, body === undefined ? { method: "DELETE" } : jsonInit("DELETE", body));

@@ -5,10 +5,14 @@ import { ProjectRole } from "@constants/ProjectRole.ts";
 import { DatabaseClient } from "@database/SQLiteClient.ts";
 import { initializeSchema } from "@database/initializeSchema.ts";
 import { ListProjectGrantsUseCase } from "@application/usecase/grants/ListProjectGrantsUseCase.ts";
+import { GrantProjectRoleUseCase } from "@application/usecase/grants/GrantProjectRoleUseCase.ts";
+import { RevokeProjectRoleUseCase } from "@application/usecase/grants/RevokeProjectRoleUseCase.ts";
 import { SQLiteProjectGrantRepository } from "@repository/SQLiteProjectGrantRepository.ts";
 
 const repository = new SQLiteProjectGrantRepository();
 const useCase = new ListProjectGrantsUseCase(repository);
+const grantUseCase = new GrantProjectRoleUseCase(repository);
+const revokeUseCase = new RevokeProjectRoleUseCase(repository);
 
 before(async () => initializeSchema());
 
@@ -50,4 +54,16 @@ test("ListProjectGrantsUseCase lists durable Principal Role grants", async () =>
       { principalId: "agent-b", role: ProjectRole.WORKER },
     ],
   );
+});
+
+test("GrantProjectRoleUseCase and RevokeProjectRoleUseCase manage a Project grant", async () => {
+  await grantUseCase.execute("project-1", "agent-a", ProjectRole.REVIEWER);
+  await grantUseCase.execute("project-1", "agent-a", ProjectRole.REVIEWER);
+
+  assert.equal(await repository.hasRole("project-1", "agent-a", ProjectRole.REVIEWER), true);
+  assert.equal((await repository.listByProjectId("project-1")).length, 1);
+
+  await revokeUseCase.execute("project-1", "agent-a", ProjectRole.REVIEWER);
+
+  assert.equal(await repository.hasRole("project-1", "agent-a", ProjectRole.REVIEWER), false);
 });

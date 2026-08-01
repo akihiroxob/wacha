@@ -31,7 +31,8 @@ cp wacha.db wacha.db.before-stateless
 
 ## Role Grant
 
-初回起動後、利用する Agent 名ごとに必要な Role を手動登録する。同じ Principal に複数 Role を付与してよい。
+初回起動後、利用する Agent 名ごとに必要な Role をProject詳細のWeb UIから発行する。
+同じ Principal に複数 Role を付与してよい。CLIから発行する場合は次を使う。
 
 ```sh
 npm run grant-role -- <projectId> <AgentName> worker
