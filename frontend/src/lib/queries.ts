@@ -5,6 +5,7 @@ import type {
   MoveStoryInput,
   OkResponse,
   ProjectDetailResponse,
+  ProjectGrantInput,
   ProjectListResponse,
   ReasonInput,
   StoryInput,
@@ -24,6 +25,24 @@ export const useProject = (projectId: string) =>
     queryFn: () => apiGet<ProjectDetailResponse>(`/api/projects/${projectId}`),
     refetchInterval: 5000,
   });
+
+export const useGrantProjectRole = (projectId: string) => {
+  const invalidate = useInvalidateProject(projectId);
+  return useMutation({
+    mutationFn: (input: ProjectGrantInput) =>
+      apiPost<OkResponse>(`/api/projects/${projectId}/grants`, input),
+    onSuccess: invalidate,
+  });
+};
+
+export const useRevokeProjectRole = (projectId: string) => {
+  const invalidate = useInvalidateProject(projectId);
+  return useMutation({
+    mutationFn: (input: ProjectGrantInput) =>
+      apiDelete<OkResponse>(`/api/projects/${projectId}/grants`, input),
+    onSuccess: invalidate,
+  });
+};
 
 const useInvalidateProject = (projectId: string) => {
   const queryClient = useQueryClient();

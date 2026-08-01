@@ -67,6 +67,53 @@ test("GET /api/projects/:projectId returns 404 for unknown project", async () =>
   assert.equal(body.error.message, "Project not found");
 });
 
+test("Project Role Grant can be issued and revoked from the REST API", async () => {
+  const project = await projectRepository.create("Wacha", null, "repo/wacha");
+  const grantInput = { principalId: "E2EWorker", role: "worker" };
+
+  const createRes = await app.request(
+    `/api/projects/${project.id}/grants`,
+    jsonInit("POST", grantInput),
+  );
+  assert.equal(createRes.status, 201);
+
+  const detailRes = await app.request(`/api/projects/${project.id}`);
+  const detail = await detailRes.json();
+  assert.deepEqual(
+    detail.grants.map((grant: { principalId: string; role: string }) => ({
+      principalId: grant.principalId,
+      role: grant.role,
+    })),
+    [grantInput],
+  );
+
+  const revokeRes = await app.request(
+    `/api/projects/${project.id}/grants`,
+    jsonInit("DELETE", grantInput),
+  );
+  assert.equal(revokeRes.status, 200);
+
+  const afterRevokeRes = await app.request(`/api/projects/${project.id}`);
+  const afterRevoke = await afterRevokeRes.json();
+  assert.equal(afterRevoke.grants.length, 0);
+});
+
+test("Project Role Grant API rejects empty Agent names and unsupported Roles", async () => {
+  const project = await projectRepository.create("Wacha", null, "repo/wacha");
+
+  const emptyAgentRes = await app.request(
+    `/api/projects/${project.id}/grants`,
+    jsonInit("POST", { principalId: "  ", role: "worker" }),
+  );
+  assert.equal(emptyAgentRes.status, 400);
+
+  const invalidRoleRes = await app.request(
+    `/api/projects/${project.id}/grants`,
+    jsonInit("POST", { principalId: "agent-a", role: "owner" }),
+  );
+  assert.equal(invalidRoleRes.status, 400);
+});
+
 test("POST /api/projects/:projectId/stories creates a story", async () => {
   const project = await projectRepository.create("Wacha", null, "repo/wacha");
 

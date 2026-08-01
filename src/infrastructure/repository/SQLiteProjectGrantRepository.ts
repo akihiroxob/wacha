@@ -15,6 +15,14 @@ export class SQLiteProjectGrantRepository implements ProjectGrantRepository {
       .execute();
   }
 
+  async revoke(projectId: string, principalId: string, role: ProjectRole): Promise<void> {
+    await DatabaseClient.deleteFrom("project_grant")
+      .where("project_id", "=", projectId)
+      .where("principal_id", "=", principalId)
+      .where("role", "=", role)
+      .execute();
+  }
+
   async hasRole(projectId: string, principalId: string, role: ProjectRole): Promise<boolean> {
     const row = await DatabaseClient.selectFrom("project_grant")
       .select("role")

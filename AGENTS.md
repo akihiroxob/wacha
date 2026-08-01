@@ -42,7 +42,8 @@ Authorization: Bearer <AgentName>
 
 Role は Principal と Project の組み合わせで永続化される。同じ Principal は同一 Project で `worker`、`reviewer`、`manager` を複数保持できる。Role の選択やセッションごとの再取得は不要である。
 
-Role Grant は運用者が手動で登録する。
+Role Grant は運用者がProject詳細のWeb UIから発行・取消する。CLIから発行する場合は
+次のコマンドを使う。
 
 ```sh
 npm run grant-role -- <projectId> <AgentName> <worker|reviewer|manager>

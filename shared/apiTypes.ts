@@ -111,6 +111,11 @@ export interface CommentInput {
   author?: string;
 }
 
+export interface ProjectGrantInput {
+  principalId: string;
+  role: Exclude<ProjectRole, "viewer">;
+}
+
 export interface CreateStoryResponse {
   story: StoryDto;
 }

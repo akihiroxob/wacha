@@ -181,7 +181,7 @@ The initial implementation operates in a trusted local environment and accepts a
 Authorization: Bearer <AgentName>
 ```
 
-The initial adapter uses the bearer value as `principalId` without verifying a secret. Agent Names and their Project grants are configured manually. Project Role authorization is still enforced from persisted grants; a Principal without the required grant receives `FORBIDDEN`.
+The initial adapter uses the bearer value as `principalId` without verifying a secret. Agent Names and their Project grants are configured through the trusted-local administration UI or CLI, not through MCP tools. Project Role authorization is still enforced from persisted grants; a Principal without the required grant receives `FORBIDDEN`.
 
 This is caller-asserted identity, not a security boundary. A caller can impersonate another Agent Name. The server must not be exposed to an untrusted network in this mode. A later authentication adapter may replace this mechanism with API tokens, OIDC, service accounts, reverse-proxy signed headers, or another verified credential without changing the application model.
 

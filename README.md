@@ -144,6 +144,9 @@ claude mcp add \
 接続に使う Agent 名には、対象 Project の Role Grant を事前に登録してください。同じ
 Agent 名に複数 Role を付与できます。
 
+Web UI のProject詳細にある「Role Grants」から、Agent名とRoleを指定して発行・取消
+できます。CLIを使う場合は次のコマンドで発行できます。
+
 ```bash
 npm run grant-role -- <projectId> <AgentName> <worker|reviewer|manager>
 ```

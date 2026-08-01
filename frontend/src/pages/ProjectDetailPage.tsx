@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import clsx from "clsx";
 import type {
@@ -13,7 +14,12 @@ import { Button } from "@/components/Button";
 import { StoryCard } from "@/components/StoryCard";
 import { TaskCard } from "@/components/TaskCard";
 import { TaskDrawer } from "@/components/TaskDrawer";
-import { useDeleteStory, useMoveStory, useProject } from "@/lib/queries";
+import { RoleGrantDrawer } from "@/components/RoleGrantDrawer";
+import {
+  useDeleteStory,
+  useMoveStory,
+  useProject,
+} from "@/lib/queries";
 import { ApiError } from "@/lib/api";
 import { formatAbsoluteTime, formatRelativeTime } from "@/lib/time";
 
@@ -101,6 +107,7 @@ export const ProjectDetailPage = () => {
   const { data, isPending, error } = useProject(projectId);
   const deleteStory = useDeleteStory(projectId);
   const moveStory = useMoveStory(projectId);
+  const [isRoleGrantDrawerOpen, setIsRoleGrantDrawerOpen] = useState(false);
 
   if (isPending) {
     return (
@@ -232,9 +239,18 @@ export const ProjectDetailPage = () => {
                 </span>
               </p>
             </div>
-            <Link to={`/project/${project.id}/story/add`} className="shrink-0">
-              <Button text="+ 新しいStoryを作成" />
-            </Link>
+            <div className="flex shrink-0 flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setIsRoleGrantDrawerOpen(true)}
+                className="rounded-xl border border-stone-200 bg-white px-4 py-2.5 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
+              >
+                Roleを管理
+              </button>
+              <Link to={`/project/${project.id}/story/add`}>
+                <Button text="+ 新しいStoryを作成" />
+              </Link>
+            </div>
           </div>
           <div className="mt-5 flex flex-col gap-3 border-t border-stone-100 pt-4">
             <StatusSummaryChips summary={summary} />
@@ -462,6 +478,14 @@ export const ProjectDetailPage = () => {
             task={selectedTask}
             comments={commentsByTaskId.get(selectedTask.id) ?? []}
             onClose={() => setSelectedTask(null)}
+          />
+        )}
+        {isRoleGrantDrawerOpen && (
+          <RoleGrantDrawer
+            projectId={project.id}
+            projectName={project.name}
+            grants={grants}
+            onClose={() => setIsRoleGrantDrawerOpen(false)}
           />
         )}
       </main>
