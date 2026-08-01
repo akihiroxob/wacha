@@ -1,6 +1,6 @@
 # Agent Task Coordination Specification
 
-- Status: Accepted design / implementation candidate
+- Status: Implemented initial version
 - Date: 2026-08-01
 - Target branch: `feature/codewithclaude-advanced`
 - Related design: `minimal-stateless-task-coordination-design.md`
@@ -53,7 +53,7 @@ External runners, Consoles, and orchestrators own those concerns and call Wacha 
 
 ### 3.1 Agents choose; Wacha validates
 
-Wacha exposes Task facts and availability. An agent inspects the Project, specifications, repository, dependencies, priority, and current code, then chooses a Task.
+Wacha exposes Task facts and availability. An agent inspects the Project, specifications, repository, priority, and current code, then chooses a Task.
 
 Wacha only decides whether the selected Task can be claimed at the moment the claim request is committed.
 
@@ -88,9 +88,10 @@ The existing Task status model is retained.
 type TaskStatus =
   | "todo"
   | "doing"
+  | "canceled"
   | "in_review"
   | "wait_accept"
-  | "completed"
+  | "accepted"
   | "rejected";
 ```
 
@@ -102,13 +103,20 @@ No additional status model is introduced by this specification.
 todo
   -- claim_task --> doing
   -- complete_task --> in_review
+
+in_review
   -- claim_review --> in_review
   -- reviewed_task --> wait_accept
+
+in_review
+  -- claim_acceptance --> wait_accept  # Manager directly performs the review
+
+wait_accept
   -- claim_acceptance --> wait_accept
-  -- accept_task --> completed
+  -- accept_task --> accepted
 ```
 
-The claim commands for review and acceptance do not change the Task status. They acquire exclusive rights within the current status.
+`claim_review`, and `claim_acceptance` when the Task is already `wait_accept`, acquire exclusive rights without changing the Task status. `claim_acceptance` on `in_review` is the one exception: it records that the Manager directly performed the review and moves the Task to `wait_accept` atomically with Claim acquisition.
 
 ### 4.2 Rejection
 
@@ -134,6 +142,22 @@ The originating status is recorded in the Change Log, so review rejection and ac
 
 There is no `reject_acceptance` command.
 
+### 4.3 Cancellation
+
+The existing cancellation transitions are retained.
+
+```text
+todo
+  -- cancel_task --> canceled
+
+doing
+  -- cancel_task --> canceled
+```
+
+Cancellation is a Manager administration operation and does not require an Acceptance Claim.
+
+If `cancel_task` cancels a `doing` Task with an active work Claim, the same transaction must complete that Claim as `released` with a cancellation reason. The old `claimId` must be unable to mutate the canceled Task.
+
 ## 5. Principal, Role, and authorization
 
 ### 5.1 Principal
@@ -151,7 +175,15 @@ Examples:
 
 The MCP tool input must not accept a caller-supplied `principalId` as identity.
 
-Authentication adapters resolve the Principal from credentials, initially an API token and potentially OIDC, service accounts, reverse-proxy signed headers, or another mechanism later.
+The initial implementation operates in a trusted local environment and accepts an Agent Name directly as the Principal identity.
+
+```http
+Authorization: Bearer <AgentName>
+```
+
+The initial adapter uses the bearer value as `principalId` without verifying a secret. Agent Names and their Project grants are configured manually. Project Role authorization is still enforced from persisted grants; a Principal without the required grant receives `FORBIDDEN`.
+
+This is caller-asserted identity, not a security boundary. A caller can impersonate another Agent Name. The server must not be exposed to an untrusted network in this mode. A later authentication adapter may replace this mechanism with API tokens, OIDC, service accounts, reverse-proxy signed headers, or another verified credential without changing the application model.
 
 ```ts
 type AuthContext = {
@@ -277,8 +309,9 @@ claim_review
   requires reviewer Role
 
 claim_acceptance
-  allowed when Task.status is wait_accept
-  leaves Task.status as wait_accept
+  allowed when Task.status is in_review or wait_accept
+  changes in_review to wait_accept when the Manager directly performs the review
+  leaves wait_accept as wait_accept
   requires manager Role
 ```
 
@@ -330,13 +363,17 @@ An expired Claim cannot be renewed. The caller must acquire a new Claim if the T
 release_claim(claimId, reason, requestId)
 ```
 
-Release returns the Task to the appropriate unclaimed status.
+Release returns the Task to the appropriate unclaimed status. Expiry invalidates the Claim immediately by time comparison, but does not require an immediate persisted Task status rewrite.
 
 Initial behavior:
 
 ```text
-work Claim released or expired
+work Claim released
   doing -> todo
+
+work Claim expired
+  persisted Task status may temporarily remain doing
+  availableFor=work treats the Task as reclaimable
 
 review Claim released or expired
   in_review -> in_review
@@ -346,6 +383,17 @@ acceptance Claim released or expired
 ```
 
 If the Task entered `doing` from `rejected`, the first implementation may still return it to `todo`; preserving a pre-claim status may be added later if required. This is an implementation detail, not a reason to add a Claim phase.
+
+When a new `claim_task` reclaims a `doing` Task whose current Claim has expired, one database transaction must:
+
+1. verify that the old Claim is expired;
+2. mark the old Claim as `expired`;
+3. logically recover the Task to `todo`;
+4. create a new active Claim;
+5. move the Task to `doing` under the new Claim;
+6. append the required Change Log entries.
+
+The intermediate `todo` state does not need to be externally visible. A stale `claimId` is fenced out after the transaction. A maintenance scheduler may normalize an expired, unreclaimed `doing` Task to persisted `todo`, but correctness and reacquisition must not depend on that scheduler.
 
 ### 6.7 Claim history retention
 
@@ -425,10 +473,13 @@ This only filters persisted status values. It does not guarantee that the return
 A Task is available for work when all required conditions are true, including:
 
 - Principal has worker Role for the Project;
-- Task status is `todo` or `rejected`;
-- dependencies are satisfied;
-- no active unexpired Claim exists;
+- Task status is `todo` or `rejected` and no active unexpired Claim exists; or
+- Task status is `doing` and its current work Claim is expired;
 - Project policy allows the operation.
+
+Task-to-Task dependencies are not part of the first implementation.
+
+The `status` filter continues to report persisted Task state. Therefore, a Task with an expired work Claim may still appear as `doing` in a status-based query while also appearing in `availableFor=work`. This is intentional: `status` reports stored workflow state, while `availableFor` reports whether the Principal can successfully claim the Task now.
 
 #### Review
 
@@ -444,21 +495,28 @@ A Task is available for review when all required conditions are true, including:
 A Task is available for acceptance when all required conditions are true, including:
 
 - Principal has manager Role;
-- Task status is `wait_accept`;
+- Task status is `in_review` or `wait_accept`;
 - no active unexpired Claim exists;
+- self-acceptance policy allows the Principal;
 - Project policy allows the operation.
+
+When the Manager selects an `in_review` Task, successful `claim_acceptance` moves it to `wait_accept`. This preserves the lower-cost human direct-review path without making Review Claims and Acceptance Claims ambiguous on the same Task status.
 
 ### 7.5 Ordering
 
 The initial default ordering is:
 
 ```text
-priority DESC, created_at ASC
+parent Story sortOrder ASC
+  -> Task sortOrder ASC
+  -> createdAt ASC
 ```
+
+For a standalone Task, its own `sortOrder` is used on the same primary axis as a parent Story's `sortOrder`, then as the Task-level ordering key.
 
 Ordering is only a presentation hint. It is not an instruction that the agent must claim the first Task.
 
-The agent remains responsible for choosing a Task after considering specifications, code, dependencies, priority, comments, and other relevant facts.
+The agent remains responsible for choosing a Task after considering specifications, code, priority, comments, and other relevant facts.
 
 ## 8. MCP tool contract
 
@@ -487,11 +545,13 @@ release_claim(claimId, reason, requestId)
 ### 8.3 Worker
 
 ```text
-add_task_comment(taskId, claimId?, body, requestId)
+add_task_comment(taskId, claimId, body, requestId)
 complete_task(taskId, claimId, requestId)
 ```
 
 `complete_task` transitions `doing -> in_review` and completes the active Claim.
+
+`add_task_comment` requires the current active Claim. The authenticated Principal is recorded as the author, and the Claim records the work context in which the comment was added. A Principal without the current Claim cannot add a Task Comment.
 
 ### 8.4 Reviewer
 
@@ -510,7 +570,9 @@ accept_task(taskId, claimId, requestId)
 reject_task(taskId, claimId, reason, requestId)
 ```
 
-`accept_task` verifies Acceptance Criteria and transitions `wait_accept -> completed`.
+`accept_task` verifies Acceptance Criteria and transitions `wait_accept -> accepted`.
+
+To directly review and accept an `in_review` Task, a Manager first calls `claim_acceptance`. That operation moves the Task to `wait_accept` and returns the Acceptance Claim used by `accept_task` or `reject_task`.
 
 A Manager may be a human or an authenticated agent. Wacha must not assume acceptance is always performed manually.
 
@@ -528,19 +590,25 @@ The idempotency key is:
 
 A retry with the same key and same input returns the original result. Reusing the key with different input fails with a conflict.
 
-## 9. Self-review policy
+## 9. Self-review and self-acceptance policy
 
 A Principal may hold both worker and reviewer Roles in the same Project.
 
 This does not automatically permit self-review.
 
-When self-review is disabled, `claim_review` must reject a Principal that is the same as the Principal that most recently completed the Task through `complete_task`.
+The first implementation prohibits self-review. `claim_review` must reject a Principal that is the same as the Principal that most recently completed the Task through `complete_task`.
 
 ```text
 SELF_REVIEW_NOT_ALLOWED
 ```
 
 Role difference is not sufficient. Compare Principal IDs.
+
+The first implementation also prohibits self-acceptance. `claim_acceptance` must reject a Principal that is the same as the Principal that most recently completed the Task through `complete_task`.
+
+```text
+SELF_ACCEPTANCE_NOT_ALLOWED
+```
 
 For Ralph-style automation, separate worker and reviewer Principals and credentials are recommended even when they use the same model or executable.
 
@@ -573,6 +641,18 @@ TASK_COMPLETED
 TASK_REVIEWED
 TASK_ACCEPTED
 TASK_REJECTED
+```
+
+`TASK_CLAIMED` records the claim command and status transition in its payload. A direct Manager review is therefore distinguishable without storing a Claim phase.
+
+```json
+{
+  "type": "TASK_CLAIMED",
+  "claimCommand": "claim_acceptance",
+  "fromStatus": "in_review",
+  "toStatus": "wait_accept",
+  "path": "manager_direct_review"
+}
 ```
 
 Do not append a Change Log entry for every `renew_claim` call. Renewal updates the Claim record's `renewed_at` and `expires_at` values.
@@ -679,7 +759,10 @@ CLAIM_EXPIRED
   the Claim is no longer valid and cannot be revived
 
 TASK_NOT_CLAIMABLE
-  current Task state, dependency, or policy prevents acquisition
+  current Task state or policy prevents acquisition
+
+INVALID_INPUT
+  a required value is empty or references an entity outside the requested Project
 
 INVALID_TASK_STATUS
   the command is not valid for the current Task status
@@ -689,6 +772,9 @@ FORBIDDEN
 
 SELF_REVIEW_NOT_ALLOWED
   Project policy forbids this Principal from reviewing its own completed work
+
+SELF_ACCEPTANCE_NOT_ALLOWED
+  Project policy forbids this Principal from accepting its own completed work
 
 INVALID_FILTER_COMBINATION
   list_tasks contains both status and availableFor
@@ -711,6 +797,9 @@ The implementation must preserve the following invariants:
 6. a scheduler may normalize expired states for display or maintenance, but it is only an optimization;
 7. an old `claimId` can never mutate a Task after a newer Claim has been acquired;
 8. Task ownership is derived from the active Claim, not from `task.assignee = sessionId`.
+9. `availableFor=work` treats a `doing` Task with an expired work Claim as reclaimable;
+10. reclaiming an expired work Claim expires the old Claim and creates the new Claim atomically.
+11. `claim_acceptance` on `in_review` creates the Acceptance Claim, moves the Task to `wait_accept`, and appends the direct-review Change Log entry atomically.
 
 ## 15. Explicit non-goals for the first implementation
 
@@ -727,6 +816,7 @@ Do not add the following as part of this specification:
 - Wacha-managed Agent Run or Run Handle
 - automatic Claim or Change Log deletion
 - Wacha-owned task prioritization policy beyond deterministic result ordering
+- Task-to-Task dependency modeling or dependency-based availability
 
 ## 16. Implementation sequence
 
@@ -742,6 +832,6 @@ Codex should implement in this order unless repository constraints require a saf
 8. add Claim renewal and expiry handling without an agent heartbeat model;
 9. record important state transitions in the Change Log;
 10. migrate MCP handlers to request-scoped authentication and authorization;
-11. update tests to cover contention, expiry, fencing, multiple Roles, self-review policy, idempotency, and filter validation.
+11. update tests to cover contention, expiry, fencing, multiple Roles, self-review and self-acceptance policy, idempotency, and filter validation.
 
 When existing code conflicts with this specification, do not silently preserve legacy session semantics. Record the conflict and modify the implementation toward this document unless another accepted design explicitly supersedes it.

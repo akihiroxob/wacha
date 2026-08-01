@@ -152,11 +152,22 @@ export class SQLiteTaskRepository implements TaskRepository {
         body: body.trim(),
         author: author ?? null,
         session_id: sessionId ?? null,
+        principal_id: null,
+        claim_id: null,
         created_at: Date.now(),
       })
       .returningAll()
       .executeTakeFirstOrThrow();
-    return new TaskComment(row.id, row.task_id, row.body, row.author, row.created_at, row.session_id);
+    return new TaskComment(
+      row.id,
+      row.task_id,
+      row.body,
+      row.author,
+      row.created_at,
+      row.session_id,
+      row.principal_id,
+      row.claim_id,
+    );
   }
 
   async findCommentsByTaskId(taskId: string): Promise<TaskComment[]> {
@@ -172,7 +183,16 @@ export class SQLiteTaskRepository implements TaskRepository {
       .execute();
     return rows.map(
       (row) =>
-        new TaskComment(row.id, row.task_id, row.body, row.author, row.created_at, row.session_id),
+        new TaskComment(
+          row.id,
+          row.task_id,
+          row.body,
+          row.author,
+          row.created_at,
+          row.session_id,
+          row.principal_id,
+          row.claim_id,
+        ),
     );
   }
 

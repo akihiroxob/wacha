@@ -11,7 +11,7 @@ import {
   listTaskUseCase,
   listProjectUseCase,
   getProjectUseCase,
-  listProjectAgentsUseCase,
+  listProjectGrantsUseCase,
   listStoryUseCase,
   issueStoryUseCase,
   editStoryUseCase,
@@ -73,7 +73,7 @@ export class PageController {
       taskResult.tasks.map((task) => task.id),
     );
     const storyResult = await listStoryUseCase.execute(project.id);
-    const agentResult = await listProjectAgentsUseCase.execute(project.id);
+    const grantResult = await listProjectGrantsUseCase.execute(project.id);
 
     const body: ProjectDetailResponse = {
       project,
@@ -81,8 +81,8 @@ export class PageController {
       tasks: taskResult.tasks,
       comments: commentsResult.comments,
       stories: storyResult.stories,
-      agents: agentResult.agents,
-      agentSummary: agentResult.summary,
+      grants: grantResult.grants,
+      grantSummary: grantResult.summary,
     };
     return c.json(body);
   }

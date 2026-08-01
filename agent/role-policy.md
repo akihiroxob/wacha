@@ -2,241 +2,102 @@
 
 ## 目的
 
-この文書は、WACHA の MCP における role ごとの責務、許可操作、禁止操作、Push 対象イベントを定義する。
+この文書は、ステートレス `/mcp` における Project Role と Task Claim の共通運用を定義する。詳細仕様は `docs/agent-task-coordination-spec.md` を正とする。
 
-対象 role は次の 3 つとする。
-
-- `manager`
-- `reviewer`
-- `worker`
-
-`viewer` は現時点では運用対象外とし、将来必要になった場合に別途定義する。
+対象 Role は `manager`、`reviewer`、`worker` である。
 
 ## 基本方針
 
-- role は「誰がどのフェーズを担当するか」を固定するために使う
-- session の再確立と role の再取得は別の問題として扱う
-- server 再起動後に session が失われても role は自動継承しない
-- role が必要な操作で弾かれた時点で、client または agent は `assign_project_role` を再実行する
-- 当面は最小ブロック方針を採用する
-- 最小ブロック方針では、主に `manager` 専用操作を MCP レベルで拒否する
-- 一部の reviewer / worker 専用操作も、実装で明示ブロックする
-- それ以外の操作は、しばらく運用ルールで制御する
-- 最終判断は `manager` に集約する
-- `reviewer` は実装の妥当性を確認するが、要件期待の最終判断はしない
-- `reviewer` はレビューを成立させるための付随作業を限定的に行ってよい
-- `worker` は担当した Task の実行に集中する
+- Principal は `Authorization: Bearer <AgentName>` から得る。Tool 入力で Principal を指定しない
+- Role Grant は Principal と Project に永続化し、MCP session から独立させる
+- 1 Principal は同一 Project で複数 Role を保持できる
+- Role は選択・切替する状態ではない。各操作が必要な Role を検証する
+- Agent が一覧から Task を選び、Wacha は Claim の競合と状態遷移を検証する
+- Task の排他所有権は期限付き Claim で表し、Role Grant や Agent の生存期間とは分離する
+- 最終判断は manager、実装レビューは reviewer、Task 実行は worker が担う
+- 複数 worker、複数 reviewer を許可する。Role の専有席は設けない
 
-## 作業フェーズと role
+## 作業フェーズ
 
-1. 依頼受付と要件整理
-   - 担当: `manager`
-2. Story 化と Task 分解
-   - 担当: `manager`
-3. Task 実行
-   - 担当: `worker`
-4. 実装レビュー
-   - 担当: `reviewer`
-5. 要件に照らした最終受入
-   - 担当: `manager`
+1. 依頼受付、Story 化、Task 分解: `manager`
+2. Task 実行: `worker`
+3. 実装レビュー: `reviewer`
+4. 要件に照らした最終受入: `manager`
 
-## 最小ブロック対象
-
-以下の tool は `manager` 以外からの呼び出しを拒否する。
-
-- `issue_story`
-- `edit_story`
-- `complete_story`
-- `cancel_story`
-- `edit_task`
-- `accept_task`
-
-以下の tool は `worker` 以外からの呼び出しを拒否する。
-
-- `claim_task`
-- `complete_task`
-
-## セッションとロールの制約
-
-- 1 セッションは 1 プロジェクトにつき 1 ロールのみ保持する。`assign_project_role` で別ロールを要求した場合、membership は追加ではなく置き換えになる
-- task の担当者（assignee）自身は、その task の `reviewed_task` / `accept_task` を実行できない（自己レビュー・自己受入の禁止）。ロールを置き換えても assignee は変わらないため、ロール切り替えでは回避できない
-- `complete_task` は、担当者自身が投稿した task comment（実施内容・検証結果）が 1 件以上ないと実行できない
-- `complete_story` は、配下の task が全て `accepted` / `canceled` になるまで実行できない
+レビュー費用を省く必要がある場合、manager は `in_review` の Task に `claim_acceptance` できる。この操作は `wait_accept` への遷移と `manager_direct_review` の Change Log 記録を同時に行う。
 
 ## 権限表
 
-次の表は、当面の「MCP 実装ブロック」と「運用上の期待」を分けて示す。
+| 操作 | manager | reviewer | worker | 備考 |
+| --- | --- | --- | --- | --- |
+| Project / Story / Task / Comment / Change の参照 | allow | allow | allow | Project のいずれかの Grant が必要 |
+| Story の作成・編集・完了・中止 | allow | deny | deny | `requestId` 必須 |
+| Task の作成・編集・中止 | allow | deny | deny | `requestId` 必須 |
+| `claim_task` / `complete_task` | deny | deny | allow | work Claim が必要 |
+| `claim_review` / `reviewed_task` | deny | allow | deny | Review Claim が必要 |
+| `claim_acceptance` / `accept_task` | allow | deny | deny | Acceptance Claim が必要 |
+| `reject_task` (`in_review`) | deny | allow | deny | Review Claim が必要 |
+| `reject_task` (`wait_accept`) | allow | deny | deny | Acceptance Claim が必要 |
+| `add_task_comment` | allow | allow | allow | 現在の Claim と、その Claim に必要な Role が必要 |
+| `renew_claim` / `release_claim` | allow | allow | allow | 自分が所有する現在の Claim に限る |
 
-| Tool                  | manager | reviewer | worker | MCP 実装ブロック | 備考                                    |
-| --------------------- | ------- | -------- | ------ | ---------------- | --------------------------------------- |
-| `list_projects`       | allow   | allow    | allow  | no               | 参照系                                  |
-| `list_project_agents` | allow   | allow    | allow  | no               | 参照系                                  |
-| `list_stories`        | allow   | allow    | allow  | no               | 参照系                                  |
-| `issue_story`         | allow   | deny     | deny   | yes              | Story 作成は manager のみ                    |
-| `edit_story`          | allow   | deny     | deny   | yes              | Story 編集は manager のみ                    |
-| `complete_story`      | allow   | deny     | deny   | yes              | Story 完了は manager のみ                    |
-| `cancel_story`        | allow   | deny     | deny   | yes              | Story 中止は manager のみ                    |
-| `list_tasks`          | allow   | allow    | allow  | no               | 参照系                                  |
-| `issue_task`          | allow   | allow    | allow  | yes              | 単発 Task 作成 tool として解放する |
-| `edit_task`           | allow   | deny     | deny   | yes              | Task 編集は manager のみ                     |
-| `claim_task`          | deny    | deny     | allow  | yes              | worker 専用として実装ブロック           |
-| `complete_task`       | deny    | deny     | allow  | yes              | worker 専用。担当者コメント必須         |
-| `reviewed_task`       | deny    | allow    | deny   | yes              | reviewer 承認で `wait_accept` に進める  |
-| `accept_task`         | allow   | deny     | deny   | yes              | 最終受入は manager のみ                 |
-| `reject_task`         | allow   | allow    | deny   | no               | reviewer は実装観点の差し戻しに使う     |
-| `add_task_comment`    | deny    | allow    | allow  | yes              | reviewer / worker の補足コメント        |
-| `list_task_comments`  | allow   | allow    | allow  | no               | 参照系                                  |
-| `assign_project_role` | allow   | allow    | allow  | no               | role 指定時の制約は別レイヤで扱う       |
-| `get_role_instructions` | allow | allow    | allow  | no               | 参照系                                  |
+`add_task_comment` は Claim に紐づく引き継ぎ記録である。Principal と `claimId` はサーバーが保存し、任意の author 名で上書きしない。
 
-## Reject の意味の違い
+## Claim の共通ルール
 
-`reject_task` は `manager` と `reviewer` の両方に許可するが、意味は同じではない。
+- 1 Task に有効な Claim は最大 1 件
+- Claim 取得競合は通常の制御フローであり、`CLAIM_CONFLICT` を受けた Agent は再一覧または別 Task の選択を行う
+- Claim は期限切れ時点で無効になる。期限切れを永続化する定期 heartbeat は不要
+- 作業継続時だけ、所有者が期限前に `renew_claim` する
+- 期限切れ Claim は更新できず、対象状態が許せば新しい Claim を取得する
+- work Claim が期限切れた `doing` Task は `availableFor: "work"` で再取得可能になる
+- 再取得は古い Claim の失効と新しい Claim の作成を同一トランザクションで行う
+- 明示解放では `release_claim` に理由を残す
+- `cancel_task` は有効な Claim を同一トランザクションで解放し、古い `claimId` を fence する
 
-### reviewer の reject
+Claim の更新は Task 操作権のリース更新であり、Console や Agent の生存確認ではない。
 
-- 実装や検証の観点で不備がある
-- 追加修正が必要
-- レビュー結果として差し戻す
-- reviewer 自身で直すと責務が実質的に実装へ広がる場合は差し戻す
+## 自己レビュー・自己受入
 
-### manager の reject
+- 最新の `complete_task` を行った Principal は、同じ Task の `claim_review` を取得できない
+- 最新の `complete_task` を行った Principal は、同じ Task の `claim_acceptance` を取得できない
+- Role を複数保持してもこの制約は回避できない
+- `complete_task` は、同じ Principal と同じ Claim で追加された Task Comment が必要
 
-- 要件期待に届いていない
-- 人に確認した内容とズレている
-- 受入条件を満たしていない
+## Reject の意味
 
-実装上は同じ `reject_task` を使ってよいが、reason にはどの観点の reject かが分かる文面を残す。
-
-## role 別の必須ルール
-
-### manager
-
-- 人からの依頼受付を担う
-- Story 化と Task 分解を担う
-- Story の状態を管理する
-- Story の `doing` は worker の `claim_task` 由来で進む前提で扱う
-- 最終的な `accept_task` / `reject_task` を担う
+`reject_task` は対象状態で意味が変わる。
 
 ### reviewer
 
-- `worker` 完了後の Task を確認する
-- 実装の妥当性、漏れ、危険性を確認する
-- レビューを成立させるための軽微修正、テスト追加、補足コメント追記は条件付きで行える
-- 既存の Story / Task に紐づかない follow-up は `issue_task` で単発 Task として記録できる
-- `reviewed_task` で manager 判断待ちへ進める
-- `add_task_comment` で補足コメントを残せる
-- Story 配下にぶら下げる Task 分解や大きい修正は manager に委ねる
-- 通せない場合は `reject_task` で差し戻す
-- `accept_task` は行わない
+- `in_review` を実装・検証観点で差し戻す
+- reason に不足点、危険性、再レビュー条件を残す
 
-### worker
+### manager
 
-- `todo` または `rejected` の Task を引き受ける
-- 既存の Story / Task に紐づかない直接依頼は `issue_task` で単発 Task として記録する
-- 実装や修正を行う
-- 完了したら `complete_task` でレビュー待ちに進める
-- `add_task_comment` で実装メモや補足を残せる
-- Story や role の管理は行わない
+- `wait_accept` を要件・受入観点で差し戻す
+- reason に期待とのずれと再受入条件を残す
 
-## Push 対象イベント
+## Change Log と外部ループ
 
-role ごとに Push すべきイベントは次のとおり。
+Task / Claim の重要な変更は append-only Change Log に保存する。利用側は `list_changes(projectId, afterCursor)` で差分を取得し、自身の cursor を管理する。
 
-### manager への Push
+Wacha は次を管理しない。
 
-- 新しい `todo` Story が発行された
-- `doing` の Story が長時間止まっている
-- `in_review` の Task が reviewer を経て manager 判断待ちになった
-- 人から manager 宛ての直接依頼が発生した
+- Ralph Loop や Console のプロセス生存
+- polling / backoff / retry のスケジュール
+- Agent の会話コンテキスト
+- Agent に次の Task を強制するキュー
+- 通知の購読状態や配信保証
 
-### reviewer への Push
+これらは外部オーケストレーターの責務である。
 
-- `complete_task` により Task がレビュー待ちになった
-- `rejected` から再着手され、再レビューが必要になった
+## Reviewer の付随作業
 
-### worker への Push
+reviewer はレビュー成立に必要な typo、文言、命名の微修正や、既存仕様を固定する小さなテスト追加を行ってよい。ただし現在の Review Claim の範囲を超える変更、設計判断、複数責務にまたがる修正は `reject_task` で worker に返す。
 
-- 自分が担当すべき Task が明示的に割り当てられた
-- 自分の Task が `reject_task` で差し戻された
+新しい Story / Task が必要な follow-up は manager へ提案する。初期のステートレス API では作成権限を manager に限定する。
 
-## Cancel 方針
+## 旧方式
 
-- Story / Task を管理対象から外す cancel は、hard delete ではなく非破壊の状態遷移として定義する前提で扱う
-- cancel 時は理由をコメントとして残す運用、または同等の入力要件を持たせる
-- 現在の delete 実装は既存挙動であり、cancel 方針の最終形とは分けて考える
-
-## Session 再初期化後の扱い
-
-server 再起動などで既存 session が失われた場合、client はまず `initialize` をやり直して新しい session を確立する。
-
-この時、以前の project membership や role を自動で引き継ぐ前提は置かない。
-
-role が必要な tool を呼ぶ時点で role 未取得により処理できないことが分かったら、必要に応じて `assign_project_role` を再実行する。
-
-この文書は WACHA の role 運用ルールを示すためのものであり、session 再初期化エラー自体に WACHA 固有の role 復旧手順を埋め込む前提は取らない。
-
-### 専有ロール席の明け渡し
-
-`manager` / `reviewer` は 1 プロジェクト 1 席の専有ロールである。席を持つ membership の session がサーバー上に存在しない、または最終 heartbeat が閾値（環境変数 `WACHA_SEAT_STALE_MS`、既定 30 分）より古い場合、別セッションからの `assign_project_role` 要求時にその席は自動で明け渡される。
-
-- heartbeat は MCP リクエストのたびにサーバー側で更新される
-- 生きているセッション（現存し、heartbeat が閾値内）が席を持つ場合、要求は従来どおり拒否される
-- これは role の自動継承ではない。新しいセッションが `assign_project_role` を明示的に呼んだ時にだけ発生する
-
-## MCP レベルの拒否仕様
-
-role に許可されていない tool を呼んだ場合、MCP はエラーを返す。
-
-当面この拒否は、`manager` 専用の最小ブロック対象に加えて、`reviewed_task` と `add_task_comment` のような一部の role 専用操作にも適用する。
-
-期待する振る舞いは次のとおり。
-
-- エラー種別は認可エラーとして扱う
-- メッセージは実装依存であり、現状は generic な認可エラー文言を返す
-- 処理本体には入らない
-
-現状のエラーメッセージ例:
-
-`Forbidden: Agent does not have required role`
-
-## reviewer の付随作業
-
-`reviewer` は判定だけを機械的に行う役ではない。レビューの主目的を崩さない範囲で、次の付随作業を行ってよい。
-
-- typo 修正、文言修正、変数名修正のような軽微修正
-- 既存意図を明確にする補足コメントの追記
-- 不足しているが自明なテストケースの追加
-- 既存の Story / Task に紐づかない follow-up を単発 Task として発行すること
-- `add_task_comment` を使って補足メモやレビュー観点を残すこと
-
-ただし、次に当てはまる場合は reviewer 自身で抱えず `reject_task` または manager への提案に切り替える。
-
-- 振る舞い変更や設計判断を伴う
-- 変更箇所が複数責務にまたがる
-- 何を正とするかが要件判断に依存する
-- Story に紐づけて Task 分解したくなる
-- 新しい Task を自分で複数発行したくなる程度に作業が膨らむ
-
-## reviewer の判断例
-
-- 軽微修正で閉じる例
-  - テスト名の誤字修正
-  - 失敗理由を読みやすくする補足コメント追加
-  - 既存仕様をなぞるだけの不足テスト 1 件追加
-- worker へ返す例
-  - 分岐追加やロジック変更が必要
-  - 仕様解釈によって実装が変わる
-  - 不足テストを足すには実装の組み替えが必要
-- manager へ返す例
-  - 追加で扱うべきユースケースを見つけた
-  - Story 配下で整理すべき改善案がある
-  - 要件の優先順位づけが必要
-
-## 実装順
-
-1. `manager` 専用 tool 一覧をコードに持つ
-2. 各 MCP tool 実行前に role を検証する
-3. 最小ブロック対象 tool のみ拒否を有効にする
-4. Push の対象イベントを発火できるようにする
-5. 将来的に full role block へ拡張する
+session membership、runtime Role 割当、専有 Role 席、session heartbeat、in-memory `wait_for_events` は廃止する。Role Grant と Change Log へ自動変換できない session 情報は引き継がない。

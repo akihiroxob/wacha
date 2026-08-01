@@ -2,141 +2,154 @@
 
 ## Task MCP
 
-このリポジトリでは、Streamable HTTP でタスク管理用 MCP サーバを提供しています。
+このリポジトリは、Streamable HTTP でタスク調整用 MCP サーバーを提供する。
 
-このリポジトリで作業する Agent は、現在の作業状況の確認と、必要に応じたタスク状態の更新のためにこの仕組みを利用してください。
+既定の `/mcp` はステートレスである。MCP のセッション ID を Agent の識別、Role、Task 所有権には使わない。各リクエストは Principal、永続化された Project Role Grant、期限付き Task Claim によって認可される。
 
-役割ごとの運用ルールは `agent/` 配下に配置します。
+役割別の運用ルールは `agent/` 配下に置く。
 
-- `agent/role-policy.md`
-  - role ごとの権限表と Push 対象イベント
-- `agent/manager.md`
-  - manager の責務と運用フロー
-- `agent/reviewer.md`
-  - reviewer の責務と確認観点
-- `agent/worker.md`
-  - worker の責務と作業フロー
+- `agent/role-policy.md`: Role、権限、Claim の共通方針
+- `agent/manager.md`: manager の責務と運用フロー
+- `agent/reviewer.md`: reviewer の責務と確認観点
+- `agent/worker.md`: worker の責務と作業フロー
 
-## 起動方法
+正本仕様は `docs/agent-task-coordination-spec.md`、移行手順は `docs/agent-task-coordination-migration.md` を参照する。
 
-- ローカルで起動する: `npm install && npm run start`
-- Docker Compose で起動する: `docker compose up --build`
-- デフォルトの接続先: `http://localhost:51743/mcp`
+## 起動と接続
+
+- ローカル: `npm install && npm run start`
+- Docker Compose: `docker compose up --build`
+- ステートレス MCP: `http://localhost:51743/mcp`
 - ヘルスチェック: `http://localhost:51743/health`
-- 永続化する SQLite ファイルのデフォルトパス: `wacha.db`
-- Docker Compose では SQLite ファイルは volume 経由で `/data/wacha.db` に保存される
-- 識別子や membership は MCP の `sessionId` ベースで扱われる
+- SQLite の既定パス: `wacha.db`
+- Docker Compose の SQLite: `/data/wacha.db`
 
-`PORT` を指定すると待ち受けポートを変更できます。
-`WACHA_DB_PATH` を指定すると SQLite の保存先を変更できます。
-`WACHA_SEAT_STALE_MS` を指定すると専有ロール（manager / reviewer）席の明け渡し閾値を変更できます（既定 1800000 = 30 分）。session が消えた、または最終 heartbeat がこの閾値より古い membership の席は、別セッションの `assign_project_role` 時に自動で明け渡されます。
+環境変数:
 
-## 使うタイミング
+- `PORT`: 待ち受けポート
+- `WACHA_DB_PATH`: SQLite ファイル
+- `WACHA_CLAIM_TTL_MS`: Claim の有効期間。既定は 1,800,000 ms（30 分）
 
-- ある程度まとまった作業を始める前に、`list_tasks` を呼んで現在のタスク状況を確認する
-- 新しく管理対象にしたい作業がある場合は、`issue_task` を呼ぶ
-- 自分が担当するタスクを引き受ける場合は、`claim_task` を呼ぶ
-- 実装が完了しレビュー可能な状態になったら、`complete_task` を呼ぶ
-- レビュー担当として確認した場合は、`reviewed_task` または `reject_task` を呼ぶ
-- 最終受入を行う場合は、`accept_task` または `reject_task` を呼ぶ
+## Principal と Role Grant
 
-## 利用可能な MCP Tools
+初期実装は trusted-local モードで、Bearer 値を検証せずそのまま Agent 名（Principal ID）として使う。
 
-- `list_projects`
-  - 用途: プロジェクト一覧を取得する
-  - Arguments: `{}`
-- `list_skills`
-  - 用途: 利用可能な Skill 一覧を取得する
-  - Arguments: `{ "status"?: "draft" | "active" | "deprecated", "role"?: "manager" | "reviewer" | "worker" | "viewer" }`
-- `get_skill_context`
-  - 用途: Skill 本体と関連 knowledge を取得する
-  - Arguments: `{ "name": string }`
-- `list_project_agents`
-  - 用途: 指定したプロジェクトの agent 一覧を取得する
-  - Arguments: `{ "projectId": string }`
-- `list_stories`
-  - 用途: 指定したプロジェクトの Story 一覧を取得する
-  - Arguments: `{ "projectId": string, "status"?: "todo" | "doing" | "done" | "canceled" }`
-- `issue_story`
-  - 用途: 新しい Story を作成する
-  - Arguments: `{ "projectId": string, "title": string, "description"?: string }`
-- `edit_story`
-  - 用途: 既存 Story の title / description / 優先順位を更新する
-  - Arguments: `{ "projectId": string, "storyId": string, "title": string, "description"?: string, "sortOrder"?: number }`
-- `complete_story`
-  - 用途: `doing` の Story を `done` に進める
-  - Arguments: `{ "storyId": string }`
-- `cancel_story`
-  - 用途: `doing` の Story を `canceled` に進める
-  - Arguments: `{ "storyId": string }`
-- `list_tasks`
-  - 用途: 指定したプロジェクトのタスク一覧とステータス集計を取得する
-  - Arguments: `{ "projectId": string }`
-- `issue_task`
-  - 用途: 新しいタスクを作成する
-  - Arguments: `{ "title": string, "description"?: string, "projectId": string, "storyId"?: string }`
-- `edit_task`
-  - 用途: 既存 Task の title / description / 優先順位を更新する
-  - Arguments: `{ "projectId": string, "taskId": string, "title": string, "description"?: string, "sortOrder"?: number }`
-- `claim_task`
-  - 用途: `todo` または `rejected` のタスクを現在の session に割り当て、`doing` に進める
-  - 備考: worker 専用（MCP レベルでブロック）
-  - Arguments: `{ "taskId": string }`
-- `complete_task`
-  - 用途: `doing` のタスクを `in_review` に進める
-  - 備考: worker 専用（MCP レベルでブロック）。担当者自身の task comment（検証結果）が 1 件もない場合はエラーになる
-  - Arguments: `{ "taskId": string }`
-- `reviewed_task`
-  - 用途: `in_review` のタスクを `wait_accept` に進める
-  - 備考: 担当者自身は実行できない（自己レビュー禁止）
-  - Arguments: `{ "taskId": string }`
-- `accept_task`
-  - 用途: `in_review` または `wait_accept` のタスクを `accepted` に進める
-  - 備考: 担当者自身は実行できない（自己受入禁止）
-  - Arguments: `{ "taskId": string }`
-- `reject_task`
-  - 用途: `in_review` または `wait_accept` のタスクを `rejected` に進める
-  - Arguments: `{ "taskId": string, "reason": string }`
-- `add_task_comment`
-  - 用途: task に worker / reviewer の補足コメントを追加する
-  - 備考: 本文は Markdown 前提で書く
-  - Arguments: `{ "taskId": string, "body": string, "author"?: string }`
-- `list_task_comments`
-  - 用途: 指定した task のコメント一覧を取得する
-  - Arguments: `{ "taskId": string }`
-- `assign_project_role`
-  - 用途: プロジェクトに対するメンバーの役割を割り当てる
-  - 備考: 1 セッションは 1 プロジェクトにつき 1 ロールのみ保持する。別ロールを要求すると置き換えになる（行は増えない）
-  - Arguments: `{ "baseDir": string, "projectName": string, "description"?: string, "requestedRole"?: "manager" | "reviewer" | "worker" }`
-- `get_role_instructions`
-  - 用途: role ごとの運用ルールを取得する
-  - Arguments: `{ "role": "manager" | "reviewer" | "worker", "includeShared"?: boolean }`
+```http
+Authorization: Bearer <AgentName>
+```
 
-## レスポンス
+これはセキュリティ境界ではないため、信頼できないネットワークへ公開しない。
 
-- `list_tasks` は `summary.total`, `summary.byStatus`, `summary.lastUpdatedAt`, `tasks` を返す
-- `list_project_agents` は `projectId`, `summary`, `agents` を返す
-- `list_projects` は `projects` を返す
-- `list_skills` は `skills` を返す
-- `get_skill_context` は `skill`, `knowledge` を返す
-- `list_stories` は `stories` を返す
-- `issue_story` は作成された Story の主要フィールドに加えて `requiredNextTool: "issue_task"` を返す
-- `issue_story` は今回 `requiredNextArgs` を返さない
-- `edit_story` と `edit_task` は更新後の entity を返す
-- それ以外の tools は、更新後の状態が分かる実行結果を返す
+Role は Principal と Project の組み合わせで永続化される。同じ Principal は同一 Project で `worker`、`reviewer`、`manager` を複数保持できる。Role の選択やセッションごとの再取得は不要である。
 
-## 運用ガイド
+Role Grant は運用者が手動で登録する。
 
-- 重複タスクを作らないため、まず `list_tasks` を確認する
-- `list_stories` / `list_tasks` は優先順位（`sortOrder`、小さいほど優先）順で返る。次に着手する作業は一覧の先頭から選ぶ
-- 優先順位の変更は manager が `edit_story` / `edit_task` の `sortOrder` で行う
-- タスク名は短く、何をするか分かる表現にする
-- 既存の Story / Task に紐づかない直接依頼や follow-up は、`issue_task` で単発 Task を作成してから進める
-- `complete_task` は本当にレビュー可能な状態になってから呼ぶ
-- `complete_task` の前に、実施内容と検証結果を `add_task_comment` で必ず残す（コメントがないとサーバー側で拒否される）
-- `complete_story` は配下の Task が全て `accepted` / `canceled` になるまで実行できない
-- 追加対応が必要な場合は、状態を曖昧にせず `reject_task` を使う
-- Story が `doing` になるのは、Story 配下の Task が `claim_task` で着手されたとき
-- コメント本文は Markdown 前提で扱うが、厳密な Markdown 構文検証は今回必須ではない
-- 将来の Story / Task 退役は、hard delete ではなく理由付きの非破壊操作として扱う前提にする
-- 退役理由はコメントとして残す運用または入力要件を持たせる前提で考える
+```sh
+npm run grant-role -- <projectId> <AgentName> <worker|reviewer|manager>
+```
+
+## 基本フロー
+
+Agent が Task を選び、Wacha が Claim と状態遷移の正当性を検証する。Wacha が先頭 Task を自動割り当てすることはない。
+
+### Worker
+
+1. `list_tasks` を `availableFor: "work"` で読む
+2. Task を選び `claim_task` を呼ぶ
+3. 返された `claimId` を保持し、長時間作業では期限前に `renew_claim` する
+4. `add_task_comment` で実施内容と検証結果を残す
+5. `complete_task` で `in_review` へ進める
+6. 続行しない場合は `release_claim` する
+
+### Reviewer
+
+1. `list_tasks` を `availableFor: "review"` で読む
+2. Task を選び `claim_review` を呼ぶ
+3. 問題がなければ `reviewed_task`、問題があれば `reject_task` を呼ぶ
+
+### Manager
+
+1. `list_tasks` を `availableFor: "acceptance"` で読む
+2. Task を選び `claim_acceptance` を呼ぶ
+3. `accept_task` または `reject_task` を呼ぶ
+
+`claim_acceptance` の対象が `in_review` の場合は、Manager が Reviewer 工程を代行したものとして、Claim 取得と同じトランザクションで `wait_accept` へ進む。Change Log には `manager_direct_review` 経路が残る。
+
+## Claim と requestId
+
+- 1 Task に有効な Claim は最大 1 件
+- Claim は期限付きで、Agent 全体ではなく Task の操作権だけを表す
+- `renew_claim` は Claim の延長であり Agent heartbeat ではない
+- 期限切れの `doing` Task は DB 上の状態を維持したまま `availableFor: "work"` に現れる
+- 再 Claim は古い Claim を失効させ、新しい `claimId` を発行する
+- 古い、期限切れ、他 Principal 所有の `claimId` では更新できない
+- `release_claim` で work Claim を解放すると Task は `todo` に戻る
+
+状態変更 Tool は `renew_claim` を除き `requestId` を必須とする。同じ Principal・Tool・`requestId`・入力の再送は同じ結果を返す。異なる入力で再利用すると `IDEMPOTENCY_CONFLICT` になる。
+
+## ステートレス MCP Tools
+
+### 参照
+
+- `list_projects({})`
+- `list_stories({ projectId, status? })`
+- `list_tasks({ projectId, filter?, limit? })`
+  - `filter.status?: TaskStatus[]`
+  - `filter.availableFor?: "work" | "review" | "acceptance"`
+  - `filter.storyId?: string`
+  - `status` と `availableFor` は併用不可
+- `list_task_comments({ taskId })`
+- `list_changes({ projectId, afterCursor?, limit? })`
+- `list_skills({ status?, role? })`
+- `get_skill_context({ name })`
+- `get_role_instructions({ role, includeShared? })`
+
+### Manager 管理操作
+
+- `issue_story({ projectId, title, description?, requestId })`
+- `edit_story({ projectId, storyId, title, description?, sortOrder?, requestId })`
+- `complete_story({ storyId, requestId })`
+- `cancel_story({ storyId, reason, requestId })`
+- `issue_task({ projectId, storyId?, title, description?, requestId })`
+- `edit_task({ projectId, taskId, title, description?, sortOrder?, requestId })`
+- `cancel_task({ taskId, reason, requestId })`
+
+### Claim
+
+- `claim_task({ taskId, requestId })`
+- `claim_review({ taskId, requestId })`
+- `claim_acceptance({ taskId, requestId })`
+- `renew_claim({ claimId })`
+- `release_claim({ claimId, reason, requestId })`
+
+### Claim による状態更新
+
+- `add_task_comment({ taskId, claimId, body, requestId })`
+- `complete_task({ taskId, claimId, requestId })`
+- `reviewed_task({ taskId, claimId, requestId })`
+- `accept_task({ taskId, claimId, requestId })`
+- `reject_task({ taskId, claimId, reason, requestId })`
+
+## 状態と運用ルール
+
+- Task の主経路は `todo -> doing -> in_review -> wait_accept -> accepted`
+- `in_review` / `wait_accept` からの差し戻しは `rejected`
+- Task の完了状態は `accepted` / `canceled`
+- Story は配下 Task の最初の Claim で `doing` になる
+- Story は配下 Task がすべて `accepted` / `canceled` のときだけ完了できる
+- 自己レビューと自己受入は、Role ではなく最新の完了 Principal ID を比較して禁止する
+- `complete_task` の前に、同じ Principal・同じ Claim のコメントが少なくとも 1 件必要
+- Task-to-Task 依存関係は初期実装に含めない
+- 一覧の既定順は親 Story の `sortOrder`、Task の `sortOrder`、`createdAt` の順。ただし順序は選択の参考であり先頭 Claim を強制しない
+- 新規 Story / Task の作成と優先順位変更は manager が行う
+- cancel は理由付きの非破壊状態遷移とし、hard delete は使わない
+
+## Change Log
+
+重要な状態変更は同じトランザクションで append-only の Change Log に記録する。`list_changes` の `nextCursor` を次回の `afterCursor` に渡すことで、Console、Ralph Loop、外部オーケストレーターが独立して差分を取得できる。
+
+Change Log は通知配送や Agent の会話コンテキストを管理しない。ポーリング間隔、再試行、ループ停止条件、対話継続は MCP の外側が担当する。
+
+## 旧方式からの移行
+
+旧 session MCP endpoint と runtime Role 割当 Tool は提供しない。既存 DB の初回起動では `project_membership` を削除し、Claim を持たない旧 `doing` Task を `todo` へ戻す。詳細は `docs/agent-task-coordination-migration.md` を参照する。

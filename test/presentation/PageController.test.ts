@@ -24,7 +24,6 @@ beforeEach(async () => {
   await initializeSchema();
   await DatabaseClient.deleteFrom("task_comment").execute();
   await DatabaseClient.deleteFrom("task").execute();
-  await DatabaseClient.deleteFrom("project_membership").execute();
   await DatabaseClient.deleteFrom("story").execute();
   await DatabaseClient.deleteFrom("project").execute();
 });
@@ -49,7 +48,7 @@ test("GET /api/projects/:projectId returns the aggregate detail", async () => {
   assert.equal(res.status, 200);
   const body = await res.json();
 
-  for (const key of ["project", "summary", "tasks", "comments", "stories", "agents", "agentSummary"]) {
+  for (const key of ["project", "summary", "tasks", "comments", "stories", "grants", "grantSummary"]) {
     assert.ok(key in body, `response should contain ${key}`);
   }
   assert.equal(body.project.id, project.id);
@@ -58,7 +57,7 @@ test("GET /api/projects/:projectId returns the aggregate detail", async () => {
   assert.equal(body.tasks.length, 1);
   assert.equal(body.comments.length, 1);
   assert.equal(body.stories.length, 1);
-  assert.equal(body.agentSummary.total, 0);
+  assert.equal(body.grantSummary.total, 0);
 });
 
 test("GET /api/projects/:projectId returns 404 for unknown project", async () => {

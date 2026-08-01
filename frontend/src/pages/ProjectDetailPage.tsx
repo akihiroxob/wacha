@@ -1,7 +1,7 @@
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import clsx from "clsx";
 import type {
-  AgentDto,
+  ProjectGrantDto,
   StoryDto,
   TaskDto,
   TaskCommentDto,
@@ -15,7 +15,7 @@ import { TaskCard } from "@/components/TaskCard";
 import { TaskDrawer } from "@/components/TaskDrawer";
 import { useDeleteStory, useMoveStory, useProject } from "@/lib/queries";
 import { ApiError } from "@/lib/api";
-import { formatAbsoluteTime, formatRelativeTime, HEARTBEAT_FRESH_MS } from "@/lib/time";
+import { formatAbsoluteTime, formatRelativeTime } from "@/lib/time";
 
 const isActiveStoryStatus = (status: StoryDto["status"]) =>
   status !== "done" && status !== "canceled";
@@ -55,35 +55,23 @@ const StatusSummaryChips = ({ summary }: { summary: TaskSummary }) => {
   );
 };
 
-const AgentChips = ({ agents }: { agents: AgentDto[] }) => {
-  if (agents.length === 0) {
-    return <p className="text-sm text-stone-400">接続中の agent はいません。</p>;
+const RoleGrantChips = ({ grants }: { grants: ProjectGrantDto[] }) => {
+  if (grants.length === 0) {
+    return <p className="text-sm text-stone-400">Role Grant はありません。</p>;
   }
-  const now = Date.now();
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {agents.map((agent) => {
-        const fresh =
-          agent.lastHeartbeatAt !== null && now - agent.lastHeartbeatAt < HEARTBEAT_FRESH_MS;
-        return (
-          <span
-            key={agent.id}
-            title={`${agent.sessionId}\nheartbeat: ${
-              agent.lastHeartbeatAt ? formatAbsoluteTime(agent.lastHeartbeatAt) : "なし"
-            }`}
-            className="inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-white px-3 py-1 text-xs text-stone-600"
-          >
-            <span
-              className={clsx(
-                "h-2 w-2 rounded-full",
-                fresh ? "bg-green-500" : "bg-stone-300",
-              )}
-            />
-            <span className="font-medium text-stone-800">{agent.role}</span>
-            <code className="text-[11px] text-stone-400">{agent.sessionId.slice(0, 8)}</code>
-          </span>
-        );
-      })}
+      {grants.map((grant) => (
+        <span
+          key={grant.id}
+          title={`${grant.principalId}\ngranted: ${formatAbsoluteTime(grant.createdAt)}`}
+          className="inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-white px-3 py-1 text-xs text-stone-600"
+        >
+          <span className="h-2 w-2 rounded-full bg-blue-500" />
+          <span className="font-medium text-stone-800">{grant.role}</span>
+          <code className="text-[11px] text-stone-400">{grant.principalId}</code>
+        </span>
+      ))}
     </div>
   );
 };
@@ -148,7 +136,7 @@ export const ProjectDetailPage = () => {
     );
   }
 
-  const { project, tasks, comments, agents, summary } = data;
+  const { project, tasks, comments, grants, summary } = data;
 
   const stories =
     storyStatusFilter === "all"
@@ -250,7 +238,7 @@ export const ProjectDetailPage = () => {
           </div>
           <div className="mt-5 flex flex-col gap-3 border-t border-stone-100 pt-4">
             <StatusSummaryChips summary={summary} />
-            <AgentChips agents={agents} />
+            <RoleGrantChips grants={grants} />
           </div>
         </section>
 

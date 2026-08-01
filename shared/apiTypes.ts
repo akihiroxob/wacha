@@ -58,14 +58,12 @@ export interface TaskCommentDto {
   createdAt: number;
 }
 
-export interface AgentDto {
+export interface ProjectGrantDto {
   id: string;
   projectId: string;
-  sessionId: string;
+  principalId: string;
   role: ProjectRole;
-  lastHeartbeatAt: number | null;
   createdAt: number;
-  updatedAt: number;
 }
 
 export interface TaskSummary {
@@ -84,8 +82,8 @@ export interface ProjectDetailResponse {
   tasks: TaskDto[];
   comments: TaskCommentDto[];
   stories: StoryDto[];
-  agents: AgentDto[];
-  agentSummary: { total: number };
+  grants: ProjectGrantDto[];
+  grantSummary: { total: number; principals: number };
 }
 
 export interface StoryInput {

@@ -4,5 +4,7 @@ export interface TaskCommentTable {
   body: string;
   author: string | null;
   session_id: string | null;
+  principal_id: string | null;
+  claim_id: string | null;
   created_at: number;
 }
