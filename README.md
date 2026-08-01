@@ -71,119 +71,114 @@ docker compose down -v
 
 ## MCP Registration
 
-このサーバは Streamable HTTP で接続します。
+このサーバは Streamable HTTP で接続します。すべてのリクエストに次の
+Authorization header が必要です。
 
-登録例:
+```http
+Authorization: Bearer <AgentName>
+```
+
+初期実装では Bearer 値を検証せず、そのまま Principal ID（Agent 名）として
+利用します。セキュリティ境界ではないため、信頼できないネットワークへ公開しないで
+ください。
+
+以下では Agent 名を環境変数に設定してからクライアントを起動します。
+
+```bash
+export WACHA_API_NAME="MyAgent"
+```
+
+### Codex
+
+`~/.codex/config.toml`（またはプロジェクトの `.codex/config.toml`）に登録します。
+
+```toml
+[mcp_servers.wacha]
+url = "http://localhost:51743/mcp"
+bearer_token_env_var = "WACHA_API_NAME"
+```
+
+CLI から登録する場合は次のコマンドも利用できます。
+
+```bash
+codex mcp add wacha \
+  --url http://localhost:51743/mcp \
+  --bearer-token-env-var WACHA_API_NAME
+```
+
+### Claude Code
+
+Claude Code は HTTP server の `headers` で環境変数を展開できます。プロジェクトで
+共有する場合は、プロジェクトルートの `.mcp.json` に次を記載します。
 
 ```json
 {
   "mcpServers": {
     "wacha": {
-      "transport": {
-        "type": "streamable_http",
-        "url": "http://localhost:51743/mcp"
+      "type": "http",
+      "url": "http://localhost:51743/mcp",
+      "headers": {
+        "Authorization": "Bearer ${WACHA_API_NAME}"
       }
     }
   }
 }
 ```
 
-クライアントによっては `transport` を使わず、次のようなフラットな形式です。
-
-```json
-{
-  "mcpServers": {
-    "wacha": {
-      "type": "streamable_http",
-      "url": "http://localhost:51743/mcp"
-    }
-  }
-}
-```
-
-Claude Code (CLI) の場合は次のコマンドで登録できます。
+ローカル設定として CLI から登録する場合は次のコマンドを利用できます。この方法では
+コマンド実行時の Agent 名が header に保存されます。
 
 ```bash
-claude mcp add --transport http wacha http://localhost:51743/mcp
+claude mcp add \
+  --transport http \
+  --scope local \
+  --header "Authorization: Bearer ${WACHA_API_NAME}" \
+  wacha http://localhost:51743/mcp
 ```
 
-- `--scope local`（デフォルト、自分のみ）/ `--scope project`（`.mcp.json` にコミットしてチーム共有）/ `--scope user`（全プロジェクト横断）を選べます
-- 確認は `claude mcp list` / `claude mcp get wacha`、セッション内では `/mcp`
-- Claude Desktop は `claude_desktop_config.json` が stdio サーバーのみ対応のため、HTTP サーバーを使うには `mcp-remote` などの stdio ブリッジが必要です
+- `--scope local`（デフォルト、自分のみ）/ `--scope project`（`.mcp.json` で共有）/ `--scope user`（全プロジェクト横断）を選べます
+- 確認は `claude mcp list` / `claude mcp get wacha`、セッション内では `/mcp` を利用します
 
-補足:
+### Role Grant
 
-- サーバ側の識別子は MCP の `sessionId` ベースです
-- `claim_task` の担当者や project membership も `sessionId` に紐づきます
-- role 制御付き tool の実行には project membership 側の role が必要です
-- server 再起動後に旧 `sessionId` を送ると、MCP は `Session expired or server restarted; initialize again` を返します
-- client はそのエラーを受けたら `initialize` をやり直し、必要なら `assign_project_role` で role を取り直してください
-- 接続確認は `http://localhost:51743/health` と MCP client 側の initialize で行ってください
+接続に使う Agent 名には、対象 Project の Role Grant を事前に登録してください。同じ
+Agent 名に複数 Role を付与できます。
+
+```bash
+npm run grant-role -- <projectId> <AgentName> <worker|reviewer|manager>
+```
+
+Role は永続化されるため、MCP session ごとの再取得は不要です。MCP の session ID は
+Agent の識別、Role、Task の所有権には使いません。Task の操作権は期限付き Claim と
+`claimId` で管理します。
 
 ## Available Tools
 
-- `list_projects`
-- `list_skills`
-- `get_skill_context`
-- `list_project_agents`
-- `list_stories`
-- `issue_story`
-- `edit_story`
-- `complete_story`
-- `cancel_story`
-- `list_tasks`
-- `issue_task`
-- `edit_task`
-- `claim_task`
-- `complete_task`
-- `reviewed_task`
-- `accept_task`
-- `reject_task`
-- `add_task_comment`
-- `list_task_comments`
-- `assign_project_role`
-- `get_role_instructions`
+参照:
 
-Skill-related notes:
+- `list_projects`, `list_stories`, `list_tasks`
+- `list_task_comments`, `list_changes`
+- `list_skills`, `get_skill_context`, `get_role_instructions`
 
-- `list_skills` は `skill/` 配下の利用可能な Skill 一覧を返します
-- `status` と `role` を指定すると絞り込みできます
-- 返却値には `name`, `description`, `status`, `version`, `allowRoles` が含まれます
-- `get_skill_context` は Skill 本体と `requiredKnowledge` に対応する knowledge 内容を返します
+Manager 管理操作:
 
-Response notes:
+- `issue_story`, `edit_story`, `complete_story`, `cancel_story`
+- `issue_task`, `edit_task`, `cancel_task`
 
-- `issue_story` は作成された Story の主要フィールドに加えて `requiredNextTool: "issue_task"` を返します
-- `issue_story` の返り値には、今回 `requiredNextArgs` は含まれません
-- `assign_project_role` は `requiredNextTool: "get_role_instructions"` と `requiredNextArgs` を返します
-- `edit_story` と `edit_task` は更新後の entity を返します
+Claim:
 
-Task flow:
+- `claim_task`, `claim_review`, `claim_acceptance`
+- `renew_claim`, `release_claim`
 
-- `claim_task`: `todo` / `rejected` -> `doing`
-- `complete_task`: `doing` -> `in_review`
-- `reviewed_task`: `in_review` -> `wait_accept`
-- `accept_task`: `in_review` / `wait_accept` -> `accepted`
-- `reject_task`: `in_review` / `wait_accept` -> `rejected`
+Claim による状態更新:
 
-Role-related notes:
+- `add_task_comment`, `complete_task`, `reviewed_task`
+- `accept_task`, `reject_task`
 
-- `issue_story`, `edit_story`, `complete_story`, `cancel_story`, `accept_task` は manager 向けです
-- `edit_task` も manager 向けです
-- `issue_task` は manager / reviewer / worker が使えます
-- `reviewed_task` は reviewer 向けです
-- `add_task_comment` は reviewer / worker が使えます
-- `add_task_comment` の本文は Markdown 前提で扱います
-- コメントの Markdown は基本要素を読みやすく表示しますが、厳密な構文検証は今回行いません
-- Story が `doing` になるのは `claim_task` による着手時です
-- 既存の Story / Task に紐づかない直接依頼や follow-up は、`issue_task` で単発 Task として記録できます
-- 詳細な運用ルールは `agent/role-policy.md` を参照してください
-
-Cancellation notes:
-
-- Story / Task を管理対象から外す cancel 操作は、hard delete ではなく非破壊の状態遷移として扱う前提です
-- cancel 時は、理由を `add_task_comment` などのコメントとして残す運用または入力要件を持たせる想定です
-- 現在の delete 操作は既存挙動であり、この cancel 方針そのものとは別に扱います
+Task の主経路は `todo -> doing -> in_review -> wait_accept -> accepted` です。状態変更
+Tool は `renew_claim` を除き `requestId` が必須で、Claim による更新には返却された
+`claimId` も必要です。詳しい権限と運用フローは `agent/role-policy.md` および
+`agent/` 配下の各 Role 文書を参照してください。
 
 ## Docker
 
