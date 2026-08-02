@@ -15,6 +15,7 @@ import { StoryCard } from "@/components/StoryCard";
 import { TaskCard } from "@/components/TaskCard";
 import { TaskDrawer } from "@/components/TaskDrawer";
 import { RoleGrantDrawer } from "@/components/RoleGrantDrawer";
+import { ProjectActivityLog, ProjectClaims } from "@/components/ProjectActivity";
 import {
   useDeleteStory,
   useMoveStory,
@@ -104,6 +105,7 @@ export const ProjectDetailPage = () => {
   const { projectId = "" } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const storyStatusFilter = searchParams.get("storyStatus") === "all" ? "all" : "active";
+  const activeView = searchParams.get("view") === "activity" ? "activity" : "board";
   const { data, isPending, error } = useProject(projectId);
   const deleteStory = useDeleteStory(projectId);
   const moveStory = useMoveStory(projectId);
@@ -257,6 +259,56 @@ export const ProjectDetailPage = () => {
             <RoleGrantChips grants={grants} />
           </div>
         </section>
+
+        <nav
+          aria-label="プロジェクト表示"
+          className="flex gap-1 border-b border-stone-200"
+        >
+          {(
+            [
+              { value: "board", label: "ボード" },
+              { value: "activity", label: "アクティビティ" },
+            ] as const
+          ).map((view) => (
+            <button
+              key={view.value}
+              type="button"
+              onClick={() =>
+                setSearchParams(
+                  (prev) => {
+                    const next = new URLSearchParams(prev);
+                    if (view.value === "activity") next.set("view", "activity");
+                    else next.delete("view");
+                    return next;
+                  },
+                  { replace: true },
+                )
+              }
+              className={clsx(
+                "border-b-2 px-4 py-3 text-sm font-medium transition",
+                activeView === view.value
+                  ? "border-blue-600 text-blue-700"
+                  : "border-transparent text-stone-500 hover:text-stone-800",
+              )}
+            >
+              {view.label}
+            </button>
+          ))}
+        </nav>
+
+        {activeView === "activity" ? (
+          <ProjectActivityLog
+            projectId={project.id}
+            taskIds={new Set(tasks.map((task) => task.id))}
+            onOpenTask={(taskId) => setSelectedTask(taskId)}
+          />
+        ) : (
+          <>
+
+        <ProjectClaims
+          projectId={project.id}
+          onOpenTask={(taskId) => setSelectedTask(taskId)}
+        />
 
         {/* 要対応: PdM の判断待ち */}
         {(reviewQueue.length > 0 || rejectedTasks.length > 0) && (
@@ -471,6 +523,8 @@ export const ProjectDetailPage = () => {
             </div>
           )}
         </section>
+          </>
+        )}
 
         {selectedTask && (
           <TaskDrawer

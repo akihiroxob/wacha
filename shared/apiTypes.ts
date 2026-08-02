@@ -66,6 +66,36 @@ export interface ProjectGrantDto {
   createdAt: number;
 }
 
+export interface ActiveTaskClaimDto {
+  claimId: string;
+  taskId: string;
+  taskTitle: string;
+  taskStatus: TaskStatus;
+  principalId: string;
+  acquiredAt: number;
+  renewedAt: number | null;
+  expiresAt: number;
+}
+
+export interface UnclaimedDoingTaskDto {
+  taskId: string;
+  taskTitle: string;
+  taskStatus: TaskStatus;
+  lastPrincipalId: string | null;
+  lastExpiresAt: number | null;
+}
+
+export interface ProjectChangeDto {
+  cursor: number;
+  type: string;
+  entityId: string;
+  entityTitle: string | null;
+  principalId: string;
+  claimId: string | null;
+  payload: Record<string, unknown>;
+  occurredAt: number;
+}
+
 export interface TaskSummary {
   total: number;
   byStatus: Record<TaskStatus, number>;
@@ -84,6 +114,13 @@ export interface ProjectDetailResponse {
   stories: StoryDto[];
   grants: ProjectGrantDto[];
   grantSummary: { total: number; principals: number };
+}
+
+export interface ProjectActivityResponse {
+  activeClaims: ActiveTaskClaimDto[];
+  unclaimedDoingTasks: UnclaimedDoingTaskDto[];
+  changes: ProjectChangeDto[];
+  hasMoreChanges: boolean;
 }
 
 export interface StoryInput {

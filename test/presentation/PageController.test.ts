@@ -67,6 +67,87 @@ test("GET /api/projects/:projectId returns 404 for unknown project", async () =>
   assert.equal(body.error.message, "Project not found");
 });
 
+test("GET /api/projects/:projectId/activity returns current Claims, unattended Doing, and changes", async () => {
+  const now = Date.now();
+  const project = await projectRepository.create("Wacha", null, "repo/wacha");
+  const activeTask = await taskRepository.create("Active task", null, project.id);
+  const expiredTask = await taskRepository.create("Expired task", null, project.id);
+  activeTask.status = TaskStatus.DOING;
+  expiredTask.status = TaskStatus.DOING;
+  await taskRepository.save(activeTask);
+  await taskRepository.save(expiredTask);
+
+  await DatabaseClient.insertInto("task_claim")
+    .values([
+      {
+        id: "active-claim",
+        task_id: activeTask.id,
+        principal_id: "worker-active",
+        state: "active",
+        acquired_at: now - 10_000,
+        renewed_at: null,
+        expires_at: now + 60_000,
+        released_at: null,
+        release_reason: null,
+      },
+      {
+        id: "expired-claim",
+        task_id: expiredTask.id,
+        principal_id: "worker-expired",
+        state: "active",
+        acquired_at: now - 120_000,
+        renewed_at: null,
+        expires_at: now - 60_000,
+        released_at: null,
+        release_reason: null,
+      },
+    ])
+    .execute();
+  await DatabaseClient.insertInto("change_log")
+    .values([
+      {
+        project_id: project.id,
+        type: "TASK_CLAIMED",
+        entity_id: activeTask.id,
+        principal_id: "worker-active",
+        claim_id: "active-claim",
+        payload: JSON.stringify({ fromStatus: "todo", toStatus: "doing" }),
+        occurred_at: now - 10_000,
+      },
+      {
+        project_id: project.id,
+        type: "CLAIM_EXPIRED",
+        entity_id: expiredTask.id,
+        principal_id: "system:test",
+        claim_id: "expired-claim",
+        payload: JSON.stringify({ expiresAt: now - 60_000 }),
+        occurred_at: now,
+      },
+    ])
+    .execute();
+
+  const res = await app.request(`/api/projects/${project.id}/activity?limit=1`);
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.activeClaims.length, 1);
+  assert.equal(body.activeClaims[0].principalId, "worker-active");
+  assert.equal(body.unclaimedDoingTasks.length, 1);
+  assert.equal(body.unclaimedDoingTasks[0].taskId, expiredTask.id);
+  assert.equal(body.unclaimedDoingTasks[0].lastPrincipalId, "worker-expired");
+  assert.equal(body.changes.length, 1);
+  assert.equal(body.changes[0].type, "CLAIM_EXPIRED");
+  assert.equal(body.changes[0].entityTitle, "Expired task");
+  assert.equal(body.hasMoreChanges, true);
+});
+
+test("GET /api/projects/:projectId/activity validates the change limit", async () => {
+  const project = await projectRepository.create("Wacha", null, "repo/wacha");
+  const res = await app.request(`/api/projects/${project.id}/activity?limit=201`);
+  assert.equal(res.status, 400);
+  const body = await res.json();
+  assert.equal(body.error.message, "limit must be an integer between 1 and 200");
+});
+
 test("Project Role Grant can be issued and revoked from the REST API", async () => {
   const project = await projectRepository.create("Wacha", null, "repo/wacha");
   const grantInput = { principalId: "E2EWorker", role: "worker" };
