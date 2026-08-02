@@ -85,6 +85,8 @@ Agent が Task を選び、Wacha が Claim と状態遷移の正当性を検証�
 - 再 Claim は古い Claim を失効させ、新しい `claimId` を発行する
 - 古い、期限切れ、他 Principal 所有の `claimId` では更新できない
 - `release_claim` で work Claim を解放すると Task は `todo` に戻る
+- `availableFor` は Task 状態と有効 Claim だけで Phase 候補を返し、呼出 Principal の個別 Role には依存しない
+- Role、自己レビュー・自己受入、排他性の最終判定は `claim_*` が行う
 
 状態変更 Tool は `renew_claim` を除き `requestId` を必須とする。同じ Principal・Tool・`requestId`・入力の再送は同じ結果を返す。異なる入力で再利用すると `IDEMPOTENCY_CONFLICT` になる。
 

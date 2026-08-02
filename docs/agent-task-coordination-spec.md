@@ -438,7 +438,7 @@ INVALID_FILTER_COMBINATION
 Reason:
 
 - `status` filters persisted Task state;
-- `availableFor` computes whether the authenticated Principal can claim the Task now.
+- `availableFor` filters phase candidates from Task state and active Claim state.
 
 They represent different query intents and combining them creates ambiguous or contradictory requests.
 
@@ -472,33 +472,28 @@ This only filters persisted status values. It does not guarantee that the return
 
 A Task is available for work when all required conditions are true, including:
 
-- Principal has worker Role for the Project;
 - Task status is `todo` or `rejected` and no active unexpired Claim exists; or
-- Task status is `doing` and its current work Claim is expired;
-- Project policy allows the operation.
+- Task status is `doing` and its current work Claim is expired.
 
 Task-to-Task dependencies are not part of the first implementation.
 
-The `status` filter continues to report persisted Task state. Therefore, a Task with an expired work Claim may still appear as `doing` in a status-based query while also appearing in `availableFor=work`. This is intentional: `status` reports stored workflow state, while `availableFor` reports whether the Principal can successfully claim the Task now.
+The `status` filter continues to report persisted Task state. Therefore, a Task with an expired work Claim may still appear as `doing` in a status-based query while also appearing in `availableFor=work`. This is intentional: `status` reports stored workflow state, while `availableFor` reports whether the Task is a phase candidate now.
+
+`availableFor` is independent of the requesting Principal's specific Role and self-review or self-acceptance policy. Any Principal with access to the Project sees the same phase candidates. It does not guarantee that the caller can claim a returned Task. The corresponding `claim_*` command remains the authority and atomically validates Role, self-action policy, current Task state, and Claim exclusivity.
 
 #### Review
 
 A Task is available for review when all required conditions are true, including:
 
-- Principal has reviewer Role;
 - Task status is `in_review`;
-- no active unexpired Claim exists;
-- self-review policy allows the Principal.
+- no active unexpired Claim exists.
 
 #### Acceptance
 
 A Task is available for acceptance when all required conditions are true, including:
 
-- Principal has manager Role;
 - Task status is `in_review` or `wait_accept`;
-- no active unexpired Claim exists;
-- self-acceptance policy allows the Principal;
-- Project policy allows the operation.
+- no active unexpired Claim exists.
 
 When the Manager selects an `in_review` Task, successful `claim_acceptance` moves it to `wait_accept`. This preserves the lower-cost human direct-review path without making Review Claims and Acceptance Claims ambiguous on the same Task status.
 
