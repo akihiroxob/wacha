@@ -5,6 +5,7 @@ import type {
   MoveStoryInput,
   OkResponse,
   ProjectDetailResponse,
+  ProjectActivityResponse,
   ProjectGrantInput,
   ProjectListResponse,
   ReasonInput,
@@ -24,6 +25,15 @@ export const useProject = (projectId: string) =>
     queryKey: ["project", projectId],
     queryFn: () => apiGet<ProjectDetailResponse>(`/api/projects/${projectId}`),
     refetchInterval: 5000,
+  });
+
+export const useProjectActivity = (projectId: string, limit: number) =>
+  useQuery({
+    queryKey: ["project-activity", projectId, limit],
+    queryFn: () =>
+      apiGet<ProjectActivityResponse>(`/api/projects/${projectId}/activity?limit=${limit}`),
+    refetchInterval: 5000,
+    placeholderData: (previousData) => previousData,
   });
 
 export const useGrantProjectRole = (projectId: string) => {

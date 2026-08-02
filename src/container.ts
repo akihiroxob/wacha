@@ -2,6 +2,7 @@
 import { SQLiteTaskRepository } from "@repository/SQLiteTaskRepository.ts";
 import { SQLiteProjectRepository } from "@repository/SQLiteProjectRepository.ts";
 import { SQLiteProjectGrantRepository } from "@repository/SQLiteProjectGrantRepository.ts";
+import { SQLiteProjectActivityRepository } from "@repository/SQLiteProjectActivityRepository.ts";
 import { SQLiteStoryRepository } from "@repository/SQLiteStoryRepository.ts";
 import { FileSkillRepository } from "@repository/FileSkillRepository.ts";
 import { FileKnowledgeRepository } from "@repository/FileKnowledgeRepository.ts";
@@ -13,6 +14,7 @@ import { TaskCoordinationService } from "@application/service/TaskCoordinationSe
 import { ListProjectGrantsUseCase } from "@application/usecase/grants/ListProjectGrantsUseCase.ts";
 import { GrantProjectRoleUseCase } from "@application/usecase/grants/GrantProjectRoleUseCase.ts";
 import { RevokeProjectRoleUseCase } from "@application/usecase/grants/RevokeProjectRoleUseCase.ts";
+import { GetProjectActivityUseCase } from "@application/usecase/activity/GetProjectActivityUseCase.ts";
 // project usecases[]
 import { GetProjectUseCase } from "@application/usecase/project/GetProjectUseCase.ts";
 import { ListProjectUseCase } from "@application/usecase/project/ListProjectUseCase.ts";
@@ -37,6 +39,7 @@ import { DeleteStoryUseCase } from "@application/usecase/stories/DeleteStoryUseC
 const taskRepository = new SQLiteTaskRepository();
 const projectRepository = new SQLiteProjectRepository();
 const projectGrantRepository = new SQLiteProjectGrantRepository();
+const projectActivityRepository = new SQLiteProjectActivityRepository();
 const storyRepository = new SQLiteStoryRepository();
 const skillRepository = new FileSkillRepository();
 const knowledgeRepository = new FileKnowledgeRepository();
@@ -61,6 +64,7 @@ export const getProjectUseCase = new GetProjectUseCase(projectRepository);
 export const listProjectGrantsUseCase = new ListProjectGrantsUseCase(projectGrantRepository);
 export const grantProjectRoleUseCase = new GrantProjectRoleUseCase(projectGrantRepository);
 export const revokeProjectRoleUseCase = new RevokeProjectRoleUseCase(projectGrantRepository);
+export const getProjectActivityUseCase = new GetProjectActivityUseCase(projectActivityRepository);
 export const listSkillUseCase = new ListSkillUseCase(skillRepository);
 export const getSkillContextUseCase = new GetSkillContextUseCase(
   skillRepository,

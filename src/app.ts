@@ -35,6 +35,10 @@ export const createApp = () => {
   // API Routes
   app.get("/api/projects", PageCtrl.index.bind(PageCtrl));
   app.get("/api/projects/:projectId", PageCtrl.project.bind(PageCtrl));
+  app.get(
+    "/api/projects/:projectId/activity",
+    PageCtrl.projectActivity.bind(PageCtrl),
+  );
   app.post(
     "/api/projects/:projectId/grants",
     PageCtrl.grantProjectRole.bind(PageCtrl),

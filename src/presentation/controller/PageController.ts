@@ -5,6 +5,7 @@ import { ProjectRole, type ProjectRole as ProjectRoleValue } from "@constants/Pr
 import type {
   CreateStoryResponse,
   OkResponse,
+  ProjectActivityResponse,
   ProjectDetailResponse,
   ProjectListResponse,
 } from "@shared/apiTypes.ts";
@@ -26,6 +27,7 @@ import {
   rejectTaskUseCase,
   listTaskCommentUseCase,
   addTaskCommentUseCase,
+  getProjectActivityUseCase,
 } from "@container";
 
 export class PageController {
@@ -101,6 +103,19 @@ export class PageController {
       grants: grantResult.grants,
       grantSummary: grantResult.summary,
     };
+    return c.json(body);
+  }
+
+  async projectActivity(c: Context) {
+    const project = await this.getProjectOrThrow(c.req.param("projectId"));
+    const rawLimit = c.req.query("limit") ?? "20";
+    const limit = Number(rawLimit);
+    if (!Number.isInteger(limit) || limit < 1 || limit > 200) {
+      throw new ValidationError("limit must be an integer between 1 and 200");
+    }
+
+    const result = await getProjectActivityUseCase.execute(project.id, limit);
+    const body: ProjectActivityResponse = result;
     return c.json(body);
   }
 
