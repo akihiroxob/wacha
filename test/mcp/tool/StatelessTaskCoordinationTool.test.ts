@@ -100,6 +100,12 @@ test("stateless Task tools return structured authorization errors", async () => 
   const task = await taskRepository.create("Task A", null, project.id);
   await grantRepository.grant(project.id, "manager-a", ProjectRole.MANAGER);
 
+  const listed = await callTool("manager-a", "list_tasks", {
+    projectId: project.id,
+    filter: { availableFor: "work" },
+  });
+  assert.equal(listed.structuredContent.tasks[0].id, task.id);
+
   const result = await callTool("manager-a", "claim_task", {
     taskId: task.id,
     requestId: "claim-forbidden",

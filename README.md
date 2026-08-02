@@ -85,7 +85,7 @@ Authorization: Bearer <AgentName>
 以下では Agent 名を環境変数に設定してからクライアントを起動します。
 
 ```bash
-export WACHA_API_NAME="MyAgent"
+export WACHA_AGENT_NAME="MyAgent"
 ```
 
 ### Codex
@@ -95,7 +95,7 @@ export WACHA_API_NAME="MyAgent"
 ```toml
 [mcp_servers.wacha]
 url = "http://localhost:51743/mcp"
-bearer_token_env_var = "WACHA_API_NAME"
+bearer_token_env_var = "WACHA_AGENT_NAME"
 ```
 
 CLI から登録する場合は次のコマンドも利用できます。
@@ -103,7 +103,7 @@ CLI から登録する場合は次のコマンドも利用できます。
 ```bash
 codex mcp add wacha \
   --url http://localhost:51743/mcp \
-  --bearer-token-env-var WACHA_API_NAME
+  --bearer-token-env-var WACHA_AGENT_NAME
 ```
 
 ### Claude Code
@@ -118,7 +118,7 @@ Claude Code は HTTP server の `headers` で環境変数を展開できます�
       "type": "http",
       "url": "http://localhost:51743/mcp",
       "headers": {
-        "Authorization": "Bearer ${WACHA_API_NAME}"
+        "Authorization": "Bearer ${WACHA_AGENT_NAME}"
       }
     }
   }
@@ -132,7 +132,7 @@ Claude Code は HTTP server の `headers` で環境変数を展開できます�
 claude mcp add \
   --transport http \
   --scope local \
-  --header "Authorization: Bearer ${WACHA_API_NAME}" \
+  --header "Authorization: Bearer ${WACHA_AGENT_NAME}" \
   wacha http://localhost:51743/mcp
 ```
 
@@ -182,6 +182,10 @@ Task の主経路は `todo -> doing -> in_review -> wait_accept -> accepted` で
 Tool は `renew_claim` を除き `requestId` が必須で、Claim による更新には返却された
 `claimId` も必要です。詳しい権限と運用フローは `agent/role-policy.md` および
 `agent/` 配下の各 Role 文書を参照してください。
+
+`availableFor` は Task 状態と有効 Claim から Phase 候補を返します。候補一覧は
+Principal の個別 Role に依存せず、Role や自己レビュー禁止などの最終判定は
+`claim_task` / `claim_review` / `claim_acceptance` が行います。
 
 ## Docker
 

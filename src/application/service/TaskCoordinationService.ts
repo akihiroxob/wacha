@@ -349,7 +349,7 @@ export class TaskCoordinationService {
     await this.requireAnyRole(DatabaseClient, projectId, principalId);
 
     const now = this.clock();
-    const [tasks, stories, claims, completionRows] = await Promise.all([
+    const [tasks, stories, claims] = await Promise.all([
       DatabaseClient.selectFrom("task").selectAll().where("project_id", "=", projectId).execute(),
       DatabaseClient.selectFrom("story")
         .select(["id", "sort_order"])
@@ -364,25 +364,9 @@ export class TaskCoordinationService {
           DatabaseClient.selectFrom("task").select("id").where("project_id", "=", projectId),
         )
         .execute(),
-      DatabaseClient.selectFrom("change_log")
-        .select(["entity_id", "principal_id", "cursor"])
-        .where("project_id", "=", projectId)
-        .where("type", "=", "TASK_COMPLETED")
-        .orderBy("cursor", "desc")
-        .execute(),
     ]);
     const storyOrders = new Map(stories.map((story) => [story.id, story.sort_order]));
     const activeClaims = new Map(claims.map((claim) => [claim.task_id, claim]));
-    const latestCompleters = new Map<string, string>();
-    for (const row of completionRows) {
-      if (!latestCompleters.has(row.entity_id)) latestCompleters.set(row.entity_id, row.principal_id);
-    }
-    const roles = await DatabaseClient.selectFrom("project_grant")
-      .select("role")
-      .where("project_id", "=", projectId)
-      .where("principal_id", "=", principalId)
-      .execute();
-    const roleSet = new Set(roles.map((row) => row.role));
 
     const ordered = [...tasks].sort((a, b) => {
       const aPrimary = a.story_id ? (storyOrders.get(a.story_id) ?? Number.MAX_SAFE_INTEGER) : a.sort_order;
@@ -393,28 +377,22 @@ export class TaskCoordinationService {
     const isAvailable = (task: (typeof tasks)[number]) => {
       const claim = activeClaims.get(task.id);
       const hasUnexpiredClaim = claim !== undefined && claim.expires_at > now;
-      const latestCompleter = latestCompleters.get(task.id) ?? null;
       switch (filter?.availableFor) {
         case "work":
           return (
-            roleSet.has(ProjectRole.WORKER) &&
-            (((task.status === TaskStatus.TODO || task.status === TaskStatus.REJECTED) &&
+            ((task.status === TaskStatus.TODO || task.status === TaskStatus.REJECTED) &&
               !hasUnexpiredClaim) ||
-              (task.status === TaskStatus.DOING && claim !== undefined && claim.expires_at <= now))
+            (task.status === TaskStatus.DOING && claim !== undefined && claim.expires_at <= now)
           );
         case "review":
           return (
-            roleSet.has(ProjectRole.REVIEWER) &&
             task.status === TaskStatus.IN_REVIEW &&
-            !hasUnexpiredClaim &&
-            latestCompleter !== principalId
+            !hasUnexpiredClaim
           );
         case "acceptance":
           return (
-            roleSet.has(ProjectRole.MANAGER) &&
             (task.status === TaskStatus.IN_REVIEW || task.status === TaskStatus.WAIT_ACCEPT) &&
-            !hasUnexpiredClaim &&
-            latestCompleter !== principalId
+            !hasUnexpiredClaim
           );
         default:
           return true;

@@ -250,6 +250,11 @@ test("self-review and self-acceptance compare Principal IDs", async () => {
   await service.addTaskComment("multi-role", task.id, claim.claimId, "verified", "comment");
   await service.completeTask("multi-role", task.id, claim.claimId, "complete");
 
+  const reviewCandidates = await service.listTasks("multi-role", project.id, {
+    availableFor: "review",
+  });
+  assert.deepEqual(reviewCandidates.tasks.map((candidate) => candidate.id), [task.id]);
+
   await assert.rejects(
     () => service.claimReview("multi-role", task.id, "review"),
     hasCode("SELF_REVIEW_NOT_ALLOWED"),
@@ -300,6 +305,21 @@ test("status and availableFor filters are mutually exclusive", async () => {
         availableFor: "work",
       }),
     hasCode("INVALID_FILTER_COMBINATION"),
+  );
+});
+
+test("availableFor returns phase candidates independently of the Principal Role", async () => {
+  const { project, task } = await createProjectTask();
+  await grant(project.id, "manager-a", ProjectRole.MANAGER);
+
+  const available = await service.listTasks("manager-a", project.id, {
+    availableFor: "work",
+  });
+
+  assert.deepEqual(available.tasks.map((candidate) => candidate.id), [task.id]);
+  await assert.rejects(
+    () => service.claimTask("manager-a", task.id, "claim-without-worker-role"),
+    hasCode("FORBIDDEN"),
   );
 });
 

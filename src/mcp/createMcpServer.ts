@@ -77,7 +77,7 @@ export const createMcpServer = (principalId: string) => {
     {
       title: "List Tasks",
       description:
-        "List Task facts or availability. status and availableFor are mutually exclusive; the Agent chooses which Task to claim.",
+        "List Task facts or phase candidates. availableFor uses Task state and active Claims; claim commands enforce caller authorization.",
       inputSchema: {
         projectId: z.string().min(1),
         filter: z
