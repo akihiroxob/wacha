@@ -5,11 +5,11 @@ import { fileURLToPath } from "node:url";
 
 export default defineConfig({
   root: fileURLToPath(new URL(".", import.meta.url)),
-  cacheDir: fileURLToPath(new URL("../node_modules/.vite", import.meta.url)),
+  cacheDir: fileURLToPath(new URL("../../node_modules/.vite", import.meta.url)),
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
-      "@": fileURLToPath(new URL("./src", import.meta.url)),
+      "@": fileURLToPath(new URL(".", import.meta.url)),
       "@shared": fileURLToPath(new URL("../shared", import.meta.url)),
     },
   },
@@ -20,7 +20,7 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: "../public",
+    outDir: "../../public",
     emptyOutDir: true,
   },
 });
