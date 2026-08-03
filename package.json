@@ -17,13 +17,13 @@
   "scripts": {
     "start": "tsx src/server.ts",
     "prestart": "npm run build",
-    "build": "tsc -p frontend && vite build --config frontend/vite.config.ts",
+    "build": "tsc -p src/frontend && vite build --config src/frontend/vite.config.ts",
     "test": "mkdir -p .tmp && rm -f .tmp/wacha-test.db && WACHA_DB_PATH=.tmp/wacha-test.db node --import tsx --test --test-concurrency=1 \"test/**/*.test.ts\"",
     "test2": "mkdir -p .tmp && rm -f .tmp/wacha-test.db && WACHA_DB_PATH=.tmp/wacha-test.db node --import tsx --test --test-concurrency=1 \"test/**/SkillRepository.test.ts\"",
     "grant-role": "tsx scripts/grant-project-role.ts",
     "dev": "npm-run-all --parallel dev:server dev:frontend",
     "dev:server": "tsx watch src/server.ts",
-    "dev:frontend": "vite --config frontend/vite.config.ts"
+    "dev:frontend": "vite --config src/frontend/vite.config.ts"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.2.2",

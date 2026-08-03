@@ -47,7 +47,7 @@
         "utils/*"
       ],
       "@shared/*": [
-        "../shared/*"
+        "shared/*"
       ]
     },
   },
@@ -57,6 +57,7 @@
   ],
   "exclude": [
     "node_modules",
-    "dist"
+    "dist",
+    "src/frontend"
   ]
 }

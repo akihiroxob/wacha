@@ -1,5 +1,5 @@
-// Wire contract shared between the Hono API (src/) and the SPA (frontend/).
-// This file must stay self-contained: no imports from src/ or frontend/.
+// Wire contract shared between the Hono API and the SPA (src/frontend/).
+// This file must stay self-contained: no imports from backend or frontend modules.
 
 export type StoryStatus = "todo" | "doing" | "done" | "canceled";
 
