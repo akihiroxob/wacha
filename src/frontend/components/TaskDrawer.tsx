@@ -11,6 +11,7 @@ import {
   useAcceptTask,
   useAddTaskComment,
   useCancelTask,
+  useDeleteTask,
   useRejectTask,
 } from "@/lib/queries";
 
@@ -34,6 +35,7 @@ export const TaskDrawer = ({ projectId, task, comments, onClose }: TaskDrawerPro
   const acceptTask = useAcceptTask(projectId);
   const rejectTask = useRejectTask(projectId);
   const cancelTask = useCancelTask(projectId);
+  const deleteTask = useDeleteTask(projectId);
   const addComment = useAddTaskComment(projectId);
 
   const sortedComments = [...comments].sort((a, b) => a.createdAt - b.createdAt);
@@ -112,6 +114,20 @@ export const TaskDrawer = ({ projectId, task, comments, onClose }: TaskDrawerPro
     if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
       event.currentTarget.form?.requestSubmit();
     }
+  };
+
+  const handleDelete = () => {
+    if (
+      !confirm(
+        `Task「${task.title}」を完全に削除します。\nClaimとコメントも削除されます。\nこの操作は取り消せません。続行しますか？`,
+      )
+    ) {
+      return;
+    }
+    deleteTask.mutate(task.id, {
+      onSuccess: onClose,
+      onError: (error) => setActionError(error.message),
+    });
   };
 
   return (
@@ -198,6 +214,14 @@ export const TaskDrawer = ({ projectId, task, comments, onClose }: TaskDrawerPro
             >
               編集
             </Link>
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={deleteTask.isPending}
+              className="rounded-xl border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+            >
+              削除
+            </button>
           </div>
 
           {actionError && (

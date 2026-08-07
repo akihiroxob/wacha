@@ -155,6 +155,13 @@ Role は永続化されるため、MCP session ごとの再取得は不要です
 Agent の識別、Role、Task の所有権には使いません。Task の操作権は期限付き Claim と
 `claimId` で管理します。
 
+### Web UIからの完全削除
+
+人間による管理・復旧用途として、Project詳細のWeb UIからStory／Taskを状態にかかわらず
+完全削除できます。Storyを削除すると配下Taskも削除され、対象TaskのClaimとコメントも
+削除されます。Change Logは監査履歴として残ります。Agent／MCPの通常運用では完全削除を
+使わず、理由を記録できる`cancel_story`／`cancel_task`を使用してください。
+
 ## Available Tools
 
 参照:

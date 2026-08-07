@@ -145,7 +145,7 @@ Agent が Task を選び、Wacha が Claim と状態遷移の正当性を検証�
 - Task-to-Task 依存関係は初期実装に含めない
 - 一覧の既定順は親 Story の `sortOrder`、Task の `sortOrder`、`createdAt` の順。ただし順序は選択の参考であり先頭 Claim を強制しない
 - 新規 Story / Task の作成と優先順位変更は manager が行う
-- cancel は理由付きの非破壊状態遷移とし、hard delete は使わない
+- Agent／MCP運用では理由付きの非破壊なcancelを使う。人間がWeb UIから行う管理操作に限り、Story／Taskのhard deleteを許可する
 
 ## Change Log
 

@@ -308,9 +308,40 @@ test("PUT /api/projects/:projectId/stories/:storyId updates a story", async () =
   assert.equal(saved?.description, "updated");
 });
 
-test("DELETE /api/projects/:projectId/stories/:storyId deletes a story", async () => {
+test("DELETE /api/projects/:projectId/stories/:storyId deletes a doing story and its Task data", async () => {
+  const now = Date.now();
   const project = await projectRepository.create("Wacha", null, "repo/wacha");
   const story = await storyRepository.create(project.id, "Story A", null);
+  story.claim();
+  await storyRepository.save(story);
+  const task = await taskRepository.create("Task A", null, project.id, story.id);
+  task.status = TaskStatus.DOING;
+  await taskRepository.save(task);
+  await taskRepository.addComment(task.id, "work in progress", "worker-a");
+  await DatabaseClient.insertInto("task_claim")
+    .values({
+      id: "story-delete-claim",
+      task_id: task.id,
+      principal_id: "worker-a",
+      state: "active",
+      acquired_at: now,
+      renewed_at: null,
+      expires_at: now + 60_000,
+      released_at: null,
+      release_reason: null,
+    })
+    .execute();
+  await DatabaseClient.insertInto("change_log")
+    .values({
+      project_id: project.id,
+      type: "TASK_CLAIMED",
+      entity_id: task.id,
+      principal_id: "worker-a",
+      claim_id: "story-delete-claim",
+      payload: JSON.stringify({ fromStatus: "todo", toStatus: "doing" }),
+      occurred_at: now,
+    })
+    .execute();
 
   const res = await app.request(
     `/api/projects/${project.id}/stories/${story.id}`,
@@ -318,6 +349,25 @@ test("DELETE /api/projects/:projectId/stories/:storyId deletes a story", async (
   );
   assert.equal(res.status, 200);
   assert.equal(await storyRepository.findById(story.id), null);
+  assert.equal(await taskRepository.findById(task.id), null);
+  assert.equal(
+    Number(
+      (await DatabaseClient.selectFrom("task_comment").select(({ fn }) => fn.countAll().as("count")).executeTakeFirstOrThrow()).count,
+    ),
+    0,
+  );
+  assert.equal(
+    Number(
+      (await DatabaseClient.selectFrom("task_claim").select(({ fn }) => fn.countAll().as("count")).executeTakeFirstOrThrow()).count,
+    ),
+    0,
+  );
+  assert.equal(
+    Number(
+      (await DatabaseClient.selectFrom("change_log").select(({ fn }) => fn.countAll().as("count")).executeTakeFirstOrThrow()).count,
+    ),
+    1,
+  );
 });
 
 test("PUT /api/projects/:projectId/tasks/:taskId updates a task", async () => {
@@ -332,6 +382,48 @@ test("PUT /api/projects/:projectId/tasks/:taskId updates a task", async () => {
 
   const saved = await taskRepository.findById(task.id);
   assert.equal(saved?.title, "Task A2");
+});
+
+test("DELETE /api/projects/:projectId/tasks/:taskId deletes a doing Task", async () => {
+  const now = Date.now();
+  const project = await projectRepository.create("Wacha", null, "repo/wacha");
+  const task = await taskRepository.create("Task A", null, project.id);
+  task.status = TaskStatus.DOING;
+  await taskRepository.save(task);
+  await taskRepository.addComment(task.id, "work in progress", "worker-a");
+  await DatabaseClient.insertInto("task_claim")
+    .values({
+      id: "task-delete-claim",
+      task_id: task.id,
+      principal_id: "worker-a",
+      state: "active",
+      acquired_at: now,
+      renewed_at: null,
+      expires_at: now + 60_000,
+      released_at: null,
+      release_reason: null,
+    })
+    .execute();
+
+  const res = await app.request(
+    `/api/projects/${project.id}/tasks/${task.id}`,
+    jsonInit("DELETE"),
+  );
+
+  assert.equal(res.status, 200);
+  assert.equal(await taskRepository.findById(task.id), null);
+  assert.equal(
+    Number(
+      (await DatabaseClient.selectFrom("task_comment").select(({ fn }) => fn.countAll().as("count")).executeTakeFirstOrThrow()).count,
+    ),
+    0,
+  );
+  assert.equal(
+    Number(
+      (await DatabaseClient.selectFrom("task_claim").select(({ fn }) => fn.countAll().as("count")).executeTakeFirstOrThrow()).count,
+    ),
+    0,
+  );
 });
 
 test("POST /api/projects/:projectId/tasks/:taskId/accept accepts an in_review task", async () => {

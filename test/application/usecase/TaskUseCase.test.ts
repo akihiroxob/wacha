@@ -694,18 +694,11 @@ test("CompleteTaskUseCase throws when task is missing", async () => {
   await assert.rejects(() => new CompleteTaskUseCase(repo).execute("missing-task"), /not exists/);
 });
 
-test("DeleteTaskUseCase deletes a todo task", async () => {
-  const task = createTask(TaskStatus.TODO);
+test("DeleteTaskUseCase deletes a task in any status", async () => {
+  const task = createTask(TaskStatus.DOING);
   const repo = new InMemoryTaskRepository([task]);
 
   await new DeleteTaskUseCase(repo).execute(task.id);
 
   assert.equal(await repo.findById(task.id), null);
-});
-
-test("DeleteTaskUseCase rejects non-todo task deletion", async () => {
-  const task = createTask(TaskStatus.DOING);
-  const repo = new InMemoryTaskRepository([task]);
-
-  await assert.rejects(() => new DeleteTaskUseCase(repo).execute(task.id), /Only todo task can be deleted/);
 });

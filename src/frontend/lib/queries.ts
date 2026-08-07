@@ -56,7 +56,11 @@ export const useRevokeProjectRole = (projectId: string) => {
 
 const useInvalidateProject = (projectId: string) => {
   const queryClient = useQueryClient();
-  return () => queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+  return () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["project", projectId] }),
+      queryClient.invalidateQueries({ queryKey: ["project-activity", projectId] }),
+    ]);
 };
 
 export const useCreateStory = (projectId: string) => {
