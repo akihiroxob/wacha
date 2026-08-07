@@ -320,8 +320,8 @@ test("CancelStoryUseCase throws when story is not doing", async () => {
   await assert.rejects(() => new CancelStoryUseCase(repo).execute(story.id), /doing status/);
 });
 
-test("DeleteStoryUseCase deletes a todo story and its tasks", async () => {
-  const story = createStory("story-1", StoryStatus.TODO, 1000);
+test("DeleteStoryUseCase deletes a story in any status and its tasks", async () => {
+  const story = createStory("story-1", StoryStatus.DOING, 1000);
   const storyRepo = new InMemoryStoryRepository([story]);
   const taskRepo = new InMemoryTaskRepository([
     new Task("task-1", "project-1", "story-1", "Task 1", "desc", TaskStatus.TODO, null, null, null, 1000, 1000),
@@ -341,15 +341,4 @@ test("DeleteStoryUseCase deletes a canceled story", async () => {
   await new DeleteStoryUseCase(storyRepo, taskRepo).execute(story.id);
 
   assert.equal(await storyRepo.findById(story.id), null);
-});
-
-test("DeleteStoryUseCase rejects statuses other than todo or canceled", async () => {
-  const story = createStory("story-1", StoryStatus.DOING, 1000);
-  const storyRepo = new InMemoryStoryRepository([story]);
-  const taskRepo = new InMemoryTaskRepository();
-
-  await assert.rejects(
-    () => new DeleteStoryUseCase(storyRepo, taskRepo).execute(story.id),
-    /Only todo or canceled story can be deleted/,
-  );
 });

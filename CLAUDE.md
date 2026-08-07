@@ -65,7 +65,7 @@ todo -> doing -> in_review -> wait_accept -> accepted
 
 Roles: `manager` (planning + final accept/reject), `reviewer` (technical validation, moves `in_review` → `wait_accept` or `reject`), `worker` (execution, `claim_task`/`complete_task`). Story `doing` is driven by a worker claiming its first task, not set directly. The authoritative role/tool permission table is in `agent/role-policy.md` — update it (and `AGENTS.md`'s tool list) whenever tool access changes, since these docs are served to agents at runtime via `get_role_instructions`.
 
-Cancellation (`cancel_story`/`cancel_task`) is meant to be a non-destructive status transition with a reason left as a comment, not a hard delete — the existing delete use cases are legacy and tracked separately from this policy.
+Cancellation (`cancel_story`/`cancel_task`) is the non-destructive path for agents and MCP operations. Hard delete is a separate human-only administrative operation in the Web UI; deleting a Story also deletes its child Tasks.
 
 ### Skills vs. tools
 

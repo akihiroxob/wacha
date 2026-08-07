@@ -180,9 +180,17 @@ export const ProjectDetailPage = () => {
     storyStatusFilter === "all" ? !task.storyId : !task.storyId && isActiveTask(task.status),
   );
 
-  const handleDeleteStory = (storyId: string) => {
-    if (!confirm("この Story と配下の Task を削除しますか？")) return;
-    deleteStory.mutate(storyId);
+  const handleDeleteStory = (storyId: string, storyTitle: string, taskCount: number) => {
+    if (
+      !confirm(
+        `Story「${storyTitle}」を完全に削除します。\n配下のTask ${taskCount}件も削除されます。\nこの操作は取り消せません。続行しますか？`,
+      )
+    ) {
+      return;
+    }
+    deleteStory.mutate(storyId, {
+      onError: (error) => alert(`Storyの削除に失敗しました。\n${error.message}`),
+    });
   };
 
   // ドロワーの開閉は ?task=<id> で管理する (deep link 可能)
@@ -475,16 +483,16 @@ export const ProjectDetailPage = () => {
                           >
                             編集
                           </Link>
-                          {(story.status === "todo" || story.status === "canceled") && (
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteStory(story.id)}
-                              disabled={deleteStory.isPending}
-                              className="rounded-xl border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50"
-                            >
-                              削除
-                            </button>
-                          )}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleDeleteStory(story.id, story.title, storyTasks.length)
+                            }
+                            disabled={deleteStory.isPending}
+                            className="rounded-xl border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+                          >
+                            削除
+                          </button>
                         </div>
                       </div>
                       <div className="mt-5">
