@@ -23,9 +23,6 @@ import { ListSkillUseCase } from "@application/usecase/skills/ListSkillUseCase.t
 // task usecases
 import { ListTaskUseCase } from "@application/usecase/tasks/ListTaskUseCase.ts";
 import { EditTaskUseCase } from "@application/usecase/tasks/EditTaskUseCase.ts";
-import { CancelTaskUseCase } from "@application/usecase/tasks/CancelTaskUseCase.ts";
-import { AcceptTaskUseCase } from "@application/usecase/tasks/AcceptTaskUseCase.ts";
-import { RejectTaskUseCase } from "@application/usecase/tasks/RejectTaskUseCase.ts";
 import { DeleteTaskUseCase } from "@application/usecase/tasks/DeleteTaskUseCase.ts";
 import { AddTaskCommentUseCase } from "@application/usecase/tasks/AddTaskCommentUseCase.ts";
 import { ListTaskCommentUseCase } from "@application/usecase/tasks/ListTaskCommentUseCase.ts";
@@ -49,9 +46,6 @@ export const instructionService = new InstructionService();
 export const taskCoordinationService = new TaskCoordinationService();
 export const listTaskUseCase = new ListTaskUseCase(taskRepository, storyRepository);
 export const editTaskUseCase = new EditTaskUseCase(taskRepository);
-export const cancelTaskUseCase = new CancelTaskUseCase(taskRepository);
-export const acceptTaskUseCase = new AcceptTaskUseCase(taskRepository, storyRepository);
-export const rejectTaskUseCase = new RejectTaskUseCase(taskRepository);
 export const deleteTaskUseCase = new DeleteTaskUseCase(taskRepository);
 export const addTaskCommentUseCase = new AddTaskCommentUseCase(taskRepository);
 export const listTaskCommentUseCase = new ListTaskCommentUseCase(taskRepository);

@@ -12,7 +12,7 @@ export type TaskStatus =
   | "accepted"
   | "rejected";
 
-export type ProjectRole = "manager" | "reviewer" | "worker" | "viewer";
+export type ProjectRole = "manager" | "reviewer" | "worker";
 
 export interface ProjectDto {
   id: string;
@@ -150,7 +150,7 @@ export interface CommentInput {
 
 export interface ProjectGrantInput {
   principalId: string;
-  role: Exclude<ProjectRole, "viewer">;
+  role: ProjectRole;
 }
 
 export interface CreateStoryResponse {

@@ -1,5 +1,10 @@
 # モデル差と品質安定化の戦略
 
+> **Historical observations**
+>
+> 本文の実装状況には旧session／RoleGuard方式の記述が含まれる。
+> 現行の認可・Claim仕様は `docs/agent-task-coordination-spec.md` を正とする。
+
 ## この文書について
 
 2026-07 の Fable 5 とのセッションで得た分析を記録したもの。経済的に強いモデルを常用できない前提で、wacha がどうやって開発品質を安定させるかの方針をまとめる。

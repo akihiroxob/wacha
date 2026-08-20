@@ -2,7 +2,7 @@
 name: apply-knowledge-update
 description: propose-knowledge-update で出た提案を評価し、採用する場合は knowledge / skill ファイルへ反映して changelog に記録する。
 status: active
-version: 1
+version: 2
 allowRoles: [manager]
 requiredKnowledge:
   - principles/development-principles.md
@@ -28,7 +28,7 @@ requiredTools:
 3. 採用する場合は、対象の knowledge / skill ファイルを編集する task を `issue_task` で発行するか、自身が編集権限を持つ環境なら直接反映する。
 4. skill を変更した場合は frontmatter の `version` を上げる。
 5. 採用・見送りのいずれも、`knowledge/CHANGELOG.md` の書式でエントリを追加する。
-6. 提案元の task に、採否と理由を comment で返す。
+6. 採否と理由、提案元Task IDを `knowledge/CHANGELOG.md` に記録し、Task Commentへの追記を前提にしない。
 
 ## 採用基準
 

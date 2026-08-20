@@ -78,6 +78,11 @@ export function initializeSchema(): Promise<void> {
       )
       .execute();
 
+    // viewer Role は廃止済み。旧DBに残る grant も認可対象から除去する。
+    await DatabaseClient.deleteFrom("project_grant")
+      .where("role", "=", "viewer" as never)
+      .execute();
+
     await DatabaseClient.schema
       .createTable("task")
       .ifNotExists()

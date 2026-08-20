@@ -2,7 +2,7 @@
 name: design-review
 description: 蓄積した設計の歪みシグナルを評価し、必要なら準備リファクタリングや再設計の Story / Task を起こす。
 status: active
-version: 1
+version: 2
 allowRoles: [manager]
 requiredKnowledge:
   - principles/development-principles.md
@@ -14,6 +14,8 @@ requiredTools:
   - list_stories
   - issue_story
   - issue_task
+  - edit_task
+  - cancel_task
 ---
 
 # design-review
@@ -34,10 +36,10 @@ worker / reviewer が記録した設計の歪みシグナル（`[design-strain]`
 
 1. `list_tasks` で `[design-strain]` の付いた task を収集し、対象領域ごとに束ねる。
 2. 各シグナルの根拠（元 task、対象ファイル、観測事実）を `list_task_comments` で確認する。
-3. `knowledge/tips/incremental-design.md` の「再設計しない条件」に照らし、対応不要のものは理由を comment で返して閉じる。
+3. `knowledge/tips/incremental-design.md` の「再設計しない条件」に照らし、対応不要のシグナルTaskは理由付きで `cancel_task` する。
 4. 再設計するものは、スコープ・触らない範囲・壊してはいけない挙動・characterization テストの範囲を明記した Story を `issue_story` で起こし、task に分解する。
 5. 変更駆動（準備リファクタリング）の提案は、①挙動不変のリファクタリング task ②本来の変更 task の 2 つに分割して発行し、①→②の順序を明記する。
-6. 判断結果（採用・見送り・保留）を、シグナル元の task に comment で返す。
+6. 採用したシグナルTaskも、作成したStoryまたはTaskを理由に含めて `cancel_task` し、二重着手を防ぐ。保留は `edit_task` で判断に必要な条件をdescriptionへ追記する。
 
 ## 採用基準
 

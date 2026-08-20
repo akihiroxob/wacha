@@ -32,7 +32,8 @@
 | --- | --- | --- | --- | --- |
 | Project / Story / Task / Comment / Change の参照 | allow | allow | allow | Project のいずれかの Grant が必要 |
 | Story の作成・編集・完了・中止 | allow | deny | deny | `requestId` 必須 |
-| Task の作成・編集・中止 | allow | deny | deny | `requestId` 必須 |
+| Task の作成 | allow | allow | allow | worker / reviewer は技術的follow-upに限る。`requestId` 必須 |
+| Task の編集・中止 | allow | deny | deny | `requestId` 必須 |
 | `claim_task` / `complete_task` | deny | deny | allow | work Claim が必要 |
 | `claim_review` / `reviewed_task` | deny | allow | deny | Review Claim が必要 |
 | `claim_acceptance` / `accept_task` | allow | deny | deny | Acceptance Claim が必要 |
@@ -43,9 +44,12 @@
 
 `add_task_comment` は Claim に紐づく引き継ぎ記録である。Principal と `claimId` はサーバーが保存し、任意の author 名で上書きしない。
 
+worker / reviewer が `issue_task` する場合は、発見元Task、必要な理由、完了条件を記載する。ユーザー要件やStoryの拡張、優先順位変更はmanagerへ返す。
+
 ## Claim の共通ルール
 
 - 1 Task に有効な Claim は最大 1 件
+- `availableFor` は呼出 Principal の Role と自己レビュー・自己受入制約を考慮し、実際に Claim 可能な候補だけを返す
 - Claim 取得競合は通常の制御フローであり、`CLAIM_CONFLICT` を受けた Agent は再一覧または別 Task の選択を行う
 - Claim は期限切れ時点で無効になる。期限切れを永続化する定期 heartbeat は不要
 - 作業継続時だけ、所有者が期限前に `renew_claim` する
@@ -56,6 +60,8 @@
 - `cancel_task` は有効な Claim を同一トランザクションで解放し、古い `claimId` を fence する
 
 Claim の更新は Task 操作権のリース更新であり、Console や Agent の生存確認ではない。
+
+状態変更Toolは `renew_claim` を除いて一意な `requestId` を必要とする。
 
 ## 自己レビュー・自己受入
 

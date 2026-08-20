@@ -20,15 +20,15 @@ import {
   issueStoryUseCase,
   editStoryUseCase,
   editTaskUseCase,
-  cancelTaskUseCase,
   deleteStoryUseCase,
   deleteTaskUseCase,
-  acceptTaskUseCase,
-  rejectTaskUseCase,
   listTaskCommentUseCase,
   addTaskCommentUseCase,
   getProjectActivityUseCase,
+  taskCoordinationService,
 } from "@container";
+
+const WEB_UI_OPERATOR_PRINCIPAL = "system:web-ui";
 
 export class PageController {
   private readonly assignableRoles = [
@@ -275,9 +275,15 @@ export class PageController {
     const project = await this.getProjectOrThrow(c.req.param("projectId"));
     const taskId = c.req.param("taskId");
     if (!taskId) throw new ValidationError("taskId is required");
+    if (!(await this.findTaskInProject(project.id, taskId))) {
+      throw new NotFoundError("Task not found");
+    }
 
     try {
-      await acceptTaskUseCase.execute(taskId);
+      await taskCoordinationService.acceptTaskAsOperator(
+        WEB_UI_OPERATOR_PRINCIPAL,
+        taskId,
+      );
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to accept task";
       throw new ValidationError(message);
@@ -291,13 +297,20 @@ export class PageController {
     const project = await this.getProjectOrThrow(c.req.param("projectId"));
     const taskId = c.req.param("taskId");
     if (!taskId) throw new ValidationError("taskId is required");
+    if (!(await this.findTaskInProject(project.id, taskId))) {
+      throw new NotFoundError("Task not found");
+    }
 
     const jsonBody = await this.readJsonBody(c);
     const reason = this.readTextField(jsonBody, "reason");
     if (reason === "") throw new ValidationError("Reject reason is required");
 
     try {
-      await rejectTaskUseCase.execute(taskId, reason);
+      await taskCoordinationService.rejectTaskAsOperator(
+        WEB_UI_OPERATOR_PRINCIPAL,
+        taskId,
+        reason,
+      );
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to reject task";
       throw new ValidationError(message);
@@ -311,13 +324,20 @@ export class PageController {
     const project = await this.getProjectOrThrow(c.req.param("projectId"));
     const taskId = c.req.param("taskId");
     if (!taskId) throw new ValidationError("taskId is required");
+    if (!(await this.findTaskInProject(project.id, taskId))) {
+      throw new NotFoundError("Task not found");
+    }
 
     const jsonBody = await this.readJsonBody(c);
     const reason = this.readTextField(jsonBody, "reason");
     if (reason === "") throw new ValidationError("Cancel reason is required");
 
     try {
-      await cancelTaskUseCase.execute(taskId, reason);
+      await taskCoordinationService.cancelTaskAsOperator(
+        WEB_UI_OPERATOR_PRINCIPAL,
+        taskId,
+        reason,
+      );
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to cancel task";
       throw new ValidationError(message);

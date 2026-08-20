@@ -251,8 +251,8 @@ Roles are persisted, while the application layer may expand them into capabiliti
 
 ```ts
 const roleCapabilities = {
-  worker: ["task:claim", "task:complete"],
-  reviewer: ["review:claim", "task:review", "task:reject"],
+  worker: ["task:create-follow-up", "task:claim", "task:complete"],
+  reviewer: ["task:create-follow-up", "review:claim", "task:review", "task:reject"],
   manager: [
     "task:create",
     "task:update",
@@ -472,6 +472,7 @@ This only filters persisted status values. It does not guarantee that the return
 
 A Task is available for work when all required conditions are true, including:
 
+- the requesting Principal has the worker Role;
 - Task status is `todo` or `rejected` and no active unexpired Claim exists; or
 - Task status is `doing` and its current work Claim is expired.
 
@@ -479,21 +480,25 @@ Task-to-Task dependencies are not part of the first implementation.
 
 The `status` filter continues to report persisted Task state. Therefore, a Task with an expired work Claim may still appear as `doing` in a status-based query while also appearing in `availableFor=work`. This is intentional: `status` reports stored workflow state, while `availableFor` reports whether the Task is a phase candidate now.
 
-`availableFor` is independent of the requesting Principal's specific Role and self-review or self-acceptance policy. Any Principal with access to the Project sees the same phase candidates. It does not guarantee that the caller can claim a returned Task. The corresponding `claim_*` command remains the authority and atomically validates Role, self-action policy, current Task state, and Claim exclusivity.
+`availableFor` is caller-aware. It returns only Tasks for which the requesting Principal has the required Role and is not prohibited by self-review or self-acceptance policy. The corresponding `claim_*` command remains the authority and atomically revalidates Role, self-action policy, current Task state, and Claim exclusivity.
 
 #### Review
 
 A Task is available for review when all required conditions are true, including:
 
+- the requesting Principal has the reviewer Role;
 - Task status is `in_review`;
-- no active unexpired Claim exists.
+- no active unexpired Claim exists;
+- the requesting Principal is not the latest Principal that completed the Task.
 
 #### Acceptance
 
 A Task is available for acceptance when all required conditions are true, including:
 
+- the requesting Principal has the manager Role;
 - Task status is `in_review` or `wait_accept`;
-- no active unexpired Claim exists.
+- no active unexpired Claim exists;
+- the requesting Principal is not the latest Principal that completed the Task.
 
 When the Manager selects an `in_review` Task, successful `claim_acceptance` moves it to `wait_accept`. This preserves the lower-cost human direct-review path without making Review Claims and Acceptance Claims ambiguous on the same Task status.
 
@@ -571,7 +576,9 @@ To directly review and accept an `in_review` Task, a Manager first calls `claim_
 
 A Manager may be a human or an authenticated agent. Wacha must not assume acceptance is always performed manually.
 
-Manager Project administration operations such as Task creation, update, cancellation, and priority changes do not require a Task Claim.
+Task creation does not require a Task Claim. Managers create planned Tasks. Workers and Reviewers may create technical follow-up Tasks discovered during their current work, but may not expand user requirements, create Stories, edit Tasks, cancel Tasks, or change priority.
+
+Manager Project administration operations such as Task update, cancellation, and priority changes do not require a Task Claim.
 
 ### 8.6 Idempotency
 
@@ -628,6 +635,10 @@ change_log
 Initial event types include:
 
 ```text
+STORY_CREATED
+STORY_STARTED
+STORY_COMPLETED
+STORY_CANCELED
 TASK_CREATED
 TASK_CLAIMED
 CLAIM_RELEASED
@@ -636,6 +647,7 @@ TASK_COMPLETED
 TASK_REVIEWED
 TASK_ACCEPTED
 TASK_REJECTED
+TASK_CANCELED
 ```
 
 `TASK_CLAIMED` records the claim command and status transition in its payload. A direct Manager review is therefore distinguishable without storing a Claim phase.

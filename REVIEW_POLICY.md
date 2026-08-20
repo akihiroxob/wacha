@@ -62,7 +62,7 @@ Reject には次を含めるべきです。
 
 - 未完成の作業を通すこと
 - reviewer が全面的に実装を引き取ること
-- manager が review 段階を飛ばすこと
+- manager が `claim_acceptance` またはWeb UIの記録済み運用者経路を通さず、review段階を飛ばすこと
 
 ## Feedback Loop
 

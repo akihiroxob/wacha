@@ -52,7 +52,6 @@ todo -> doing -> in_review -> wait_accept -> accepted
 manager  -> planning + acceptance
 reviewer -> technical validation
 worker   -> execution
-viewer   -> read-only
 ```
 
 ## Domain ルール
