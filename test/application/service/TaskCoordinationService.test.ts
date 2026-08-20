@@ -63,9 +63,17 @@ test("worker, reviewer, and manager complete the guarded Claim lifecycle", async
   );
   await service.completeTask("worker-a", task.id, workClaim.claimId, "complete-work");
 
+  const reviewCandidates = await service.listTasks("reviewer-a", project.id, {
+    availableFor: "review",
+  });
+  assert.deepEqual(reviewCandidates.tasks.map((candidate) => candidate.id), [task.id]);
   const reviewClaim = await service.claimReview("reviewer-a", task.id, "claim-review");
   await service.reviewedTask("reviewer-a", task.id, reviewClaim.claimId, "review-task");
 
+  const acceptanceCandidates = await service.listTasks("manager-a", project.id, {
+    availableFor: "acceptance",
+  });
+  assert.deepEqual(acceptanceCandidates.tasks.map((candidate) => candidate.id), [task.id]);
   const acceptanceClaim = await service.claimAcceptance(
     "manager-a",
     task.id,
@@ -253,7 +261,11 @@ test("self-review and self-acceptance compare Principal IDs", async () => {
   const reviewCandidates = await service.listTasks("multi-role", project.id, {
     availableFor: "review",
   });
-  assert.deepEqual(reviewCandidates.tasks.map((candidate) => candidate.id), [task.id]);
+  assert.deepEqual(reviewCandidates.tasks, []);
+  const acceptanceCandidates = await service.listTasks("multi-role", project.id, {
+    availableFor: "acceptance",
+  });
+  assert.deepEqual(acceptanceCandidates.tasks, []);
 
   await assert.rejects(
     () => service.claimReview("multi-role", task.id, "review"),
@@ -295,6 +307,18 @@ test("Task Comment requires the current owned Claim", async () => {
   );
 });
 
+test("Task Comment requires the Role for the current Claim phase", async () => {
+  const { project, task } = await createProjectTask();
+  await grant(project.id, "worker-a", ProjectRole.WORKER);
+  const claim = await service.claimTask("worker-a", task.id, "work");
+  await grantRepository.revoke(project.id, "worker-a", ProjectRole.WORKER);
+
+  await assert.rejects(
+    () => service.addTaskComment("worker-a", task.id, claim.claimId, "late", "comment"),
+    hasCode("FORBIDDEN"),
+  );
+});
+
 test("status and availableFor filters are mutually exclusive", async () => {
   const { project } = await createProjectTask();
   await grant(project.id, "worker-a", ProjectRole.WORKER);
@@ -308,7 +332,7 @@ test("status and availableFor filters are mutually exclusive", async () => {
   );
 });
 
-test("availableFor returns phase candidates independently of the Principal Role", async () => {
+test("availableFor returns only candidates claimable by the Principal Role", async () => {
   const { project, task } = await createProjectTask();
   await grant(project.id, "manager-a", ProjectRole.MANAGER);
 
@@ -316,11 +340,64 @@ test("availableFor returns phase candidates independently of the Principal Role"
     availableFor: "work",
   });
 
-  assert.deepEqual(available.tasks.map((candidate) => candidate.id), [task.id]);
+  assert.deepEqual(available.tasks, []);
   await assert.rejects(
     () => service.claimTask("manager-a", task.id, "claim-without-worker-role"),
     hasCode("FORBIDDEN"),
   );
+});
+
+test("worker and reviewer can create technical follow-up Tasks", async () => {
+  const project = await projectRepository.create("Follow-up", null, "repo/follow-up");
+  await grant(project.id, "worker-a", ProjectRole.WORKER);
+  await grant(project.id, "reviewer-a", ProjectRole.REVIEWER);
+
+  const workerTask = await service.issueTask(
+    "worker-a",
+    { projectId: project.id, title: "Worker follow-up" },
+    "worker-follow-up",
+  );
+  const reviewerTask = await service.issueTask(
+    "reviewer-a",
+    { projectId: project.id, title: "Reviewer follow-up" },
+    "reviewer-follow-up",
+  );
+
+  assert.equal(workerTask.status, TaskStatus.TODO);
+  assert.equal(reviewerTask.status, TaskStatus.TODO);
+});
+
+test("accepting the final Story Task appends STORY_COMPLETED", async () => {
+  const project = await projectRepository.create("Story completion", null, "repo/story-completion");
+  await grant(project.id, "manager-a", ProjectRole.MANAGER);
+  await grant(project.id, "worker-a", ProjectRole.WORKER);
+  await grant(project.id, "reviewer-a", ProjectRole.REVIEWER);
+  const story = await service.issueStory(
+    "manager-a",
+    { projectId: project.id, title: "Story" },
+    "story",
+  );
+  const task = await service.issueTask(
+    "manager-a",
+    { projectId: project.id, storyId: story.id, title: "Task" },
+    "task",
+  );
+  const work = await service.claimTask("worker-a", task.id, "work");
+  await service.addTaskComment("worker-a", task.id, work.claimId, "verified", "comment");
+  await service.completeTask("worker-a", task.id, work.claimId, "complete");
+  const review = await service.claimReview("reviewer-a", task.id, "review");
+  await service.reviewedTask("reviewer-a", task.id, review.claimId, "reviewed");
+  const acceptance = await service.claimAcceptance("manager-a", task.id, "acceptance");
+  await service.acceptTask("manager-a", task.id, acceptance.claimId, "accepted");
+
+  const savedStory = await DatabaseClient.selectFrom("story")
+    .select("status")
+    .where("id", "=", story.id)
+    .executeTakeFirstOrThrow();
+  assert.equal(savedStory.status, "done");
+  const changes = await service.listChanges("manager-a", project.id);
+  assert.equal(changes.changes.at(-1)?.type, "STORY_COMPLETED");
+  assert.equal(changes.changes.at(-1)?.payload.path, "task_acceptance");
 });
 
 test("Task ordering uses parent Story sortOrder before Task sortOrder", async () => {

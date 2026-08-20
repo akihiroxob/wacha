@@ -84,6 +84,27 @@ export class TaskCoordinationService {
     }
   }
 
+  private async requireOneOfRoles(
+    db: DatabaseExecutor,
+    projectId: string,
+    principalId: string,
+    roles: Array<"worker" | "reviewer" | "manager">,
+  ): Promise<void> {
+    const grant = await db
+      .selectFrom("project_grant")
+      .select("role")
+      .where("project_id", "=", projectId)
+      .where("principal_id", "=", principalId)
+      .where("role", "in", roles)
+      .executeTakeFirst();
+    if (!grant) {
+      throw new CoordinationError(
+        "FORBIDDEN",
+        `Principal ${principalId} does not have one of the required roles (${roles.join(", ")}) for project ${projectId}`,
+      );
+    }
+  }
+
   private async requireAnyRole(
     db: DatabaseExecutor,
     projectId: string,
@@ -349,7 +370,7 @@ export class TaskCoordinationService {
     await this.requireAnyRole(DatabaseClient, projectId, principalId);
 
     const now = this.clock();
-    const [tasks, stories, claims] = await Promise.all([
+    const [tasks, stories, claims, grants, completionChanges] = await Promise.all([
       DatabaseClient.selectFrom("task").selectAll().where("project_id", "=", projectId).execute(),
       DatabaseClient.selectFrom("story")
         .select(["id", "sort_order"])
@@ -364,9 +385,27 @@ export class TaskCoordinationService {
           DatabaseClient.selectFrom("task").select("id").where("project_id", "=", projectId),
         )
         .execute(),
+      DatabaseClient.selectFrom("project_grant")
+        .select("role")
+        .where("project_id", "=", projectId)
+        .where("principal_id", "=", principalId)
+        .execute(),
+      DatabaseClient.selectFrom("change_log")
+        .select(["entity_id", "principal_id", "cursor"])
+        .where("project_id", "=", projectId)
+        .where("type", "=", "TASK_COMPLETED")
+        .orderBy("cursor", "desc")
+        .execute(),
     ]);
     const storyOrders = new Map(stories.map((story) => [story.id, story.sort_order]));
     const activeClaims = new Map(claims.map((claim) => [claim.task_id, claim]));
+    const roles = new Set(grants.map((grant) => grant.role));
+    const latestCompleters = new Map<string, string>();
+    for (const change of completionChanges) {
+      if (!latestCompleters.has(change.entity_id)) {
+        latestCompleters.set(change.entity_id, change.principal_id);
+      }
+    }
 
     const ordered = [...tasks].sort((a, b) => {
       const aPrimary = a.story_id ? (storyOrders.get(a.story_id) ?? Number.MAX_SAFE_INTEGER) : a.sort_order;
@@ -380,19 +419,24 @@ export class TaskCoordinationService {
       switch (filter?.availableFor) {
         case "work":
           return (
-            ((task.status === TaskStatus.TODO || task.status === TaskStatus.REJECTED) &&
+            roles.has(ProjectRole.WORKER) &&
+            (((task.status === TaskStatus.TODO || task.status === TaskStatus.REJECTED) &&
               !hasUnexpiredClaim) ||
-            (task.status === TaskStatus.DOING && claim !== undefined && claim.expires_at <= now)
+              (task.status === TaskStatus.DOING && claim !== undefined && claim.expires_at <= now))
           );
         case "review":
           return (
+            roles.has(ProjectRole.REVIEWER) &&
             task.status === TaskStatus.IN_REVIEW &&
-            !hasUnexpiredClaim
+            !hasUnexpiredClaim &&
+            latestCompleters.get(task.id) !== principalId
           );
         case "acceptance":
           return (
+            roles.has(ProjectRole.MANAGER) &&
             (task.status === TaskStatus.IN_REVIEW || task.status === TaskStatus.WAIT_ACCEPT) &&
-            !hasUnexpiredClaim
+            !hasUnexpiredClaim &&
+            latestCompleters.get(task.id) !== principalId
           );
         default:
           return true;
@@ -566,61 +610,77 @@ export class TaskCoordinationService {
     );
   }
 
+  private async claimAcceptanceCore(
+    db: DatabaseExecutor,
+    principalId: string,
+    taskId: string,
+    options: { requireManagerRole: boolean; enforceSelfAcceptance: boolean },
+  ): Promise<ClaimResult> {
+    const now = this.clock();
+    const task = await this.getTask(db, taskId);
+    if (options.requireManagerRole) {
+      await this.requireRole(db, task.project_id, principalId, ProjectRole.MANAGER);
+    }
+    const currentClaim = await this.getActiveClaim(db, taskId);
+    if (currentClaim) {
+      if (currentClaim.expires_at > now) {
+        throw new CoordinationError("CLAIM_CONFLICT", `Task ${taskId} already has an active Claim`);
+      }
+      await this.expireClaim(db, currentClaim, task.project_id, principalId, now);
+    }
+    if (task.status !== TaskStatus.IN_REVIEW && task.status !== TaskStatus.WAIT_ACCEPT) {
+      throw new CoordinationError(
+        "TASK_NOT_CLAIMABLE",
+        `Task ${taskId} is not available for acceptance`,
+      );
+    }
+    if (
+      options.enforceSelfAcceptance &&
+      (await this.latestCompleter(db, taskId)) === principalId
+    ) {
+      throw new CoordinationError(
+        "SELF_ACCEPTANCE_NOT_ALLOWED",
+        `Principal ${principalId} cannot accept its own completed work`,
+      );
+    }
+    const fromStatus = task.status;
+    const claim = await this.insertClaim(db, taskId, principalId, now);
+    if (fromStatus === TaskStatus.IN_REVIEW) {
+      await db
+        .updateTable("task")
+        .set({ status: TaskStatus.WAIT_ACCEPT, updated_at: now })
+        .where("id", "=", taskId)
+        .execute();
+    }
+    await this.appendChange(db, {
+      projectId: task.project_id,
+      type: "TASK_CLAIMED",
+      entityId: taskId,
+      principalId,
+      claimId: claim.id,
+      payload: {
+        claimCommand: "claim_acceptance",
+        fromStatus,
+        toStatus: TaskStatus.WAIT_ACCEPT,
+        path: fromStatus === TaskStatus.IN_REVIEW ? "manager_direct_review" : "reviewer_approved",
+      },
+      occurredAt: now,
+    });
+    return this.claimResult(claim, TaskStatus.WAIT_ACCEPT);
+  }
+
   async claimAcceptance(
     principalId: string,
     taskId: string,
     requestId: string,
   ): Promise<ClaimResult> {
     return DatabaseClient.transaction().execute(async (db) =>
-      this.withReceipt(db, principalId, "claim_acceptance", requestId, { taskId }, async () => {
-        const now = this.clock();
-        const task = await this.getTask(db, taskId);
-        await this.requireRole(db, task.project_id, principalId, ProjectRole.MANAGER);
-        const currentClaim = await this.getActiveClaim(db, taskId);
-        if (currentClaim) {
-          if (currentClaim.expires_at > now) {
-            throw new CoordinationError("CLAIM_CONFLICT", `Task ${taskId} already has an active Claim`);
-          }
-          await this.expireClaim(db, currentClaim, task.project_id, principalId, now);
-        }
-        if (task.status !== TaskStatus.IN_REVIEW && task.status !== TaskStatus.WAIT_ACCEPT) {
-          throw new CoordinationError(
-            "TASK_NOT_CLAIMABLE",
-            `Task ${taskId} is not available for acceptance`,
-          );
-        }
-        if ((await this.latestCompleter(db, taskId)) === principalId) {
-          throw new CoordinationError(
-            "SELF_ACCEPTANCE_NOT_ALLOWED",
-            `Principal ${principalId} cannot accept its own completed work`,
-          );
-        }
-        const fromStatus = task.status;
-        const claim = await this.insertClaim(db, taskId, principalId, now);
-        if (fromStatus === TaskStatus.IN_REVIEW) {
-          await db
-            .updateTable("task")
-            .set({ status: TaskStatus.WAIT_ACCEPT, updated_at: now })
-            .where("id", "=", taskId)
-            .execute();
-        }
-        await this.appendChange(db, {
-          projectId: task.project_id,
-          type: "TASK_CLAIMED",
-          entityId: taskId,
-          principalId,
-          claimId: claim.id,
-          payload: {
-            claimCommand: "claim_acceptance",
-            fromStatus,
-            toStatus: TaskStatus.WAIT_ACCEPT,
-            path:
-              fromStatus === TaskStatus.IN_REVIEW ? "manager_direct_review" : "reviewer_approved",
-          },
-          occurredAt: now,
-        });
-        return this.claimResult(claim, TaskStatus.WAIT_ACCEPT);
-      }),
+      this.withReceipt(db, principalId, "claim_acceptance", requestId, { taskId }, () =>
+        this.claimAcceptanceCore(db, principalId, taskId, {
+          requireManagerRole: true,
+          enforceSelfAcceptance: true,
+        }),
+      ),
     );
   }
 
@@ -681,7 +741,7 @@ export class TaskCoordinationService {
         const task = await this.getTask(db, claim.task_id);
         const trimmedReason = reason.trim();
         if (!trimmedReason) {
-          throw new CoordinationError("INVALID_TASK_STATUS", "Release reason is required");
+          throw new CoordinationError("INVALID_INPUT", "Release reason is required");
         }
         const now = this.clock();
         let taskStatus = task.status as TaskStatusValue;
@@ -733,9 +793,22 @@ export class TaskCoordinationService {
         { taskId, claimId, body },
         async () => {
           await this.assertCurrentClaim(db, principalId, taskId, claimId);
+          const task = await this.getTask(db, taskId);
+          if (task.status === TaskStatus.DOING) {
+            await this.requireRole(db, task.project_id, principalId, ProjectRole.WORKER);
+          } else if (task.status === TaskStatus.IN_REVIEW) {
+            await this.requireRole(db, task.project_id, principalId, ProjectRole.REVIEWER);
+          } else if (task.status === TaskStatus.WAIT_ACCEPT) {
+            await this.requireRole(db, task.project_id, principalId, ProjectRole.MANAGER);
+          } else {
+            throw new CoordinationError(
+              "INVALID_TASK_STATUS",
+              `Task ${taskId} does not accept Claim-bound comments in ${task.status}`,
+            );
+          }
           const trimmedBody = body.trim();
           if (!trimmedBody) {
-            throw new CoordinationError("INVALID_TASK_STATUS", "Comment body is required");
+            throw new CoordinationError("INVALID_INPUT", "Comment body is required");
           }
           const now = this.clock();
           const id = crypto.randomUUID();
@@ -854,7 +927,14 @@ export class TaskCoordinationService {
     );
   }
 
-  private async syncStoryAfterAcceptance(db: DatabaseExecutor, storyId: string | null, now: number) {
+  private async syncStoryAfterAcceptance(
+    db: DatabaseExecutor,
+    projectId: string,
+    storyId: string | null,
+    principalId: string,
+    claimId: string,
+    now: number,
+  ) {
     if (!storyId) return;
     const unsettled = await db
       .selectFrom("task")
@@ -863,13 +943,70 @@ export class TaskCoordinationService {
       .where("status", "not in", [TaskStatus.ACCEPTED, TaskStatus.CANCELED])
       .executeTakeFirst();
     if (!unsettled) {
-      await db
+      const result = await db
         .updateTable("story")
         .set({ status: "done", updated_at: now })
         .where("id", "=", storyId)
         .where("status", "=", "doing")
-        .execute();
+        .executeTakeFirst();
+      if (result.numUpdatedRows > 0n) {
+        await this.appendChange(db, {
+          projectId,
+          type: "STORY_COMPLETED",
+          entityId: storyId,
+          principalId,
+          claimId,
+          payload: { fromStatus: StoryStatus.DOING, toStatus: StoryStatus.DONE, path: "task_acceptance" },
+          occurredAt: now,
+        });
+      }
     }
+  }
+
+  private async acceptTaskCore(
+    db: DatabaseExecutor,
+    principalId: string,
+    taskId: string,
+    claimId: string,
+  ) {
+    const task = await this.getTask(db, taskId);
+    if (task.status !== TaskStatus.WAIT_ACCEPT) {
+      throw new CoordinationError("INVALID_TASK_STATUS", `Task ${taskId} is not wait_accept`);
+    }
+    const now = this.clock();
+    await db
+      .updateTable("task")
+      .set({
+        status: TaskStatus.ACCEPTED,
+        reject_reason: null,
+        resume_source_status: null,
+        updated_at: now,
+      })
+      .where("id", "=", taskId)
+      .execute();
+    await db
+      .updateTable("task_claim")
+      .set({ state: "completed", released_at: now, release_reason: "task_accepted" })
+      .where("id", "=", claimId)
+      .execute();
+    await this.appendChange(db, {
+      projectId: task.project_id,
+      type: "TASK_ACCEPTED",
+      entityId: taskId,
+      principalId,
+      claimId,
+      payload: { fromStatus: TaskStatus.WAIT_ACCEPT, toStatus: TaskStatus.ACCEPTED },
+      occurredAt: now,
+    });
+    await this.syncStoryAfterAcceptance(
+      db,
+      task.project_id,
+      task.story_id,
+      principalId,
+      claimId,
+      now,
+    );
+    return { taskId, claimId, status: TaskStatus.ACCEPTED };
   }
 
   async acceptTask(principalId: string, taskId: string, claimId: string, requestId: string) {
@@ -878,36 +1015,7 @@ export class TaskCoordinationService {
         await this.assertCurrentClaim(db, principalId, taskId, claimId);
         const task = await this.getTask(db, taskId);
         await this.requireRole(db, task.project_id, principalId, ProjectRole.MANAGER);
-        if (task.status !== TaskStatus.WAIT_ACCEPT) {
-          throw new CoordinationError("INVALID_TASK_STATUS", `Task ${taskId} is not wait_accept`);
-        }
-        const now = this.clock();
-        await db
-          .updateTable("task")
-          .set({
-            status: TaskStatus.ACCEPTED,
-            reject_reason: null,
-            resume_source_status: null,
-            updated_at: now,
-          })
-          .where("id", "=", taskId)
-          .execute();
-        await db
-          .updateTable("task_claim")
-          .set({ state: "completed", released_at: now, release_reason: "task_accepted" })
-          .where("id", "=", claimId)
-          .execute();
-        await this.appendChange(db, {
-          projectId: task.project_id,
-          type: "TASK_ACCEPTED",
-          entityId: taskId,
-          principalId,
-          claimId,
-          payload: { fromStatus: TaskStatus.WAIT_ACCEPT, toStatus: TaskStatus.ACCEPTED },
-          occurredAt: now,
-        });
-        await this.syncStoryAfterAcceptance(db, task.story_id, now);
-        return { taskId, claimId, status: TaskStatus.ACCEPTED };
+        return this.acceptTaskCore(db, principalId, taskId, claimId);
       }),
     );
   }
@@ -939,40 +1047,117 @@ export class TaskCoordinationService {
               `Task ${taskId} is not reviewable`,
             );
           }
-          const trimmedReason = reason.trim();
-          if (!trimmedReason) {
-            throw new CoordinationError("INVALID_TASK_STATUS", "Reject reason is required");
-          }
-          const now = this.clock();
-          const fromStatus = task.status;
-          await db
-            .updateTable("task")
-            .set({
-              status: TaskStatus.REJECTED,
-              reject_reason: trimmedReason,
-              resume_source_status: null,
-              updated_at: now,
-            })
-            .where("id", "=", taskId)
-            .execute();
-          await db
-            .updateTable("task_claim")
-            .set({ state: "completed", released_at: now, release_reason: "task_rejected" })
-            .where("id", "=", claimId)
-            .execute();
-          await this.appendChange(db, {
-            projectId: task.project_id,
-            type: "TASK_REJECTED",
-            entityId: taskId,
-            principalId,
-            claimId,
-            payload: { fromStatus, toStatus: TaskStatus.REJECTED, reason: trimmedReason },
-            occurredAt: now,
-          });
-          return { taskId, claimId, status: TaskStatus.REJECTED, rejectReason: trimmedReason };
+          return this.rejectTaskCore(db, principalId, taskId, claimId, reason);
         },
       ),
     );
+  }
+
+  private async rejectTaskCore(
+    db: DatabaseExecutor,
+    principalId: string,
+    taskId: string,
+    claimId: string,
+    reason: string,
+  ) {
+    const task = await this.getTask(db, taskId);
+    const trimmedReason = reason.trim();
+    if (!trimmedReason) {
+      throw new CoordinationError("INVALID_INPUT", "Reject reason is required");
+    }
+    const now = this.clock();
+    const fromStatus = task.status;
+    await db
+      .updateTable("task")
+      .set({
+        status: TaskStatus.REJECTED,
+        reject_reason: trimmedReason,
+        resume_source_status: null,
+        updated_at: now,
+      })
+      .where("id", "=", taskId)
+      .execute();
+    await db
+      .updateTable("task_claim")
+      .set({ state: "completed", released_at: now, release_reason: "task_rejected" })
+      .where("id", "=", claimId)
+      .execute();
+    await this.appendChange(db, {
+      projectId: task.project_id,
+      type: "TASK_REJECTED",
+      entityId: taskId,
+      principalId,
+      claimId,
+      payload: { fromStatus, toStatus: TaskStatus.REJECTED, reason: trimmedReason },
+      occurredAt: now,
+    });
+    return { taskId, claimId, status: TaskStatus.REJECTED, rejectReason: trimmedReason };
+  }
+
+  // trusted-local Web UI専用。外部入力から任意のprincipalIdを渡すAPIとして公開しない。
+  async acceptTaskAsOperator(principalId: string, taskId: string) {
+    return DatabaseClient.transaction().execute(async (db) => {
+      const claim = await this.claimAcceptanceCore(db, principalId, taskId, {
+        requireManagerRole: false,
+        enforceSelfAcceptance: false,
+      });
+      return this.acceptTaskCore(db, principalId, taskId, claim.claimId);
+    });
+  }
+
+  async rejectTaskAsOperator(principalId: string, taskId: string, reason: string) {
+    return DatabaseClient.transaction().execute(async (db) => {
+      const claim = await this.claimAcceptanceCore(db, principalId, taskId, {
+        requireManagerRole: false,
+        enforceSelfAcceptance: false,
+      });
+      return this.rejectTaskCore(db, principalId, taskId, claim.claimId, reason);
+    });
+  }
+
+  private async cancelTaskCore(
+    db: DatabaseExecutor,
+    principalId: string,
+    taskId: string,
+    reason: string,
+  ) {
+    const task = await this.getTask(db, taskId);
+    if (task.status !== TaskStatus.TODO && task.status !== TaskStatus.DOING) {
+      throw new CoordinationError("INVALID_TASK_STATUS", `Task ${taskId} is not cancelable`);
+    }
+    const trimmedReason = reason.trim();
+    if (!trimmedReason) {
+      throw new CoordinationError("INVALID_INPUT", "Cancel reason is required");
+    }
+    const now = this.clock();
+    const claim = await this.getActiveClaim(db, taskId);
+    if (claim) {
+      await db
+        .updateTable("task_claim")
+        .set({ state: "released", released_at: now, release_reason: "task_canceled" })
+        .where("id", "=", claim.id)
+        .execute();
+    }
+    await db
+      .updateTable("task")
+      .set({
+        status: TaskStatus.CANCELED,
+        assignee: null,
+        resume_source_status: null,
+        updated_at: now,
+      })
+      .where("id", "=", taskId)
+      .execute();
+    await this.appendChange(db, {
+      projectId: task.project_id,
+      type: "TASK_CANCELED",
+      entityId: taskId,
+      principalId,
+      claimId: claim?.id ?? null,
+      payload: { fromStatus: task.status, toStatus: TaskStatus.CANCELED, reason: trimmedReason },
+      occurredAt: now,
+    });
+    return { taskId, status: TaskStatus.CANCELED, reason: trimmedReason };
   }
 
   async cancelTask(principalId: string, taskId: string, reason: string, requestId: string) {
@@ -980,43 +1165,14 @@ export class TaskCoordinationService {
       this.withReceipt(db, principalId, "cancel_task", requestId, { taskId, reason }, async () => {
         const task = await this.getTask(db, taskId);
         await this.requireRole(db, task.project_id, principalId, ProjectRole.MANAGER);
-        if (task.status !== TaskStatus.TODO && task.status !== TaskStatus.DOING) {
-          throw new CoordinationError("INVALID_TASK_STATUS", `Task ${taskId} is not cancelable`);
-        }
-        const trimmedReason = reason.trim();
-        if (!trimmedReason) {
-          throw new CoordinationError("INVALID_TASK_STATUS", "Cancel reason is required");
-        }
-        const now = this.clock();
-        const claim = await this.getActiveClaim(db, taskId);
-        if (claim) {
-          await db
-            .updateTable("task_claim")
-            .set({ state: "released", released_at: now, release_reason: "task_canceled" })
-            .where("id", "=", claim.id)
-            .execute();
-        }
-        await db
-          .updateTable("task")
-          .set({
-            status: TaskStatus.CANCELED,
-            assignee: null,
-            resume_source_status: null,
-            updated_at: now,
-          })
-          .where("id", "=", taskId)
-          .execute();
-        await this.appendChange(db, {
-          projectId: task.project_id,
-          type: "TASK_CANCELED",
-          entityId: taskId,
-          principalId,
-          claimId: claim?.id ?? null,
-          payload: { fromStatus: task.status, toStatus: TaskStatus.CANCELED, reason: trimmedReason },
-          occurredAt: now,
-        });
-        return { taskId, status: TaskStatus.CANCELED, reason: trimmedReason };
+        return this.cancelTaskCore(db, principalId, taskId, reason);
       }),
+    );
+  }
+
+  async cancelTaskAsOperator(principalId: string, taskId: string, reason: string) {
+    return DatabaseClient.transaction().execute((db) =>
+      this.cancelTaskCore(db, principalId, taskId, reason),
     );
   }
 
@@ -1027,7 +1183,11 @@ export class TaskCoordinationService {
   ) {
     return DatabaseClient.transaction().execute(async (db) =>
       this.withReceipt(db, principalId, "issue_task", requestId, input, async () => {
-        await this.requireRole(db, input.projectId, principalId, ProjectRole.MANAGER);
+        await this.requireOneOfRoles(db, input.projectId, principalId, [
+          ProjectRole.MANAGER,
+          ProjectRole.REVIEWER,
+          ProjectRole.WORKER,
+        ]);
         const title = this.requiredText(input.title, "Task title");
         if (input.storyId) {
           const story = await db

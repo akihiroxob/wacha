@@ -104,7 +104,7 @@ test("stateless Task tools return structured authorization errors", async () => 
     projectId: project.id,
     filter: { availableFor: "work" },
   });
-  assert.equal(listed.structuredContent.tasks[0].id, task.id);
+  assert.deepEqual(listed.structuredContent.tasks, []);
 
   const result = await callTool("manager-a", "claim_task", {
     taskId: task.id,

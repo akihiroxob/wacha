@@ -2,7 +2,7 @@
 name: propose-knowledge-update
 description: 実装・レビューで得た学びを再利用可能な知識として整理し、knowledge 更新提案を作成する。
 status: active
-version: 2
+version: 3
 allowRoles: [worker, reviewer, manager]
 requiredKnowledge:
   - principles/development-principles.md
@@ -11,6 +11,7 @@ requiredTools:
   - list_tasks
   - list_task_comments
   - add_task_comment
+  - issue_task
 ---
 
 # propose-knowledge-update
@@ -25,7 +26,7 @@ requiredTools:
 2. `knowledge/principles/development-principles.md` と照合し、原則化できる内容を選別する。
 3. `knowledge/tips/reviewing.md` の観点で、再現性・検証可能性・副作用を確認する。
 4. 提案を「背景 / 提案内容 / 適用条件 / 期待効果 / リスク」の形式でまとめる。
-5. 元になった task やレビュー指摘への参照を添えて `add_task_comment` で提案を共有する。
+5. 対象Taskの現在のClaimを所有している場合は、元になったtaskやレビュー指摘への参照を添えて `add_task_comment` で提案を共有する。Claimがない場合は、同じ内容を技術的follow-upとして `issue_task` で登録する。
 6. 採用可否の判断に必要な追加検証項目があれば明記する。
 7. 提案の採否判断と反映は manager が `apply-knowledge-update` で行う。過去の採否は `knowledge/CHANGELOG.md` にあるため、同種の見送り済み提案がないか先に確認する。
 

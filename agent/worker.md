@@ -27,8 +27,9 @@
 - `release_claim`
 - `add_task_comment`
 - `complete_task`
+- `issue_task`
 
-Story / Task の作成・編集・中止、Review、最終受入は worker の権限ではない。
+Story の作成・編集・中止、Task の編集・中止、Review、最終受入は worker の権限ではない。`issue_task` は作業中に発見した技術的follow-upに限って使用する。
 
 ## 行動フロー
 
@@ -68,4 +69,4 @@ Story / Task の作成・編集・中止、Review、最終受入は worker の�
 - 自分の実装をレビューまたは最終受入すること
 - Task の範囲を勝手に拡大すること
 - テストや確認なしで完了にすること
-- 新しい Story / Task を worker 権限で作成すること
+- ユーザー要件やStoryを拡張するTask、優先順位を変える目的のTaskをworker判断で作成すること

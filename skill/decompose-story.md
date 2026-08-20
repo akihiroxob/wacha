@@ -2,14 +2,16 @@
 name: decompose-story
 description: Story を、実装・レビュー・受け入れまで進めやすい独立した task 群に分解する。
 status: active
-version: 2
+version: 3
 allowRoles: [manager]
 requiredKnowledge:
   - tips/story-splitting.md
   - tips/task-writing.md
 requiredTools:
+  - list_stories
   - list_tasks
   - issue_task
+  - edit_task
 ---
 
 # decompose-story
@@ -26,7 +28,7 @@ Story を、実装・レビュー・受け入れまで進めやすい独立し�
 4. 各 task を `knowledge/tips/task-writing.md` の形式に合わせて記述する。
 5. task 間の依存関係と並行実行可能性を明示する。
 6. 必要な task を `issue_task` で登録し、Story と task の対応を確認する。
-7. 着手すべき順序に意図がある場合は、`edit_task` の `sortOrder`（小さいほど優先）で順序を明示する。worker は一覧の先頭から取る前提で並べる。
+7. 着手すべき順序に意図がある場合は、`edit_task` の `sortOrder`（小さいほど優先）で順序を明示する。順序はworkerの選択材料であり、先頭TaskのClaimを強制しない。
 
 ## Success Criteria
 

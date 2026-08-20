@@ -1,5 +1,10 @@
 # Agent とのやり取り・MCP 改善アイデア
 
+> **Historical ideas / 2026-07-05**
+>
+> session membership方式を前提にした当時の観測と候補を保存した比較資料である。
+> 現行仕様は `docs/agent-task-coordination-spec.md`、現行運用は `AGENTS.md` を正とする。
+
 2026-07-05 の WebUI 再設計 (PdM向けダッシュボード化) の際に整理したアイデア集。
 前提となる利用実態: **実運用では Worker AI のみを起動し、PdM が WebUI で manager + reviewer を兼ねる** ケースが支配的。
 

@@ -162,6 +162,10 @@ Agent の識別、Role、Task の所有権には使いません。Task の操作
 削除されます。Change Logは監査履歴として残ります。Agent／MCPの通常運用では完全削除を
 使わず、理由を記録できる`cancel_story`／`cancel_task`を使用してください。
 
+Web UI は trusted-local の未認証運用者画面です。Task のaccept／reject／cancelは
+監査用Principal `system:web-ui` として記録され、MCPと同じClaim fencing・状態遷移・
+Change Log更新を通ります。このPrincipalは実ユーザーの識別情報ではありません。
+
 ## Available Tools
 
 参照:
@@ -173,7 +177,11 @@ Agent の識別、Role、Task の所有権には使いません。Task の操作
 Manager 管理操作:
 
 - `issue_story`, `edit_story`, `complete_story`, `cancel_story`
-- `issue_task`, `edit_task`, `cancel_task`
+- `edit_task`, `cancel_task`
+
+Task 作成:
+
+- `issue_task`（managerの計画、またはworker／reviewerが発見した技術的follow-up）
 
 Claim:
 
@@ -190,8 +198,8 @@ Tool は `renew_claim` を除き `requestId` が必須で、Claim による更�
 `claimId` も必要です。詳しい権限と運用フローは `agent/role-policy.md` および
 `agent/` 配下の各 Role 文書を参照してください。
 
-`availableFor` は Task 状態と有効 Claim から Phase 候補を返します。候補一覧は
-Principal の個別 Role に依存せず、Role や自己レビュー禁止などの最終判定は
+`availableFor` は呼出PrincipalのRole、自己レビュー・自己受入、Task状態、有効Claimを
+考慮し、そのPrincipalが実際にClaim可能な候補を返します。取得時の競合を含む最終判定は
 `claim_task` / `claim_review` / `claim_acceptance` が行います。
 
 ## Docker

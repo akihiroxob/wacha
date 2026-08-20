@@ -85,8 +85,8 @@ Agent が Task を選び、Wacha が Claim と状態遷移の正当性を検証�
 - 再 Claim は古い Claim を失効させ、新しい `claimId` を発行する
 - 古い、期限切れ、他 Principal 所有の `claimId` では更新できない
 - `release_claim` で work Claim を解放すると Task は `todo` に戻る
-- `availableFor` は Task 状態と有効 Claim だけで Phase 候補を返し、呼出 Principal の個別 Role には依存しない
-- Role、自己レビュー・自己受入、排他性の最終判定は `claim_*` が行う
+- `availableFor` は呼出 Principal の Role、自己レビュー・自己受入、Task 状態、有効 Claim を考慮し、実際に Claim 可能な候補だけを返す
+- Claim 取得時の競合を含む最終判定は `claim_*` が行う
 
 状態変更 Tool は `renew_claim` を除き `requestId` を必須とする。同じ Principal・Tool・`requestId`・入力の再送は同じ結果を返す。異なる入力で再利用すると `IDEMPOTENCY_CONFLICT` になる。
 
@@ -107,13 +107,18 @@ Agent が Task を選び、Wacha が Claim と状態遷移の正当性を検証�
 - `get_skill_context({ name })`
 - `get_role_instructions({ role, includeShared? })`
 
+### Task 作成
+
+- `issue_task({ projectId, storyId?, title, description?, requestId })`
+  - manager は計画した Task を作成する
+  - worker / reviewer は作業中に発見した技術的follow-upに限り作成する
+
 ### Manager 管理操作
 
 - `issue_story({ projectId, title, description?, requestId })`
 - `edit_story({ projectId, storyId, title, description?, sortOrder?, requestId })`
 - `complete_story({ storyId, requestId })`
 - `cancel_story({ storyId, reason, requestId })`
-- `issue_task({ projectId, storyId?, title, description?, requestId })`
 - `edit_task({ projectId, taskId, title, description?, sortOrder?, requestId })`
 - `cancel_task({ taskId, reason, requestId })`
 
@@ -144,7 +149,7 @@ Agent が Task を選び、Wacha が Claim と状態遷移の正当性を検証�
 - `complete_task` の前に、同じ Principal・同じ Claim のコメントが少なくとも 1 件必要
 - Task-to-Task 依存関係は初期実装に含めない
 - 一覧の既定順は親 Story の `sortOrder`、Task の `sortOrder`、`createdAt` の順。ただし順序は選択の参考であり先頭 Claim を強制しない
-- 新規 Story / Task の作成と優先順位変更は manager が行う
+- 新規 Story の作成と優先順位変更は manager が行う。worker / reviewer は技術的follow-up Taskだけを作成できる
 - Agent／MCP運用では理由付きの非破壊なcancelを使う。人間がWeb UIから行う管理操作に限り、Story／Taskのhard deleteを許可する
 
 ## Change Log

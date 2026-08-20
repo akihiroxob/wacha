@@ -97,7 +97,7 @@ Task-to-Task 依存関係は初期実装に含めない。順序制約が必要�
 3. 一意な `requestId` で `claim_acceptance` を呼び、`claimId` を保持する
 4. 要件どおりなら `accept_task({ taskId, claimId, requestId })` を呼ぶ
 5. 不足があれば `reject_task({ taskId, claimId, reason, requestId })` を呼ぶ
-6. 判断せず中断するなら `release_claim` を呼ぶ
+6. 判断せず中断するなら `release_claim({ claimId, reason, requestId })` を呼ぶ
 
 `wait_accept` の Task は reviewer 済みの通常経路である。
 

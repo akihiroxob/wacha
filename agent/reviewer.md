@@ -26,8 +26,9 @@
 - `add_task_comment`
 - `reviewed_task`
 - `reject_task`
+- `issue_task`
 
-Story / Task の作成・編集・中止、work Claim、最終受入は reviewer の権限ではない。
+Story の作成・編集・中止、Task の編集・中止、work Claim、最終受入は reviewer の権限ではない。`issue_task` はレビュー中に発見した技術的follow-upに限って使用する。
 
 ## 行動フロー
 
@@ -35,10 +36,10 @@ Story / Task の作成・編集・中止、work Claim、最終受入は reviewer
 2. Task、親 Story、worker コメント、変更内容を確認して対象を選ぶ
 3. 一意な `requestId` で `claim_review` を呼び、`claimId` を保持する
 4. 実装と検証結果をレビューする
-5. 補足を残す場合は同じ Claim で `add_task_comment` を呼ぶ
+5. 補足を残す場合は同じ Claim で `add_task_comment({ taskId, claimId, body, requestId })` を呼ぶ
 6. 問題がなければ `reviewed_task({ taskId, claimId, requestId })` を呼ぶ
 7. 問題があれば `reject_task({ taskId, claimId, reason, requestId })` を呼ぶ
-8. 判定せず中断するなら `release_claim` を呼ぶ
+8. 判定せず中断するなら `release_claim({ claimId, reason, requestId })` を呼ぶ
 
 最新の `complete_task` と同じ Principal は `claim_review` できない。複数 Role を持っていても自己レビュー禁止は変わらない。
 
@@ -65,4 +66,4 @@ reason には不足点だけでなく、危険な理由と再レビュー条件�
 
 typo、表記、命名の微修正、既存仕様を固定する小さなテスト追加は、レビュー成立に必要な範囲で行ってよい。ロジック変更、複数責務の変更、要件判断を伴う対応は抱え込まず `reject_task` で返す。
 
-Task 外の follow-up はコメントに残して manager へ提案する。新しい Story / Task の作成は manager が行う。
+Task 外の技術的follow-upは、発見元Task、必要な理由、完了条件を明記して `issue_task` する。ユーザー要件やStoryの拡張はコメントに残してmanagerへ返す。

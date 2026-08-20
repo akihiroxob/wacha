@@ -15,6 +15,8 @@
 3. 旧 `task.assignee` を全件クリアする
 4. `project_membership` を削除する
 
+旧 `viewer` Role Grant は起動時に削除する。現行Project Roleは `worker`、`reviewer`、`manager` の3つである。
+
 `project_membership` の存在を migration marker にするため、以後の起動で新しい `doing` Taskが `todo` へ戻ることはない。
 
 旧 `in_review` / `wait_accept` は維持する。旧 worker の Principal を session ID から正しく推定できないため、最初の引継ぎだけは人が成果とコメントを確認する。その後に新方式で `complete_task` された Task では Principal ID による自己レビュー・自己受入禁止が働く。

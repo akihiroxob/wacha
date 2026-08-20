@@ -440,6 +440,19 @@ test("POST /api/projects/:projectId/tasks/:taskId/accept accepts an in_review ta
 
   const saved = await taskRepository.findById(task.id);
   assert.equal(saved?.status, TaskStatus.ACCEPTED);
+  const claim = await DatabaseClient.selectFrom("task_claim")
+    .select(["principal_id", "state"])
+    .where("task_id", "=", task.id)
+    .executeTakeFirstOrThrow();
+  assert.equal(claim.principal_id, "system:web-ui");
+  assert.equal(claim.state, "completed");
+  const changes = await DatabaseClient.selectFrom("change_log")
+    .select(["type", "principal_id"])
+    .where("entity_id", "=", task.id)
+    .orderBy("cursor", "asc")
+    .execute();
+  assert.deepEqual(changes.map((change) => change.type), ["TASK_CLAIMED", "TASK_ACCEPTED"]);
+  assert.ok(changes.every((change) => change.principal_id === "system:web-ui"));
 });
 
 test("POST reject without reason returns 400", async () => {
@@ -485,6 +498,48 @@ test("POST cancel without reason returns 400", async () => {
   assert.equal(res.status, 400);
   const body = await res.json();
   assert.equal(body.error.message, "Cancel reason is required");
+});
+
+test("POST cancel fences an MCP Claim and records the Web UI operator", async () => {
+  const project = await projectRepository.create("Wacha", null, "repo/wacha");
+  const task = await taskRepository.create("Task A", null, project.id);
+  task.status = TaskStatus.DOING;
+  await taskRepository.save(task);
+  const now = Date.now();
+  const claimId = crypto.randomUUID();
+  await DatabaseClient.insertInto("task_claim")
+    .values({
+      id: claimId,
+      task_id: task.id,
+      principal_id: "worker-a",
+      state: "active",
+      acquired_at: now,
+      renewed_at: null,
+      expires_at: now + 60_000,
+      released_at: null,
+      release_reason: null,
+    })
+    .execute();
+
+  const res = await app.request(
+    `/api/projects/${project.id}/tasks/${task.id}/cancel`,
+    jsonInit("POST", { reason: "no longer needed" }),
+  );
+
+  assert.equal(res.status, 200);
+  assert.equal((await taskRepository.findById(task.id))?.status, TaskStatus.CANCELED);
+  const claim = await DatabaseClient.selectFrom("task_claim")
+    .select(["state", "release_reason"])
+    .where("id", "=", claimId)
+    .executeTakeFirstOrThrow();
+  assert.equal(claim.state, "released");
+  assert.equal(claim.release_reason, "task_canceled");
+  const change = await DatabaseClient.selectFrom("change_log")
+    .select("principal_id")
+    .where("entity_id", "=", task.id)
+    .where("type", "=", "TASK_CANCELED")
+    .executeTakeFirstOrThrow();
+  assert.equal(change.principal_id, "system:web-ui");
 });
 
 test("POST /api/projects/:projectId/tasks/:taskId/comments creates a comment", async () => {

@@ -77,7 +77,7 @@ export const createMcpServer = (principalId: string) => {
     {
       title: "List Tasks",
       description:
-        "List Task facts or phase candidates. availableFor uses Task state and active Claims; claim commands enforce caller authorization.",
+        "List Task facts or caller-claimable phase candidates. availableFor uses the caller Role, self-action policy, Task state, and active Claims.",
       inputSchema: {
         projectId: z.string().min(1),
         filter: z
@@ -219,7 +219,8 @@ export const createMcpServer = (principalId: string) => {
     "issue_task",
     {
       title: "Issue Task",
-      description: "Create a Task as a Manager.",
+      description:
+        "Create a planned Task as a Manager or a technical follow-up discovered by a Worker or Reviewer.",
       inputSchema: {
         projectId: z.string().min(1),
         storyId: z.string().min(1).optional(),
@@ -465,7 +466,7 @@ export const createMcpServer = (principalId: string) => {
       description: "List available Skills.",
       inputSchema: {
         status: z.enum(["draft", "active", "deprecated"]).optional(),
-        role: z.enum(["manager", "reviewer", "worker", "viewer"]).optional(),
+        role: z.enum(["manager", "reviewer", "worker"]).optional(),
       },
     },
     ({ status, role }) =>
