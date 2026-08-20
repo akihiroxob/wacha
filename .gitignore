@@ -143,3 +143,8 @@ public/
 
 # database
 *.db
+
+# other
+.claude
+.tmp
+.agent
