@@ -31,6 +31,7 @@ export type ClaimResult = {
 type Clock = () => number;
 
 type ReceiptInput = Record<string, unknown>;
+type ActivityActorRole = "worker" | "reviewer" | "manager" | "operator" | "system";
 
 const canonicalize = (value: unknown): unknown => {
   if (Array.isArray(value)) return value.map(canonicalize);
@@ -89,20 +90,22 @@ export class TaskCoordinationService {
     projectId: string,
     principalId: string,
     roles: Array<"worker" | "reviewer" | "manager">,
-  ): Promise<void> {
-    const grant = await db
+  ): Promise<"worker" | "reviewer" | "manager"> {
+    const grants = await db
       .selectFrom("project_grant")
       .select("role")
       .where("project_id", "=", projectId)
       .where("principal_id", "=", principalId)
       .where("role", "in", roles)
-      .executeTakeFirst();
-    if (!grant) {
+      .execute();
+    const role = roles.find((candidate) => grants.some((grant) => grant.role === candidate));
+    if (!role) {
       throw new CoordinationError(
         "FORBIDDEN",
         `Principal ${principalId} does not have one of the required roles (${roles.join(", ")}) for project ${projectId}`,
       );
     }
+    return role;
   }
 
   private async requireAnyRole(
@@ -244,6 +247,7 @@ export class TaskCoordinationService {
     claim: TaskClaimTable,
     projectId: string,
     observedBy: string,
+    actorRole: ActivityActorRole,
     now: number,
   ): Promise<void> {
     await db
@@ -258,7 +262,7 @@ export class TaskCoordinationService {
       entityId: claim.task_id,
       principalId: observedBy,
       claimId: claim.id,
-      payload: { claimPrincipalId: claim.principal_id, expiresAt: claim.expires_at },
+      payload: { actorRole, claimPrincipalId: claim.principal_id, expiresAt: claim.expires_at },
       occurredAt: now,
     });
   }
@@ -509,7 +513,7 @@ export class TaskCoordinationService {
             throw new CoordinationError("CLAIM_CONFLICT", `Task ${taskId} already has an active Claim`);
           }
           reclaimingExpiredWork = task.status === TaskStatus.DOING;
-          await this.expireClaim(db, currentClaim, task.project_id, principalId, now);
+          await this.expireClaim(db, currentClaim, task.project_id, principalId, "worker", now);
         }
         if (
           task.status !== TaskStatus.TODO &&
@@ -549,7 +553,7 @@ export class TaskCoordinationService {
               entityId: task.story_id,
               principalId,
               claimId: claim.id,
-              payload: { fromStatus: StoryStatus.TODO, toStatus: StoryStatus.DOING },
+              payload: { actorRole: "worker", fromStatus: StoryStatus.TODO, toStatus: StoryStatus.DOING },
               occurredAt: now,
             });
           }
@@ -561,6 +565,7 @@ export class TaskCoordinationService {
           principalId,
           claimId: claim.id,
           payload: {
+            actorRole: "worker",
             claimCommand: "claim_task",
             fromStatus,
             toStatus: TaskStatus.DOING,
@@ -584,7 +589,7 @@ export class TaskCoordinationService {
           if (currentClaim.expires_at > now) {
             throw new CoordinationError("CLAIM_CONFLICT", `Task ${taskId} already has an active Claim`);
           }
-          await this.expireClaim(db, currentClaim, task.project_id, principalId, now);
+          await this.expireClaim(db, currentClaim, task.project_id, principalId, "reviewer", now);
         }
         if (task.status !== TaskStatus.IN_REVIEW) {
           throw new CoordinationError("TASK_NOT_CLAIMABLE", `Task ${taskId} is not available for review`);
@@ -602,7 +607,7 @@ export class TaskCoordinationService {
           entityId: taskId,
           principalId,
           claimId: claim.id,
-          payload: { claimCommand: "claim_review", fromStatus: task.status, toStatus: task.status },
+          payload: { actorRole: "reviewer", claimCommand: "claim_review", fromStatus: task.status, toStatus: task.status },
           occurredAt: now,
         });
         return this.claimResult(claim, TaskStatus.IN_REVIEW);
@@ -626,7 +631,14 @@ export class TaskCoordinationService {
       if (currentClaim.expires_at > now) {
         throw new CoordinationError("CLAIM_CONFLICT", `Task ${taskId} already has an active Claim`);
       }
-      await this.expireClaim(db, currentClaim, task.project_id, principalId, now);
+      await this.expireClaim(
+        db,
+        currentClaim,
+        task.project_id,
+        principalId,
+        options.requireManagerRole ? "manager" : "operator",
+        now,
+      );
     }
     if (task.status !== TaskStatus.IN_REVIEW && task.status !== TaskStatus.WAIT_ACCEPT) {
       throw new CoordinationError(
@@ -659,6 +671,7 @@ export class TaskCoordinationService {
       principalId,
       claimId: claim.id,
       payload: {
+        actorRole: options.requireManagerRole ? "manager" : "operator",
         claimCommand: "claim_acceptance",
         fromStatus,
         toStatus: TaskStatus.WAIT_ACCEPT,
@@ -744,6 +757,12 @@ export class TaskCoordinationService {
           throw new CoordinationError("INVALID_INPUT", "Release reason is required");
         }
         const now = this.clock();
+        const actorRole: ActivityActorRole =
+          task.status === TaskStatus.DOING
+            ? "worker"
+            : task.status === TaskStatus.IN_REVIEW
+              ? "reviewer"
+              : "manager";
         let taskStatus = task.status as TaskStatusValue;
         if (task.status === TaskStatus.DOING) {
           taskStatus = TaskStatus.TODO;
@@ -769,7 +788,7 @@ export class TaskCoordinationService {
           entityId: task.id,
           principalId,
           claimId,
-          payload: { reason: trimmedReason, taskStatus },
+          payload: { actorRole, reason: trimmedReason, taskStatus },
           occurredAt: now,
         });
         return { claimId, taskId: task.id, state: "released" as const, taskStatus };
@@ -885,7 +904,7 @@ export class TaskCoordinationService {
           entityId: taskId,
           principalId,
           claimId,
-          payload: { fromStatus: TaskStatus.DOING, toStatus: TaskStatus.IN_REVIEW },
+          payload: { actorRole: "worker", fromStatus: TaskStatus.DOING, toStatus: TaskStatus.IN_REVIEW },
           occurredAt: now,
         });
         return { taskId, claimId, status: TaskStatus.IN_REVIEW };
@@ -919,7 +938,7 @@ export class TaskCoordinationService {
           entityId: taskId,
           principalId,
           claimId,
-          payload: { fromStatus: TaskStatus.IN_REVIEW, toStatus: TaskStatus.WAIT_ACCEPT },
+          payload: { actorRole: "reviewer", fromStatus: TaskStatus.IN_REVIEW, toStatus: TaskStatus.WAIT_ACCEPT },
           occurredAt: now,
         });
         return { taskId, claimId, status: TaskStatus.WAIT_ACCEPT };
@@ -933,6 +952,7 @@ export class TaskCoordinationService {
     storyId: string | null,
     principalId: string,
     claimId: string,
+    actorRole: ActivityActorRole,
     now: number,
   ) {
     if (!storyId) return;
@@ -956,7 +976,7 @@ export class TaskCoordinationService {
           entityId: storyId,
           principalId,
           claimId,
-          payload: { fromStatus: StoryStatus.DOING, toStatus: StoryStatus.DONE, path: "task_acceptance" },
+          payload: { actorRole, fromStatus: StoryStatus.DOING, toStatus: StoryStatus.DONE, path: "task_acceptance" },
           occurredAt: now,
         });
       }
@@ -968,6 +988,7 @@ export class TaskCoordinationService {
     principalId: string,
     taskId: string,
     claimId: string,
+    actorRole: ActivityActorRole,
   ) {
     const task = await this.getTask(db, taskId);
     if (task.status !== TaskStatus.WAIT_ACCEPT) {
@@ -995,7 +1016,7 @@ export class TaskCoordinationService {
       entityId: taskId,
       principalId,
       claimId,
-      payload: { fromStatus: TaskStatus.WAIT_ACCEPT, toStatus: TaskStatus.ACCEPTED },
+      payload: { actorRole, fromStatus: TaskStatus.WAIT_ACCEPT, toStatus: TaskStatus.ACCEPTED },
       occurredAt: now,
     });
     await this.syncStoryAfterAcceptance(
@@ -1004,6 +1025,7 @@ export class TaskCoordinationService {
       task.story_id,
       principalId,
       claimId,
+      actorRole,
       now,
     );
     return { taskId, claimId, status: TaskStatus.ACCEPTED };
@@ -1015,7 +1037,7 @@ export class TaskCoordinationService {
         await this.assertCurrentClaim(db, principalId, taskId, claimId);
         const task = await this.getTask(db, taskId);
         await this.requireRole(db, task.project_id, principalId, ProjectRole.MANAGER);
-        return this.acceptTaskCore(db, principalId, taskId, claimId);
+        return this.acceptTaskCore(db, principalId, taskId, claimId, "manager");
       }),
     );
   }
@@ -1037,17 +1059,20 @@ export class TaskCoordinationService {
         async () => {
           await this.assertCurrentClaim(db, principalId, taskId, claimId);
           const task = await this.getTask(db, taskId);
+          let actorRole: ActivityActorRole;
           if (task.status === TaskStatus.IN_REVIEW) {
             await this.requireRole(db, task.project_id, principalId, ProjectRole.REVIEWER);
+            actorRole = "reviewer";
           } else if (task.status === TaskStatus.WAIT_ACCEPT) {
             await this.requireRole(db, task.project_id, principalId, ProjectRole.MANAGER);
+            actorRole = "manager";
           } else {
             throw new CoordinationError(
               "INVALID_TASK_STATUS",
               `Task ${taskId} is not reviewable`,
             );
           }
-          return this.rejectTaskCore(db, principalId, taskId, claimId, reason);
+          return this.rejectTaskCore(db, principalId, taskId, claimId, reason, actorRole);
         },
       ),
     );
@@ -1059,6 +1084,7 @@ export class TaskCoordinationService {
     taskId: string,
     claimId: string,
     reason: string,
+    actorRole: ActivityActorRole,
   ) {
     const task = await this.getTask(db, taskId);
     const trimmedReason = reason.trim();
@@ -1088,7 +1114,7 @@ export class TaskCoordinationService {
       entityId: taskId,
       principalId,
       claimId,
-      payload: { fromStatus, toStatus: TaskStatus.REJECTED, reason: trimmedReason },
+      payload: { actorRole, fromStatus, toStatus: TaskStatus.REJECTED, reason: trimmedReason },
       occurredAt: now,
     });
     return { taskId, claimId, status: TaskStatus.REJECTED, rejectReason: trimmedReason };
@@ -1101,7 +1127,7 @@ export class TaskCoordinationService {
         requireManagerRole: false,
         enforceSelfAcceptance: false,
       });
-      return this.acceptTaskCore(db, principalId, taskId, claim.claimId);
+      return this.acceptTaskCore(db, principalId, taskId, claim.claimId, "operator");
     });
   }
 
@@ -1111,7 +1137,7 @@ export class TaskCoordinationService {
         requireManagerRole: false,
         enforceSelfAcceptance: false,
       });
-      return this.rejectTaskCore(db, principalId, taskId, claim.claimId, reason);
+      return this.rejectTaskCore(db, principalId, taskId, claim.claimId, reason, "operator");
     });
   }
 
@@ -1120,6 +1146,7 @@ export class TaskCoordinationService {
     principalId: string,
     taskId: string,
     reason: string,
+    actorRole: ActivityActorRole,
   ) {
     const task = await this.getTask(db, taskId);
     if (task.status !== TaskStatus.TODO && task.status !== TaskStatus.DOING) {
@@ -1154,7 +1181,7 @@ export class TaskCoordinationService {
       entityId: taskId,
       principalId,
       claimId: claim?.id ?? null,
-      payload: { fromStatus: task.status, toStatus: TaskStatus.CANCELED, reason: trimmedReason },
+      payload: { actorRole, fromStatus: task.status, toStatus: TaskStatus.CANCELED, reason: trimmedReason },
       occurredAt: now,
     });
     return { taskId, status: TaskStatus.CANCELED, reason: trimmedReason };
@@ -1165,14 +1192,14 @@ export class TaskCoordinationService {
       this.withReceipt(db, principalId, "cancel_task", requestId, { taskId, reason }, async () => {
         const task = await this.getTask(db, taskId);
         await this.requireRole(db, task.project_id, principalId, ProjectRole.MANAGER);
-        return this.cancelTaskCore(db, principalId, taskId, reason);
+        return this.cancelTaskCore(db, principalId, taskId, reason, "manager");
       }),
     );
   }
 
   async cancelTaskAsOperator(principalId: string, taskId: string, reason: string) {
     return DatabaseClient.transaction().execute((db) =>
-      this.cancelTaskCore(db, principalId, taskId, reason),
+      this.cancelTaskCore(db, principalId, taskId, reason, "operator"),
     );
   }
 
@@ -1183,7 +1210,7 @@ export class TaskCoordinationService {
   ) {
     return DatabaseClient.transaction().execute(async (db) =>
       this.withReceipt(db, principalId, "issue_task", requestId, input, async () => {
-        await this.requireOneOfRoles(db, input.projectId, principalId, [
+        const actorRole = await this.requireOneOfRoles(db, input.projectId, principalId, [
           ProjectRole.MANAGER,
           ProjectRole.REVIEWER,
           ProjectRole.WORKER,
@@ -1230,7 +1257,7 @@ export class TaskCoordinationService {
           type: "TASK_CREATED",
           entityId: id,
           principalId,
-          payload: { status: TaskStatus.TODO, storyId: input.storyId ?? null },
+          payload: { actorRole, status: TaskStatus.TODO, storyId: input.storyId ?? null },
           occurredAt: now,
         });
         return {
@@ -1328,7 +1355,7 @@ export class TaskCoordinationService {
           type: "STORY_CREATED",
           entityId: id,
           principalId,
-          payload: { status: StoryStatus.TODO },
+          payload: { actorRole: "manager", status: StoryStatus.TODO },
           occurredAt: now,
         });
         return {
@@ -1423,7 +1450,7 @@ export class TaskCoordinationService {
           type: "STORY_COMPLETED",
           entityId: storyId,
           principalId,
-          payload: { fromStatus: StoryStatus.DOING, toStatus: StoryStatus.DONE },
+          payload: { actorRole: "manager", fromStatus: StoryStatus.DOING, toStatus: StoryStatus.DONE },
           occurredAt: now,
         });
         return { storyId, status: StoryStatus.DONE };
@@ -1455,7 +1482,7 @@ export class TaskCoordinationService {
           type: "STORY_CANCELED",
           entityId: storyId,
           principalId,
-          payload: { fromStatus: StoryStatus.DOING, toStatus: StoryStatus.CANCELED, reason: trimmedReason },
+          payload: { actorRole: "manager", fromStatus: StoryStatus.DOING, toStatus: StoryStatus.CANCELED, reason: trimmedReason },
           occurredAt: now,
         });
         return { storyId, status: StoryStatus.CANCELED, reason: trimmedReason };

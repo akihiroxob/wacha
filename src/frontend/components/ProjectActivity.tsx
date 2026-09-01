@@ -50,6 +50,84 @@ const changeLabels: Record<string, string> = {
   STORY_CANCELED: "Storyをキャンセルしました",
 };
 
+const changeMarkerClasses: Record<string, string> = {
+  TASK_CREATED: "bg-blue-500 ring-blue-50",
+  STORY_CREATED: "bg-blue-500 ring-blue-50",
+  TASK_CLAIMED: "bg-blue-500 ring-blue-50",
+  STORY_STARTED: "bg-blue-500 ring-blue-50",
+  TASK_MIGRATED: "bg-blue-500 ring-blue-50",
+  TASK_COMPLETED: "bg-purple-500 ring-purple-50",
+  TASK_REVIEWED: "bg-purple-500 ring-purple-50",
+  TASK_ACCEPTED: "bg-green-500 ring-green-50",
+  STORY_COMPLETED: "bg-green-500 ring-green-50",
+  TASK_REJECTED: "bg-orange-500 ring-orange-50",
+  CLAIM_EXPIRED: "bg-orange-500 ring-orange-50",
+  CLAIM_RELEASED: "bg-orange-500 ring-orange-50",
+  TASK_CANCELED: "bg-orange-500 ring-orange-50",
+  STORY_CANCELED: "bg-orange-500 ring-orange-50",
+};
+
+type ActivityActorRole = "worker" | "reviewer" | "manager" | "operator" | "system" | "unknown";
+
+const actorRoleLabels: Record<ActivityActorRole, string> = {
+  worker: "Worker",
+  reviewer: "Reviewer",
+  manager: "Manager",
+  operator: "Web UI",
+  system: "System",
+  unknown: "Role不明",
+};
+
+const actorRoleClasses: Record<ActivityActorRole, string> = {
+  worker: "bg-blue-50 text-blue-700 ring-blue-200",
+  reviewer: "bg-purple-50 text-purple-700 ring-purple-200",
+  manager: "bg-green-50 text-green-700 ring-green-200",
+  operator: "bg-stone-100 text-stone-700 ring-stone-200",
+  system: "bg-stone-100 text-stone-600 ring-stone-200",
+  unknown: "bg-stone-50 text-stone-500 ring-stone-200",
+};
+
+const actorRoleForChange = (change: ProjectChangeDto): ActivityActorRole => {
+  const storedRole = change.payload.actorRole;
+  if (
+    storedRole === "worker" ||
+    storedRole === "reviewer" ||
+    storedRole === "manager" ||
+    storedRole === "operator" ||
+    storedRole === "system"
+  ) {
+    return storedRole;
+  }
+  if (change.principalId === "system:web-ui") return "operator";
+  if (change.type === "TASK_MIGRATED") return "system";
+  if (change.type === "STORY_STARTED" || change.type === "TASK_COMPLETED") return "worker";
+  if (change.type === "TASK_REVIEWED") return "reviewer";
+  if (
+    change.type === "STORY_CREATED" ||
+    change.type === "STORY_COMPLETED" ||
+    change.type === "STORY_CANCELED" ||
+    change.type === "TASK_ACCEPTED" ||
+    change.type === "TASK_CANCELED"
+  ) {
+    return "manager";
+  }
+  if (change.type === "TASK_CLAIMED") {
+    if (change.payload.claimCommand === "claim_task") return "worker";
+    if (change.payload.claimCommand === "claim_review") return "reviewer";
+    if (change.payload.claimCommand === "claim_acceptance") return "manager";
+  }
+  if (change.type === "TASK_REJECTED") {
+    if (change.payload.fromStatus === "in_review") return "reviewer";
+    if (change.payload.fromStatus === "wait_accept") return "manager";
+  }
+  if (change.type === "CLAIM_RELEASED") {
+    if (change.payload.taskStatus === "todo" || change.payload.taskStatus === "doing") return "worker";
+    if (change.payload.taskStatus === "in_review") return "reviewer";
+    if (change.payload.taskStatus === "wait_accept") return "manager";
+  }
+  return "unknown";
+};
+
 const payloadText = (change: ProjectChangeDto) => {
   const { fromStatus, toStatus, reason } = change.payload;
   const parts: string[] = [];
@@ -138,15 +216,29 @@ const ActivityLogItem = ({
   onOpenTask: (taskId: string) => void;
 }) => {
   const details = payloadText(change);
+  const actorRole = actorRoleForChange(change);
   const content = (
     <>
-      <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-blue-500 ring-4 ring-blue-50" />
+      <span
+        className={clsx(
+          "mt-1 h-2.5 w-2.5 shrink-0 rounded-full ring-4",
+          changeMarkerClasses[change.type] ?? "bg-blue-500 ring-blue-50",
+        )}
+      />
       <span className="min-w-0 flex-1">
         <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <span className="text-sm font-medium text-stone-900">
             {changeLabels[change.type] ?? change.type}
           </span>
           <code className="text-xs text-stone-500">{change.principalId}</code>
+          <span
+            className={clsx(
+              "rounded-full px-2 py-0.5 text-[0.6875rem] font-medium ring-1 ring-inset",
+              actorRoleClasses[actorRole],
+            )}
+          >
+            {actorRoleLabels[actorRole]}
+          </span>
         </span>
         <span className="mt-1 block truncate text-sm text-stone-600">
           {change.entityTitle ?? change.entityId}

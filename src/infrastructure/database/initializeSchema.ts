@@ -203,6 +203,7 @@ export function initializeSchema(): Promise<void> {
                 principal_id: "system:migration",
                 claim_id: null,
                 payload: JSON.stringify({
+                  actorRole: "system",
                   fromStatus: "doing",
                   toStatus: "todo",
                   reason: "legacy_session_ownership_removed",

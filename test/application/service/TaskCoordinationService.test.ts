@@ -98,6 +98,10 @@ test("worker, reviewer, and manager complete the guarded Claim lifecycle", async
     changes.changes.map((change) => change.type),
     ["TASK_CLAIMED", "TASK_COMPLETED", "TASK_CLAIMED", "TASK_REVIEWED", "TASK_CLAIMED", "TASK_ACCEPTED"],
   );
+  assert.deepEqual(
+    changes.changes.map((change) => change.payload.actorRole),
+    ["worker", "worker", "reviewer", "reviewer", "manager", "manager"],
+  );
 });
 
 test("expired doing Claim is available for work and is atomically replaced", async () => {
@@ -365,6 +369,11 @@ test("worker and reviewer can create technical follow-up Tasks", async () => {
 
   assert.equal(workerTask.status, TaskStatus.TODO);
   assert.equal(reviewerTask.status, TaskStatus.TODO);
+  const changes = await service.listChanges("reviewer-a", project.id);
+  assert.deepEqual(
+    changes.changes.map((change) => change.payload.actorRole),
+    ["worker", "reviewer"],
+  );
 });
 
 test("accepting the final Story Task appends STORY_COMPLETED", async () => {

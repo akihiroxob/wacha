@@ -650,11 +650,14 @@ TASK_REJECTED
 TASK_CANCELED
 ```
 
+各イベントのpayloadは、実行時の権限を示す `actorRole`（`worker` / `reviewer` / `manager` / `operator` / `system`）を記録する。Principalが複数Roleを持つ場合も、実行を認可したRoleを記録する。`operator` はtrusted-local Web UI操作を表し、Project Roleではない。移行前のChange Logには `actorRole` がない場合がある。
+
 `TASK_CLAIMED` records the claim command and status transition in its payload. A direct Manager review is therefore distinguishable without storing a Claim phase.
 
 ```json
 {
   "type": "TASK_CLAIMED",
+  "actorRole": "manager",
   "claimCommand": "claim_acceptance",
   "fromStatus": "in_review",
   "toStatus": "wait_accept",
