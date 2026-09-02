@@ -11,7 +11,15 @@ export const formatRelativeTime = (timestamp: number, now = Date.now()): string 
 };
 
 export const formatAbsoluteTime = (timestamp: number): string =>
-  new Date(timestamp).toLocaleString();
+  new Intl.DateTimeFormat("ja-JP", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(new Date(timestamp));
 
 // heartbeat がこの間隔以内なら「接続中」とみなす
 export const HEARTBEAT_FRESH_MS = 2 * 60 * 1000;

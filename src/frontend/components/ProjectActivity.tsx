@@ -79,12 +79,12 @@ const actorRoleLabels: Record<ActivityActorRole, string> = {
 };
 
 const actorRoleClasses: Record<ActivityActorRole, string> = {
-  worker: "bg-blue-50 text-blue-700 ring-blue-200",
-  reviewer: "bg-purple-50 text-purple-700 ring-purple-200",
-  manager: "bg-green-50 text-green-700 ring-green-200",
-  operator: "bg-stone-100 text-stone-700 ring-stone-200",
-  system: "bg-stone-100 text-stone-600 ring-stone-200",
-  unknown: "bg-stone-50 text-stone-500 ring-stone-200",
+  worker: "bg-blue-100 text-blue-800",
+  reviewer: "bg-purple-100 text-purple-800",
+  manager: "bg-green-100 text-green-800",
+  operator: "bg-stone-200 text-stone-800",
+  system: "bg-stone-200 text-stone-700",
+  unknown: "bg-stone-100 text-stone-600",
 };
 
 const actorRoleForChange = (change: ProjectChangeDto): ActivityActorRole => {
@@ -230,14 +230,16 @@ const ActivityLogItem = ({
           <span className="text-sm font-medium text-stone-900">
             {changeLabels[change.type] ?? change.type}
           </span>
-          <code className="text-xs text-stone-500">{change.principalId}</code>
           <span
-            className={clsx(
-              "rounded-full px-2 py-0.5 text-[0.6875rem] font-medium ring-1 ring-inset",
-              actorRoleClasses[actorRole],
-            )}
+            className="inline-flex overflow-hidden rounded-md border border-stone-200 bg-white text-[0.6875rem]"
+            title={`Role: ${actorRoleLabels[actorRole]} / Principal: ${change.principalId}`}
           >
-            {actorRoleLabels[actorRole]}
+            <span className={clsx("px-2 py-0.5 font-semibold", actorRoleClasses[actorRole])}>
+              {actorRoleLabels[actorRole]}
+            </span>
+            <code className="border-l border-stone-200 px-2 py-0.5 font-medium text-stone-700">
+              {change.principalId}
+            </code>
           </span>
         </span>
         <span className="mt-1 block truncate text-sm text-stone-600">
@@ -246,11 +248,10 @@ const ActivityLogItem = ({
         {details && <span className="mt-1 block text-xs text-stone-400">{details}</span>}
       </span>
       <time
-        className="shrink-0 text-xs text-stone-400"
+        className="shrink-0 whitespace-nowrap text-xs text-stone-400"
         dateTime={new Date(change.occurredAt).toISOString()}
-        title={formatAbsoluteTime(change.occurredAt)}
       >
-        {formatRelativeTime(change.occurredAt)}
+        {formatAbsoluteTime(change.occurredAt)}
       </time>
     </>
   );
