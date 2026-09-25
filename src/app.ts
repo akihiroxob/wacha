@@ -10,6 +10,7 @@ import PageCtrl from "@controller/PageController.ts";
 import { ValidationError } from "@application/error/ValidationError.ts";
 import { NotFoundError } from "@application/error/NotFoundError.ts";
 import { toMcpErrorResponse } from "@mcp/utils/toMcpErrorResponse.ts";
+import { logError } from "./infrastructure/logging/ApplicationLogger.ts";
 
 export const createApp = () => {
   const app = new Hono();
@@ -116,14 +117,21 @@ export const createApp = () => {
 
   // app error handling
   app.onError((err, c) => {
-    console.error("Unexpected error:", err);
-    if (c.req.path.startsWith("/api")) {
-      const status =
-        err instanceof ValidationError
-          ? 400
-          : err instanceof NotFoundError
-            ? 404
-            : 500;
+    const isApiRequest = c.req.path.startsWith("/api");
+    const status = isApiRequest
+      ? err instanceof ValidationError
+        ? 400
+        : err instanceof NotFoundError
+          ? 404
+          : 500
+      : toMcpErrorResponse(err).status;
+
+    logError("request_error", err, {
+      method: c.req.method,
+      path: c.req.path,
+      status,
+    });
+    if (isApiRequest) {
       const message =
         err instanceof Error ? err.message : "Internal Server Error";
       return c.json({ error: { message } }, status);

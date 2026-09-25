@@ -19,3 +19,11 @@ test("FileKnowledgeRepository.getKnowledge returns undefined for missing files",
 
   assert.equal(knowledge, undefined);
 });
+
+test("FileKnowledgeRepository.getKnowledge returns acceptance guidance", async () => {
+  const knowledge = await repository.getKnowledge("tips/acceptance.md");
+
+  assert.ok(knowledge instanceof Knowledge);
+  assert.match(knowledge?.content ?? "", /システム全体の整合性/);
+  assert.match(knowledge?.content ?? "", /Projectの.*AGENTS\.md.*設計資料/);
+});

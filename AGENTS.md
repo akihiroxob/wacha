@@ -70,9 +70,11 @@ Agent が Task を選び、Wacha が Claim と状態遷移の正当性を検証�
 
 ### Manager
 
-1. `list_tasks` を `availableFor: "acceptance"` で読む
-2. Task を選び `claim_acceptance` を呼ぶ
-3. `accept_task` または `reject_task` を呼ぶ
+1. `get_skill_context({ name: "accept-task" })` で最終受入のSkillとKnowledgeをJIT取得する
+2. 取得した手順に従い、Task単体の充足とProject全体の整合性を分けて検証する
+3. `claim_acceptance` の取得後、要件を満たす場合だけ `accept_task`、不足があれば具体的な再受入条件を付けて `reject_task` を呼ぶ
+
+最終受入の詳細は `skill/accept-task.md` と、それが要求する `knowledge/tips/acceptance.md` を正とする。Project固有のアーキテクチャはWachaへ固定せず、対象Projectの`AGENTS.md`と設計資料から取得する。
 
 `claim_acceptance` の対象が `in_review` の場合は、Manager が Reviewer 工程を代行したものとして、Claim 取得と同じトランザクションで `wait_accept` へ進む。Change Log には `manager_direct_review` 経路が残る。
 

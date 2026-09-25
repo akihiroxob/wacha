@@ -23,6 +23,18 @@ test("FileSkillRepository.findByName returns parsed skill metadata", async () =>
   assert.deepEqual(skill.allowRoles, ["worker"]);
 });
 
+test("FileSkillRepository.findByName returns manager acceptance skill", async () => {
+  const skill = await repository.findByName("accept-task");
+
+  assert.ok(skill);
+  assert.equal(skill.status, SkillStatus.ACTIVE);
+  assert.deepEqual(skill.allowRoles, ["manager"]);
+  assert.ok(skill.requiredKnowledge.includes("tips/acceptance.md"));
+  assert.ok(skill.requiredTools.includes("claim_acceptance"));
+  assert.ok(skill.requiredTools.includes("accept_task"));
+  assert.ok(skill.requiredTools.includes("reject_task"));
+});
+
 test("active Skill requiredTools are available to every allowed Role", async () => {
   const common = [
     "list_projects",

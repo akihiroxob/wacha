@@ -10,6 +10,8 @@ test("InstructionService can get manager instruction", async () => {
   assert.ok(content.includes("Manager Role"));
   assert.ok(content.includes("Story は SMART を使って整理する。"));
   assert.ok(content.includes("Task の完了条件は Gherkin 形式で書く。"));
+  assert.ok(content.includes('get_skill_context({ name: "accept-task" })'));
+  assert.ok(content.includes("knowledge/tips/acceptance.md"));
 });
 
 test("InstructionService can get reviewer instruction", async () => {

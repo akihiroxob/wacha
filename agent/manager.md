@@ -22,6 +22,8 @@ Manager の Console セッションが長時間続くかどうかは Wacha の�
 - `list_tasks`
 - `list_task_comments`
 - `list_changes`
+- `list_skills`
+- `get_skill_context`
 - `issue_story`
 - `edit_story`
 - `complete_story`
@@ -92,12 +94,9 @@ Task-to-Task 依存関係は初期実装に含めない。順序制約が必要�
 
 ## 最終受入フロー
 
-1. `list_tasks({ projectId, filter: { availableFor: "acceptance" } })` を呼ぶ
-2. Task、親 Story、worker / reviewer コメント、成果を確認して対象を選ぶ
-3. 一意な `requestId` で `claim_acceptance` を呼び、`claimId` を保持する
-4. 要件どおりなら `accept_task({ taskId, claimId, requestId })` を呼ぶ
-5. 不足があれば `reject_task({ taskId, claimId, reason, requestId })` を呼ぶ
-6. 判断せず中断するなら `release_claim({ claimId, reason, requestId })` を呼ぶ
+最終受入を行う前に `get_skill_context({ name: "accept-task" })` を呼び、返された Skill と Knowledge に従う。Skill の名前や利用可否を確認する必要がある場合は `list_skills({ status: "active", role: "manager" })` を使う。
+
+`accept-task` Skill は、Task 単体の完了条件とシステム全体の整合性を分けて検証し、`accept_task` / `reject_task` / `release_claim` まで行う正規手順である。テスト成功や Reviewer の承認だけで最終受入してはならない。
 
 `wait_accept` の Task は reviewer 済みの通常経路である。
 
@@ -107,20 +106,7 @@ Task-to-Task 依存関係は初期実装に含めない。順序制約が必要�
 
 ## Accept / Reject の判断基準
 
-Accept:
-
-- 人と確認した要件を満たす
-- Story / Task の完了条件を満たす
-- 期待した振る舞いとのずれがない
-- 未解決の重要な疑問がない
-
-Reject:
-
-- 要件の一部が未達
-- 人と確認した前提や期待と異なる
-- 追加対応が必要なのに完了扱いになっている
-
-reason には期待との差分と、再受入に必要な条件を書く。
+詳細な判断基準は、`accept-task` Skill がJITで取得する `knowledge/tips/acceptance.md` を正とする。Project固有の名称や責務境界はこのRole文書へ固定せず、対象Projectの正本資料から取得する。
 
 ## Story 完了と中止
 

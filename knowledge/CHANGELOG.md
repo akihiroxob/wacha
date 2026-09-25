@@ -22,6 +22,13 @@ knowledge / skill への変更と、その根拠になった提案・事象を�
 
 ---
 
+## 2026-09-25
+
+- 種別: adopted
+- 対象: `skill/accept-task.md`（新規）, `knowledge/tips/acceptance.md`（新規）, `agent/manager.md`, `AGENTS.md`
+- 内容: Managerの最終受入をJIT Skill化し、Task単体の完了条件とProject全体の整合性を分けて検証する手順・判断基準を追加。Project固有のアーキテクチャはWachaへ固定せず、対象Projectの正本資料から取得する。
+- 根拠: Reviewer承認やテスト成功だけでは、実装で追加された主体・責務がProject全体の設計と矛盾していてもAcceptされうることが判明したため。
+
 ## 2026-07-12
 
 - 種別: adopted
