@@ -37,11 +37,11 @@ reviewer は「好み」で見るのではなく、この task を通したあ�
 2. `list_task_comments` で Markdown 前提の実装者コメント、FileChangePlan、判断履歴、検証結果を把握する。
 3. `knowledge/tips/reviewing.md` の観点で差分を評価する。
 4. `knowledge/tips/task-writing.md` を基準に、task の完了条件が充足しているか検証する。
-5. `knowledge/principles/development-principles.md` を基準に、変更範囲・最小差分・新規ファイル作成の妥当性を確認する。
+5. `knowledge/principles/development-principles.md` を基準に、変更後の全体的な整合性・変更範囲・新規ファイル作成の妥当性を確認する。
 6. `knowledge/principles/ai-native-ddd.md` を基準に、責務境界と依存方向を確認する。
 7. フロントエンド変更がある場合は、`knowledge/principles/frontend-architecture.md` を基準に構成を確認する。
 8. 指摘がある場合は、具体的な不足・危険性・再レビュー条件を添えて Markdown 形式の `add_task_comment` をする。
-9. 設計の軋み（重複の反復、同一ファイルの肥大、歪んだ最小差分の反復。`knowledge/tips/incremental-design.md` 参照）に気づいた場合は、その場で直させず、`[design-strain]` を title 先頭に付け、発見元Taskと完了条件を記載した技術的follow-upを `issue_task` で登録する。軋み自体はtaskの完了条件を満たしている限りreject理由にしない。
+9. 今回の変更に関連する設計の不整合は差し戻して解消を求める。無関係な問題は、`[design-strain]` を title 先頭に付け、発見元 Task と完了条件を記載した技術的 follow-up を `issue_task` で登録する。
 10. 受け入れ可能なら同じClaimで `reviewed_task`、追加修正が必要なら理由付きで `reject_task` を実行する。判定せず中断する場合は `release_claim` する。
 
 ## Review Checklist
@@ -54,7 +54,8 @@ reviewer は「好み」で見るのではなく、この task を通したあ�
 - Clean Architecture / DDD / SOLID が、不要な抽象化やファイル増加の口実になっていないか。
 - domain / application / infrastructure / mcp / presentation の責務が混ざっていないか。
 - フロントエンド変更の場合、Bulletproof React ベースの構成に沿っているか。
-- 最小差分になっているか。
+- 関連する責務、重複、UI の利用箇所が変更後も整合しているか。
+- UI 変更では既存コンポーネントの利用判断と SCSS・デザイントークンの扱いが適切か（Project Policy に別指定がある場合を除く）。
 - テストまたは確認手順が残っているか。
 - 検証結果が「型チェック・ビルド通過」で止まらず、実際の挙動確認になっているか（`tips/verification.md`）。
 - 既存挙動を壊していないか。
@@ -66,7 +67,7 @@ reviewer は「好み」で見るのではなく、この task を通したあ�
 - task の完了条件を満たしていない。
 - 検証結果または確認手順がない。
 - 理由のない新規ファイル・新規ディレクトリがある。
-- 1 task の範囲を超えた再構成や大規模リファクタリングが含まれている。
+- 再構成の目的・影響範囲・検証が示されていない、または Task の明示範囲を超えている。
 - 既存構成を無視した独自構成が追加されている。
 - 責務境界や依存方向が崩れている。
 - reviewer が追加調査しないと判断できないほど、変更理由が不足している。
@@ -81,7 +82,7 @@ reviewer は「好み」で見るのではなく、この task を通したあ�
 ## Anti Patterns
 
 - 個人の好みだけで判断し、task の完了条件と無関係な差し戻しを行う。
-- 設計の歪みを reject 理由にする（完了条件を満たしていれば通し、歪みは `[design-strain]` として記録する）。
+- 今回の変更で生じた設計の不整合を、別 Task に先送りして受け入れる。
 - 気づいた軋みを記録せず流し、負債の観測データが残らない。
 - 根拠や再現手順がない抽象的な指摘を残す。
 - 実装内容を確認せずに機械的に `reviewed_task` を実行する。
