@@ -2,7 +2,7 @@
 
 ## 目的
 
-この文書は、フロントエンド開発における構成判断を安定させるための原則をまとめる。
+この文書は、React によるフロントエンド開発における構成判断を安定させるための推奨をまとめる。適用条件と Project 方針との優先関係は `knowledge/principles/project-defaults.md` に従う。
 
 基本方針は Bulletproof React を参考にする。
 
@@ -13,13 +13,13 @@
 - UI の実装前に既存の React コンポーネントとスタイルを確認し、再利用・拡張・新規作成を判断する
 - 画面固有の重複を避け、共通の修正が利用箇所へ反映される再利用可能な単位でコンポーネントを作る
 - 必要に応じてデザインシステムを整備する。少なくとも、共通コンポーネントとデザイントークンを一元管理する
-- スタイルは SCSS（Sass）を基本とし、Tailwind CSS を新たな UI の実装方針として採用しない
-- Project Policy に明示的な指定がある場合はそれを優先する
+- 方針未定の新規 Project では SCSS（Sass）を基本とし、Tailwind CSS を新たな UI の実装方針として採用しない
+- Project の方針と既存の一貫したスタイル構成を優先する
 - ルーティングと画面合成は app 側に寄せる
 - 機能固有の UI・hooks・logic は feature に閉じる
 - 汎用 UI は shared / components 側に置く
 - 汎用 utility は lib / utils 側に置く
-- project 固有の実際のディレクトリ名は、その project の docs/ を優先する
+- Project 固有の実際のディレクトリ名は、その Project の `AGENTS.md`・設計資料・既存コードを優先する
 
 ## 推奨構成
 
@@ -145,10 +145,10 @@ Bulletproof React は、構成の参考であって絶対ルールではない�
 
 優先順位は次の通り。
 
-1. 明示された Project Policy と要件
-2. project の正本となる docs/
-3. この文書の原則
-4. 既存コードの構成
+1. 明示された要件と制約
+2. Project の `AGENTS.md` と正本となる設計資料
+3. 既存コードの一貫した構成
+4. この文書の推奨構成
 5. Bulletproof React の一般的な考え方
 
 ## 避けること

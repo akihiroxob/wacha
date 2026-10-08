@@ -2,9 +2,10 @@
 name: implement-task
 description: 割り当てられた task を、既存構成・設計原則・実装品質を守りながらレビュー可能な状態まで実装する。
 status: active
-version: 6
+version: 7
 allowRoles: [worker]
 requiredKnowledge:
+  - principles/project-defaults.md
   - principles/development-principles.md
   - principles/ai-native-ddd.md
   - principles/frontend-architecture.md
@@ -33,18 +34,19 @@ requiredTools:
 
 1. `list_tasks` で対象 task の最新状態を確認し、`claim_task` で担当を確定する。
 2. task の完了条件を `knowledge/tips/task-writing.md` に照らして再確認する。
-3. `knowledge/principles/development-principles.md` を読み、変更範囲・全体の整合性・新規ファイルの判断基準を確認する。
-4. `knowledge/principles/ai-native-ddd.md` を読み、domain / application / infrastructure / mcp / presentation の責務境界を確認する。
-5. フロントエンドを変更する場合は、必ず `knowledge/principles/frontend-architecture.md` を確認する。
-6. 既存の類似ファイル・類似ディレクトリ・類似コンポーネントを探し、再利用可否を判断する。
-7. フロントエンドを変更する場合は、`components` `features` `app` 配下の類似画面・類似要素を最低 1 回探索する。
-8. 実装前に FileChangePlan を作成し、再利用候補・採用可否・採用しない理由を必ず残す。非自明な変更では Markdown 形式の `add_task_comment` で共有する。
-9. FileChangePlan で関連領域の責務・重複・利用箇所を確認する。必要な構造変更を計画に含め、Task の明示範囲を超える場合は manager に調整を提案する。
-10. FileChangePlan に沿って、変更後の全体的な整合性を保ちながら実装・テスト・リファクタリングを行う。
-11. `knowledge/tips/verification.md` に従って検証を行い、実行内容と実際の結果を確認する。
-12. `knowledge/tips/self-review.md` に従い、`complete_task` の前に reviewer の視点で自分の差分をセルフレビューする。
-13. 実施内容・判断理由・再利用判断・検証結果・セルフレビューで気づいた点・未解決事項を Markdown 形式の `add_task_comment` で共有する。
-14. レビュー可能と判断したら `complete_task` で `in_review` に進める。
+3. 対象 Project の `AGENTS.md`・設計資料・既存構成を確認し、`knowledge/principles/project-defaults.md` の適用範囲と優先関係に従う。
+4. `knowledge/principles/development-principles.md` を読み、変更範囲・全体の整合性・新規ファイルの判断基準を確認する。
+5. `knowledge/principles/ai-native-ddd.md` を読み、対象 Project に適用される責務境界を確認する。
+6. React のフロントエンドを変更する場合は、`knowledge/principles/frontend-architecture.md` を確認する。
+7. 既存の類似ファイル・類似ディレクトリ・類似コンポーネントを探し、再利用可否を判断する。
+8. フロントエンドを変更する場合は、Project の実際の配置先にある類似画面・類似要素を探索する。
+9. 実装前に FileChangePlan を作成し、再利用候補・採用可否・採用しない理由を必ず残す。非自明な変更では Markdown 形式の `add_task_comment` で共有する。
+10. FileChangePlan で関連領域の責務・重複・利用箇所を確認する。必要な構造変更を計画に含め、Task の明示範囲を超える場合は manager に調整を提案する。
+11. FileChangePlan に沿って、変更後の全体的な整合性を保ちながら実装・テスト・リファクタリングを行う。
+12. `knowledge/tips/verification.md` に従って検証を行い、実行内容と実際の結果を確認する。
+13. `knowledge/tips/self-review.md` に従い、`complete_task` の前に reviewer の視点で自分の差分をセルフレビューする。
+14. 実施内容・判断理由・再利用判断・検証結果・セルフレビューで気づいた点・未解決事項を Markdown 形式の `add_task_comment` で共有する。
+15. レビュー可能と判断したら `complete_task` で `in_review` に進める。
 
 ## FileChangePlan
 
@@ -85,9 +87,9 @@ requiredTools:
 - 新規ファイル・新規ディレクトリは、変更後の責務と再利用性に必要な範囲で作る。
 - 新規ファイルを作る場合は、理由と配置根拠を説明できる状態にする。
 - 新規ファイルや新規 component を作る場合は、既存ファイルで代替できない理由を明示する。
-- フロントエンドでは `components` `features` `app` を探索せずに新規 UI を作らない。
+- フロントエンドでは Project の実際の配置先にある類似実装を探索せずに新規 UI を作らない。
 - 同種 UI がある場合は共通化可否を判断する。新規 UI もコンポーネント化の必要性を実装前に検討する。
-- UI のスタイルは、Project Policy に別の指定がない限り SCSS と共有デザイントークンを用いる。
+- 新規 React UI では、Project の指定や既存の一貫した構成がない場合、SCSS と共有デザイントークンを用いる。
 - 複数ファイルにまたがる変更では、実装前に `add_task_comment` で FileChangePlan を共有する。
 - コメント本文は Markdown 前提で書いてよいが、厳密な Markdown 構文検証に合わせる必要はない。
 - 要件の実現に必要なアーキテクチャ再構成・大規模リファクタリングは、根拠、影響範囲、検証方法を明確にして行う。

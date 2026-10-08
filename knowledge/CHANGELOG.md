@@ -22,6 +22,13 @@ knowledge / skill への変更と、その根拠になった提案・事象を�
 
 ---
 
+## 2026-10-08
+
+- 種別: adopted
+- 対象: `knowledge/principles/project-defaults.md`（新規）, `knowledge/principles/frontend-architecture.md`, `skill/implement-task.md`（v7）, `skill/review-task.md`（v6）
+- 内容: 方針未定の Project に向けて言語・Web UI・API・スタイル・配置の推奨構成を定義。Project 固有の方針と既存構成を優先し、未指定の部分だけに推奨を適用する手順を実装・レビュー Skill に追加。
+- 根拠: 新規 Project に人と agent が共有できる出発点を提供しつつ、Project 固有の設計を尊重したいという依頼（2026-10-08）。
+
 ## 2026-09-25
 
 - 種別: adopted
