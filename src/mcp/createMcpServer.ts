@@ -124,6 +124,15 @@ export const createMcpServer = (principalId: string) => {
         taskCoordinationService.listTaskComments(principalId, taskId),
       ),
   );
+  server.registerTool("list_task_pull_requests", {
+    title: "List Task Pull Requests", description: "List PR history and verified SHAs for a granted Task.",
+    inputSchema: { taskId: z.string().min(1) },
+  }, ({ taskId }) => execute(() => taskCoordinationService.listTaskPullRequests(principalId, taskId)));
+  server.registerTool("register_task_pull_request", {
+    title: "Register Task Pull Request", description: "Verify and attach an open GitHub PR under the current Work Claim.",
+    inputSchema: { taskId: z.string().min(1), claimId: claimIdSchema, number: z.number().int().positive(), requestId: requestIdSchema },
+  }, ({ taskId, claimId, number, requestId }) => execute(() =>
+    taskCoordinationService.registerTaskPullRequest(principalId, taskId, claimId, number, requestId)));
   server.registerTool(
     "list_changes",
     {
@@ -400,15 +409,19 @@ export const createMcpServer = (principalId: string) => {
         taskId: z.string().min(1),
         claimId: claimIdSchema,
         requestId: requestIdSchema,
+        expectedHeadSha: z.string().regex(/^[a-f0-9]{40}$/).optional(),
+        reviewCommentId: z.number().int().positive().optional(),
       },
     },
-    ({ taskId, claimId, requestId }) =>
+    ({ taskId, claimId, requestId, expectedHeadSha, reviewCommentId }) =>
       execute(() =>
         taskCoordinationService.reviewedTask(
           principalId,
           taskId,
           claimId,
           requestId,
+          expectedHeadSha,
+          reviewCommentId,
         ),
       ),
   );
@@ -422,15 +435,17 @@ export const createMcpServer = (principalId: string) => {
         taskId: z.string().min(1),
         claimId: claimIdSchema,
         requestId: requestIdSchema,
+        verification: z.object({ mergeSha: z.string().regex(/^[a-f0-9]{40}$/), evidence: z.string().trim().min(1) }).optional(),
       },
     },
-    ({ taskId, claimId, requestId }) =>
+    ({ taskId, claimId, requestId, verification }) =>
       execute(() =>
         taskCoordinationService.acceptTask(
           principalId,
           taskId,
           claimId,
           requestId,
+          verification,
         ),
       ),
   );

@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
+  AcceptanceVerificationDto,
+  RepositoryWorkflowDto,
   CommentInput,
   CreateStoryResponse,
   MoveStoryInput,
@@ -120,10 +122,16 @@ export const useDeleteTask = (projectId: string) => {
 export const useAcceptTask = (projectId: string) => {
   const invalidate = useInvalidateProject(projectId);
   return useMutation({
-    mutationFn: (taskId: string) =>
-      apiPost<OkResponse>(`/api/projects/${projectId}/tasks/${taskId}/accept`, {}),
+    mutationFn: ({ taskId, verification }: { taskId: string; verification?: AcceptanceVerificationDto }) =>
+      apiPost<OkResponse>(`/api/projects/${projectId}/tasks/${taskId}/accept`, verification ?? {}),
     onSuccess: invalidate,
   });
+};
+
+export const useConfigureWorkflow = (projectId: string) => {
+  const invalidate = useInvalidateProject(projectId);
+  return useMutation({ mutationFn: (workflow: RepositoryWorkflowDto | null) =>
+    apiPut(`/api/projects/${projectId}/workflow`, { workflow }), onSuccess: invalidate });
 };
 
 export const useRejectTask = (projectId: string) => {

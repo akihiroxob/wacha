@@ -2,18 +2,22 @@
 name: implement-task
 description: 割り当てられた task を、既存構成・設計原則・実装品質を守りながらレビュー可能な状態まで実装する。
 status: active
-version: 7
+version: 9
 allowRoles: [worker]
 requiredKnowledge:
+  - tips/github-workflow.md
   - principles/project-defaults.md
   - principles/development-principles.md
   - principles/ai-native-ddd.md
   - principles/frontend-architecture.md
+  - tips/frontend-quality-gates.md
   - tips/task-writing.md
   - tips/verification.md
   - tips/self-review.md
   - tips/incremental-design.md
 requiredTools:
+  - register_task_pull_request
+  - list_task_pull_requests
   - list_tasks
   - claim_task
   - add_task_comment
@@ -30,10 +34,14 @@ requiredTools:
 
 この Skill の目的は、要件を満たす変更のたびに関連領域の設計を整え、後続の reviewer / manager が判断できる実装と記録を残すことである。
 
+## GitHub Workflow
+
+Projectに `workflow` が設定されている場合は `knowledge/tips/github-workflow.md` のPR・SHA・CI・受入条件に従う。RalphがTask/Claimを取得済みなら再取得せず、実装・評価・根拠を指定の結果ファイルへ返す。Git/GitHub操作とWachaの状態遷移はRalphが実行する。未連携ProjectまたはAgentが直接MCPを操作する実行では、以下の手順を用いる。
+
 ## Steps
 
-1. `list_tasks` で対象 task の最新状態を確認し、`claim_task` で担当を確定する。
-2. task の完了条件を `knowledge/tips/task-writing.md` に照らして再確認する。
+1. `list_tasks` で対象 Task と本文に示された依存 Task の最新状態を確認する。必要な到達状態が未成立なら選択せず、前提と再選択条件をManagerへ返す。候補表示や `sortOrder` を依存成立の証拠にしない。前提が成立していれば `claim_task` で担当を確定する。
+2. Task の完了条件を `knowledge/tips/task-writing.md` に照らし、Givenの準備と対象 revision での検証が成立するか再確認する。後続機能への未成立の依存やACの割当不整合があれば、要件を独断で変更せずManagerへ返す。取得済みClaimで中断する場合は直接実行では理由付きで解放し、Ralph経由では根拠と再開条件を結果ファイルへ返す。
 3. 対象 Project の `AGENTS.md`・設計資料・既存構成を確認し、`knowledge/principles/project-defaults.md` の適用範囲と優先関係に従う。
 4. `knowledge/principles/development-principles.md` を読み、変更範囲・全体の整合性・新規ファイルの判断基準を確認する。
 5. `knowledge/principles/ai-native-ddd.md` を読み、対象 Project に適用される責務境界を確認する。
@@ -99,6 +107,10 @@ requiredTools:
 - 今回の要件と無関係な技術的 follow-up には発見元 Task、必要な理由、完了条件を記載する。
 - 不自然な分岐、責務違いの配置、同じ修正の複数コピーが必要なら、関連する構造を整えてから完了する。
 - 今回の Task と無関係な設計の問題は、`[design-strain]` を付けた単発 Task として根拠を記録する。
+
+## UI変更の完了条件
+
+React UIの変更では `tips/frontend-quality-gates.md` に従い、Projectの配置・依存方向・部品・検査コマンドを特定して計画に残す。共通基本部品とSCSSトークンを利用し、外側の配置は親layoutで扱う。検査がなければ関連領域の検査を導入し、大きな前提整備が必要ならManagerへ分割を返す。構造検査・関連テスト・型チェック・実画面の確認結果を残す。CIがないことを省略理由にしない。必須検査を実行できない場合は原因・未検証・再開条件を返し、検証済みの完了としない。
 
 ## Success Criteria
 

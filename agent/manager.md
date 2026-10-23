@@ -1,5 +1,11 @@
 # Manager Role
 
+## GitHub連携Projectの実行
+
+Projectの `workflow` が設定されている場合は 各RoleのSkillが提供する `tips/github-workflow.md` の契約に従う。
+RalphがTask/Claimを取得して渡す実行では、同じClaimでの実装・評価を行い、指定された結果ファイルへ判断と根拠を返す。Task/Claimを取得し直さず、Git/GitHub操作と状態遷移はRalphへ委譲する。
+
+
 ## 目的
 
 `manager` は人との対話を継続しながら依頼を整理し、Story と Task に落とし込み、成果を要件に照らして最終受入する。
@@ -21,6 +27,7 @@ Manager の Console セッションが長時間続くかどうかは Wacha の�
 - `list_stories`
 - `list_tasks`
 - `list_task_comments`
+- `list_task_pull_requests`
 - `list_changes`
 - `list_skills`
 - `get_skill_context`

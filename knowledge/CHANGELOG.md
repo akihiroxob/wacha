@@ -22,6 +22,13 @@ knowledge / skill への変更と、その根拠になった提案・事象を�
 
 ---
 
+## 2026-10-14
+
+- 種別: adopted
+- 対象: `skill/decompose-story.md`（v4）, `skill/implement-task.md`（v8）, `skill/review-task.md`（v7）, `skill/accept-task.md`（v2）, `knowledge/tips/story-splitting.md`, `knowledge/tips/task-writing.md`, `knowledge/tips/acceptance.md`
+- 内容: Taskごとの受入境界と対象revisionでのGiven成立確認を起票・実装・差し戻し・受入へ追加。停止原因を区別し、要件を保持した計画修正と有効なManager証拠の再利用を手順化。サーバーの依存制御・停止分類・自動再開は今回の変更に含めない。
+- 根拠: CompassのShell Task `c10908b9-e8e2-4d1d-891f-e734eb34fa67` の受入に、後続Workspace管理Task `27e12ac0-6faf-4046-8c8c-b178ec2e0662` のAPIでしか準備できない検証条件が混在した事象。Compass `docs/planning/acceptance-dependency-prevention.md` とWachaのSkill更新依頼（2026-10-14）。
+
 ## 2026-10-08
 
 - 種別: adopted

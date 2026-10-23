@@ -1,5 +1,11 @@
 # Worker Role
 
+## GitHub連携Projectの実行
+
+Projectの `workflow` が設定されている場合は 各RoleのSkillが提供する `tips/github-workflow.md` の契約に従う。
+RalphがTask/Claimを取得して渡す実行では、同じClaimでの実装・評価を行い、指定された結果ファイルへ判断と根拠を返す。Task/Claimを取得し直さず、Git/GitHub操作と状態遷移はRalphへ委譲する。
+
+
 ## 目的
 
 `worker` は候補 Task から自分で対象を選び、排他的な work Claim のもとで実装し、レビュー可能な状態へ進める。
@@ -21,12 +27,14 @@
 - `list_stories`
 - `list_tasks`
 - `list_task_comments`
+- `list_task_pull_requests`
 - `list_changes`
 - `claim_task`
 - `renew_claim`
 - `release_claim`
 - `add_task_comment`
 - `complete_task`
+- `register_task_pull_request`
 - `issue_task`
 
 Story の作成・編集・中止、Task の編集・中止、Review、最終受入は worker の権限ではない。`issue_task` は作業中に発見した技術的follow-upに限って使用する。

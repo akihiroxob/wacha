@@ -10,9 +10,13 @@ export type CoordinationErrorCode =
   | "SELF_REVIEW_NOT_ALLOWED"
   | "SELF_ACCEPTANCE_NOT_ALLOWED"
   | "INVALID_FILTER_COMBINATION"
-  | "IDEMPOTENCY_CONFLICT";
+  | "IDEMPOTENCY_CONFLICT"
+  | "PULL_REQUEST_REQUIRED"
+  | "PULL_REQUEST_NOT_READY"
+  | "GITHUB_UNAVAILABLE"
+  | "GITHUB_ACCESS_DENIED";
 
-const retryableCodes = new Set<CoordinationErrorCode>(["CLAIM_CONFLICT"]);
+const retryableCodes = new Set<CoordinationErrorCode>(["CLAIM_CONFLICT", "GITHUB_UNAVAILABLE"]);
 
 export class CoordinationError extends Error {
   readonly retryable: boolean;

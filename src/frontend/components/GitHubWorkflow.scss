@@ -1,0 +1,23 @@
+.github-workflow {
+  --workflow-border: #e7e5e4;
+  --workflow-text: #292524;
+  --workflow-spacing: 0.75rem;
+  border: 1px solid var(--workflow-border);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  color: var(--workflow-text);
+
+  summary { cursor: pointer; font-weight: 600; }
+  form { display: grid; gap: var(--workflow-spacing); margin-top: 1rem; }
+  label { display: grid; gap: 0.25rem; }
+  input, textarea, button { border: 1px solid var(--workflow-border); border-radius: 0.4rem; padding: 0.5rem; }
+  button { cursor: pointer; }
+  button:disabled { cursor: default; opacity: 0.5; }
+  code { overflow-wrap: anywhere; font-size: 0.8em; }
+  dt { font-weight: 600; }
+  ol, ul { padding-left: 1.25rem; }
+  li { margin-block: 0.5rem; }
+  a { text-decoration: underline; }
+  p { font-size: 0.85rem; }
+  [role="alert"] { color: #b91c1c; }
+}

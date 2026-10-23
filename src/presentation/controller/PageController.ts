@@ -96,6 +96,8 @@ export class PageController {
 
     const body: ProjectDetailResponse = {
       project,
+      workflow: await taskCoordinationService.getRepositoryWorkflow(project.id),
+      pullRequests: (await Promise.all(taskResult.tasks.map((task) => taskCoordinationService.getTaskPullRequests(task.id)))).flat(),
       summary: taskResult.summary,
       tasks: taskResult.tasks,
       comments: commentsResult.comments,
@@ -104,6 +106,25 @@ export class PageController {
       grantSummary: grantResult.summary,
     };
     return c.json(body);
+  }
+
+  async configureWorkflow(c: Context) {
+    const project = await this.getProjectOrThrow(c.req.param("projectId"));
+    const body = await this.readJsonBody(c);
+    const value = body.workflow;
+    if (value !== null && (!value || typeof value !== "object" || Array.isArray(value))) {
+      throw new ValidationError("workflow must be an object or null");
+    }
+    const input = value as Record<string, unknown> | null;
+    if (input && (typeof input.repository !== "string" || typeof input.baseBranch !== "string" ||
+      !Array.isArray(input.requiredChecks) || input.requiredChecks.some((item) => typeof item !== "string"))) {
+      throw new ValidationError("Invalid repository workflow");
+    }
+    try {
+      return c.json(await taskCoordinationService.configureRepositoryWorkflow(project.id, input ? {
+        repository: input.repository as string, baseBranch: input.baseBranch as string, requiredChecks: input.requiredChecks as string[],
+      } : null));
+    } catch (error) { throw new ValidationError(error instanceof Error ? error.message : "Invalid workflow"); }
   }
 
   async projectActivity(c: Context) {
@@ -279,10 +300,14 @@ export class PageController {
       throw new NotFoundError("Task not found");
     }
 
+    const workflow = await taskCoordinationService.getRepositoryWorkflow(project.id);
+    const jsonBody = workflow ? await this.readJsonBody(c) : {};
+    const verification = workflow ? { mergeSha: this.readTextField(jsonBody, "mergeSha"), evidence: this.readTextField(jsonBody, "evidence") } : undefined;
     try {
       await taskCoordinationService.acceptTaskAsOperator(
         WEB_UI_OPERATOR_PRINCIPAL,
         taskId,
+        verification,
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to accept task";
