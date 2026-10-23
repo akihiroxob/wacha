@@ -17,6 +17,10 @@
 - 最終判断は manager、実装レビューは reviewer、Task 実行は worker が担う
 - 複数 worker、複数 reviewer を許可する。Role の専有席は設けない
 
+## UI開発の共通デフォルト
+
+React UIを変更するWorker・Reviewerと受入するManagerは、各Skillが配信する `principles/frontend-architecture.md` と `tips/frontend-quality-gates.md` を適用する。Projectの明示Policyを優先し、未指定部分にはFeature単位の配置、依存境界、共通React部品、SCSS・デザイントークンを使う。検査コードと実行コマンドはProject側に接続し、CIの有無とRoleの検証責任を分ける。Skillを読んだことだけを構造検査・画面確認の実施とみなさない。
+
 ## 作業フェーズ
 
 1. 依頼受付、Story 化、Task 分解: `manager`

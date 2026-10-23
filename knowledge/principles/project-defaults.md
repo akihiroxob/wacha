@@ -6,6 +6,8 @@ Project に技術・構成の方針がまだないとき、人にも agent に�
 
 判断の順序は、明示された要求・制約、対象 Project の `AGENTS.md` と設計資料、既存コードの一貫した構成、この文書の推奨構成とする。Project の資料が一部だけを定める場合は、未指定の部分にだけ推奨構成を使う。既存コードと推奨構成が異なるだけでは構成を変更しない。変更が必要なら、現在の Task の目的・影響・検証方法に基づいて判断する。
 
+React UIの構成・共通部品・SCSSについては、明示的な上書きのない部分に `knowledge/principles/frontend-architecture.md` を共通デフォルトとして適用する。検査方法は `knowledge/tips/frontend-quality-gates.md` に従う。既存の不整合は上書きPolicyではない。既存Projectは現在のTaskに関係する範囲で整え、全体移行が必要ならManagerが前提整備を計画する。
+
 ## 推奨する技術
 
 | 対象 | 方針がない場合の推奨 | 適用条件 |

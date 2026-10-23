@@ -41,6 +41,7 @@ test("active Skill requiredTools are available to every allowed Role", async () 
     "list_stories",
     "list_tasks",
     "list_task_comments",
+    "list_task_pull_requests",
     "list_changes",
     "list_skills",
     "get_skill_context",
@@ -69,7 +70,7 @@ test("active Skill requiredTools are available to every allowed Role", async () 
       "reviewed_task",
       "reject_task",
     ]),
-    [ProjectRole.WORKER]: new Set([...common, "claim_task", "complete_task"]),
+    [ProjectRole.WORKER]: new Set([...common, "claim_task", "complete_task", "register_task_pull_request"]),
   };
 
   const skills = await repository.list();

@@ -8,6 +8,12 @@ import { DatabaseClient } from "@database/SQLiteClient.ts";
 import type { DataBase } from "@database/schema/index.ts";
 import type { TaskClaimTable } from "@database/schema/taskClaim.ts";
 
+import type { PullRequestGateway, PullRequestSnapshot, RepositoryWorkflow } from "@domain/model/PullRequest.ts";
+import { checksPassed } from "@domain/model/PullRequest.ts";
+import { GitHubPullRequestGateway } from "../../infrastructure/github/GitHubPullRequestGateway.ts";
+
+export type AcceptanceVerification = { mergeSha: string; evidence: string };
+
 type DatabaseExecutor = Kysely<DataBase> | Transaction<DataBase>;
 
 export type TaskAvailability = "work" | "review" | "acceptance";
@@ -49,11 +55,166 @@ export class TaskCoordinationService {
   constructor(
     private readonly clock: Clock = () => Date.now(),
     claimTtlMs = Number(process.env.WACHA_CLAIM_TTL_MS ?? 30 * 60 * 1000),
+    private readonly pullRequests: PullRequestGateway = new GitHubPullRequestGateway(),
   ) {
     if (!Number.isFinite(claimTtlMs) || claimTtlMs <= 0) {
       throw new RangeError("WACHA_CLAIM_TTL_MS must be a positive number");
     }
     this.claimTtlMs = claimTtlMs;
+  }
+
+  async getRepositoryWorkflow(projectId: string, db: DatabaseExecutor = DatabaseClient): Promise<RepositoryWorkflow | null> {
+    const row = await db.selectFrom("project_workflow").selectAll().where("project_id", "=", projectId).executeTakeFirst();
+    return row ? { repository: row.repository, baseBranch: row.base_branch, requiredChecks: JSON.parse(row.required_checks) } : null;
+  }
+
+  // Human administration only; not exposed as an Agent MCP tool.
+  async configureRepositoryWorkflow(projectId: string, input: RepositoryWorkflow | null) {
+    if (input && (!/^[A-Za-z0-9][A-Za-z0-9_.-]*\/[A-Za-z0-9][A-Za-z0-9_.-]*$/.test(input.repository) ||
+      !input.baseBranch.trim() || !/^[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(input.baseBranch) ||
+      input.baseBranch.includes("..") || input.baseBranch.includes("//") || /[/.]$|\.lock$/.test(input.baseBranch) || !Array.isArray(input.requiredChecks) ||
+      input.requiredChecks.some((name) => typeof name !== "string" || !name.trim()))) {
+      throw new CoordinationError("INVALID_INPUT", "repository, baseBranch and a requiredChecks array are required");
+    }
+    if (input) input = { ...input, repository: input.repository.toLowerCase(), baseBranch: input.baseBranch.trim(), requiredChecks: [...new Set(input.requiredChecks.map((name) => name.trim()))] };
+    return DatabaseClient.transaction().execute(async (db) => {
+      const current = await this.getRepositoryWorkflow(projectId, db);
+      const active = await db.selectFrom("task").select("id").where("project_id", "=", projectId)
+        .where("status", "in", [TaskStatus.DOING, TaskStatus.IN_REVIEW, TaskStatus.WAIT_ACCEPT]).executeTakeFirst();
+      if (active) throw new CoordinationError("INVALID_TASK_STATUS", "Finish or reject active work before changing repository workflow");
+      const unsettled = await db.selectFrom("task_pull_request").innerJoin("task", "task.id", "task_pull_request.task_id")
+        .select("task_pull_request.id").where("task.project_id", "=", projectId)
+        .where("task.status", "not in", [TaskStatus.ACCEPTED, TaskStatus.CANCELED]).executeTakeFirst();
+      if (unsettled && JSON.stringify(current) !== JSON.stringify(input)) {
+        throw new CoordinationError("INVALID_TASK_STATUS", "Cannot change workflow while unsettled Tasks have PR history");
+      }
+      if (input) {
+        await db.insertInto("project_workflow").values({ project_id: projectId, repository: input.repository,
+          base_branch: input.baseBranch.trim(), required_checks: JSON.stringify([...new Set(input.requiredChecks.map((name) => name.trim()))]) })
+          .onConflict((conflict) => conflict.column("project_id").doUpdateSet({ repository: input.repository,
+            base_branch: input.baseBranch.trim(), required_checks: JSON.stringify([...new Set(input.requiredChecks.map((name) => name.trim()))]) })).execute();
+      } else {
+        await db.deleteFrom("project_workflow").where("project_id", "=", projectId).execute();
+      }
+      await this.appendChange(db, { projectId, type: "PROJECT_WORKFLOW_CONFIGURED", entityId: projectId,
+        principalId: "system:web-ui", payload: { actorRole: "operator", workflow: input }, occurredAt: this.clock() });
+      return { workflow: input };
+    });
+  }
+
+  async getTaskPullRequests(taskId: string, db: DatabaseExecutor = DatabaseClient) {
+    const rows = await db.selectFrom("task_pull_request").selectAll().where("task_id", "=", taskId).orderBy("id", "asc").execute();
+    return rows.map((row) => ({ id: row.id, taskId: row.task_id, workClaimId: row.work_claim_id,
+      ...JSON.parse(row.snapshot) as PullRequestSnapshot, reviewedHeadSha: row.reviewed_head_sha, reviewedCommentId: row.reviewed_comment_id,
+      acceptedMergeSha: row.accepted_merge_sha, acceptanceEvidence: row.acceptance_evidence,
+      createdAt: row.created_at, updatedAt: row.updated_at }));
+  }
+
+  async listTaskPullRequests(principalId: string, taskId: string) {
+    const task = await this.getTask(DatabaseClient, taskId);
+    await this.requireAnyRole(DatabaseClient, task.project_id, principalId);
+    return { pullRequests: await this.getTaskPullRequests(taskId) };
+  }
+
+  private async prefetchPullRequest(principalId: string, taskId: string, claimId: string | null,
+    toolName: string, requestId: string, role: "worker" | "reviewer" | "manager" | "operator", number?: number) {
+    // Receipt lookup permits recovery after a successful transition whose response was lost.
+    if (requestId && await DatabaseClient.selectFrom("command_receipt").select("request_id")
+      .where("principal_id", "=", principalId).where("tool_name", "=", toolName).where("request_id", "=", requestId).executeTakeFirst()) return null;
+    const task = await this.getTask(DatabaseClient, taskId);
+    if (role !== "operator") {
+      await this.requireRole(DatabaseClient, task.project_id, principalId, role);
+      if (claimId) await this.assertCurrentClaim(DatabaseClient, principalId, taskId, claimId);
+    }
+    const workflow = await this.getRepositoryWorkflow(task.project_id);
+    if (!workflow) return null;
+    const rows = await this.getTaskPullRequests(taskId);
+    const latest = rows.at(-1);
+    const targetNumber = number ?? latest?.number;
+    if (targetNumber === undefined) throw new CoordinationError("PULL_REQUEST_REQUIRED", "Register a PR before completing this Task");
+    // Network reads run outside SQLite transactions; claims and facts are rechecked on commit.
+    const current = await this.pullRequests.getPullRequest(workflow.repository, targetNumber);
+    const previous = latest && number !== undefined && latest.number !== number && latest.state === "open"
+      ? await this.pullRequests.getPullRequest(latest.repository, latest.number) : null;
+    return { current, previous };
+  }
+
+  private validateRepository(pr: PullRequestSnapshot, workflow: RepositoryWorkflow) {
+    if (pr.repository.toLowerCase() !== workflow.repository.toLowerCase() || pr.baseBranch !== workflow.baseBranch) {
+      throw new CoordinationError("PULL_REQUEST_NOT_READY", "PR repository or base branch does not match the Project workflow");
+    }
+  }
+
+  async registerTaskPullRequest(principalId: string, taskId: string, claimId: string, number: number, requestId: string) {
+    const prefetched = await this.prefetchPullRequest(principalId, taskId, claimId, "register_task_pull_request", requestId, "worker", number);
+    return DatabaseClient.transaction().execute(async (db) => this.withReceipt(db, principalId,
+      "register_task_pull_request", requestId, { taskId, claimId, number }, async () => {
+        await this.assertCurrentClaim(db, principalId, taskId, claimId);
+        const task = await this.getTask(db, taskId);
+        await this.requireRole(db, task.project_id, principalId, ProjectRole.WORKER);
+        if (task.status !== TaskStatus.DOING) throw new CoordinationError("INVALID_TASK_STATUS", "Task is not doing");
+        const workflow = await this.getRepositoryWorkflow(task.project_id, db);
+        if (!workflow) throw new CoordinationError("INVALID_INPUT", "Project has no GitHub workflow");
+        const pr = prefetched?.current;
+        if (!pr || pr.number !== number) throw new CoordinationError("PULL_REQUEST_NOT_READY", "PR facts changed; retry registration");
+        this.validateRepository(pr, workflow);
+        if (pr.state !== "open" || pr.draft) throw new CoordinationError("PULL_REQUEST_NOT_READY", "An open, ready PR is required; merged rework needs a new PR");
+        const old = await db.selectFrom("task_pull_request").selectAll().where("repository", "=", workflow.repository)
+          .where("number", "=", number).executeTakeFirst();
+        if (old && (old.task_id !== taskId || JSON.parse(old.snapshot).state === "merged")) {
+          throw new CoordinationError("PULL_REQUEST_NOT_READY", "PR belongs to another Task or was already merged");
+        }
+        const latest = (await this.getTaskPullRequests(taskId, db)).at(-1);
+        if (old && latest?.id !== old.id) throw new CoordinationError("PULL_REQUEST_NOT_READY", "Cannot reactivate a superseded PR");
+        if (latest && latest.number !== number && latest.state === "open") {
+          const previous = prefetched?.previous;
+          if (!previous || previous.number !== latest.number) throw new CoordinationError("PULL_REQUEST_NOT_READY", "PR history changed; retry registration");
+          if (previous.state === "open") throw new CoordinationError("PULL_REQUEST_NOT_READY", "Reuse or close the existing open PR before registering another");
+          await db.updateTable("task_pull_request").set({ snapshot: JSON.stringify(previous), updated_at: this.clock() }).where("id", "=", latest.id).execute();
+        }
+        const now = this.clock();
+        if (old) {
+          await db.updateTable("task_pull_request").set({ work_claim_id: claimId, snapshot: JSON.stringify(pr),
+            reviewed_head_sha: null, reviewed_comment_id: null, updated_at: now }).where("id", "=", old.id).execute();
+        } else {
+          await db.insertInto("task_pull_request").values({ task_id: taskId, repository: workflow.repository, number,
+            work_claim_id: claimId, snapshot: JSON.stringify(pr), reviewed_head_sha: null, reviewed_comment_id: null, accepted_merge_sha: null,
+            acceptance_evidence: null, created_at: now, updated_at: now }).execute();
+        }
+        await this.appendChange(db, { projectId: task.project_id, type: "TASK_PULL_REQUEST_REGISTERED", entityId: taskId,
+          principalId, claimId, payload: { actorRole: "worker", pullRequest: pr }, occurredAt: now });
+        return { pullRequest: pr };
+      }));
+  }
+
+  private async verifyPullRequest(db: DatabaseExecutor, taskId: string, phase: "complete" | "review" | "accept",
+    expectedSha?: string, claimId?: string, evidence?: string, prefetched?: PullRequestSnapshot, reviewCommentId?: number) {
+    const task = await this.getTask(db, taskId);
+    const workflow = await this.getRepositoryWorkflow(task.project_id, db);
+    if (!workflow) return null;
+    const row = await db.selectFrom("task_pull_request").selectAll().where("task_id", "=", taskId).orderBy("id", "desc").executeTakeFirst();
+    if (!row) throw new CoordinationError("PULL_REQUEST_REQUIRED", "Register a PR before completing this Task");
+    const pr = prefetched;
+    if (!pr || pr.number !== row.number) throw new CoordinationError("PULL_REQUEST_NOT_READY", "PR history changed; retry verification");
+    this.validateRepository(pr, workflow);
+    if (phase === "complete") {
+      if (row.work_claim_id !== claimId || pr.state !== "open" || pr.draft) {
+        throw new CoordinationError("PULL_REQUEST_NOT_READY", "Register an open PR under the current Work Claim");
+      }
+    } else if (phase === "review") {
+      if (pr.state !== "merged" || !pr.mergeSha || pr.headSha !== expectedSha || !checksPassed(pr, workflow.requiredChecks) ||
+        !pr.reviewEvidence.some((evidence) => evidence.id === reviewCommentId && evidence.taskId === taskId &&
+          evidence.claimId === claimId && evidence.headSha === expectedSha && evidence.decision === "approve")) {
+        throw new CoordinationError("PULL_REQUEST_NOT_READY", "Reviewed head SHA, current Review Claim-bound comment, passing required CI and GitHub merge are required");
+      }
+    } else if (pr.state !== "merged" || !pr.mergeSha || row.reviewed_head_sha !== pr.headSha || pr.mergeSha !== expectedSha || !evidence?.trim()) {
+      throw new CoordinationError("PULL_REQUEST_NOT_READY", "Verify AC against the reviewed merge SHA and provide acceptance evidence");
+    }
+    await db.updateTable("task_pull_request").set({ snapshot: JSON.stringify(pr), updated_at: this.clock(),
+      ...(phase === "review" ? { reviewed_head_sha: pr.headSha, reviewed_comment_id: reviewCommentId! } : {}),
+      ...(phase === "accept" ? { accepted_merge_sha: pr.mergeSha, acceptance_evidence: evidence!.trim() } : {})
+    }).where("id", "=", row.id).execute();
+    return pr;
   }
 
   private requiredText(value: string, field: string): string {
@@ -154,7 +315,7 @@ export class TaskCoordinationService {
       .distinct()
       .orderBy("project.created_at", "asc")
       .execute();
-    return { projects };
+    return { projects: await Promise.all(projects.map(async (project) => ({ ...project, workflow: await this.getRepositoryWorkflow(project.id) }))) };
   }
 
   async listStories(principalId: string, projectId: string, status?: string) {
@@ -417,6 +578,7 @@ export class TaskCoordinationService {
       return aPrimary - bPrimary || a.sort_order - b.sort_order || a.created_at - b.created_at;
     });
 
+    const workflow = await this.getRepositoryWorkflow(projectId);
     const isAvailable = (task: (typeof tasks)[number]) => {
       const claim = activeClaims.get(task.id);
       const hasUnexpiredClaim = claim !== undefined && claim.expires_at > now;
@@ -438,7 +600,7 @@ export class TaskCoordinationService {
         case "acceptance":
           return (
             roles.has(ProjectRole.MANAGER) &&
-            (task.status === TaskStatus.IN_REVIEW || task.status === TaskStatus.WAIT_ACCEPT) &&
+            (task.status === TaskStatus.WAIT_ACCEPT || (!workflow && task.status === TaskStatus.IN_REVIEW)) &&
             !hasUnexpiredClaim &&
             latestCompleters.get(task.id) !== principalId
           );
@@ -625,6 +787,10 @@ export class TaskCoordinationService {
     const task = await this.getTask(db, taskId);
     if (options.requireManagerRole) {
       await this.requireRole(db, task.project_id, principalId, ProjectRole.MANAGER);
+    }
+    const workflow = await this.getRepositoryWorkflow(task.project_id, db);
+    if (workflow && task.status === TaskStatus.IN_REVIEW) {
+      throw new CoordinationError("PULL_REQUEST_NOT_READY", "Reviewer must confirm the GitHub merge before acceptance");
     }
     const currentClaim = await this.getActiveClaim(db, taskId);
     if (currentClaim) {
@@ -861,6 +1027,7 @@ export class TaskCoordinationService {
   }
 
   async completeTask(principalId: string, taskId: string, claimId: string, requestId: string) {
+    const prefetched = await this.prefetchPullRequest(principalId, taskId, claimId, "complete_task", requestId, "worker");
     return DatabaseClient.transaction().execute(async (db) =>
       this.withReceipt(db, principalId, "complete_task", requestId, { taskId, claimId }, async () => {
         const claim = await this.assertCurrentClaim(db, principalId, taskId, claimId);
@@ -882,6 +1049,7 @@ export class TaskCoordinationService {
             "Record implementation and verification notes with add_task_comment before complete_task",
           );
         }
+        const pr = await this.verifyPullRequest(db, taskId, "complete", undefined, claimId, undefined, prefetched?.current);
         const now = this.clock();
         await db
           .updateTable("task")
@@ -904,7 +1072,7 @@ export class TaskCoordinationService {
           entityId: taskId,
           principalId,
           claimId,
-          payload: { actorRole: "worker", fromStatus: TaskStatus.DOING, toStatus: TaskStatus.IN_REVIEW },
+          payload: { actorRole: "worker", fromStatus: TaskStatus.DOING, toStatus: TaskStatus.IN_REVIEW, pullRequest: pr },
           occurredAt: now,
         });
         return { taskId, claimId, status: TaskStatus.IN_REVIEW };
@@ -912,15 +1080,17 @@ export class TaskCoordinationService {
     );
   }
 
-  async reviewedTask(principalId: string, taskId: string, claimId: string, requestId: string) {
+  async reviewedTask(principalId: string, taskId: string, claimId: string, requestId: string, expectedHeadSha?: string, reviewCommentId?: number) {
+    const prefetched = await this.prefetchPullRequest(principalId, taskId, claimId, "reviewed_task", requestId, "reviewer");
     return DatabaseClient.transaction().execute(async (db) =>
-      this.withReceipt(db, principalId, "reviewed_task", requestId, { taskId, claimId }, async () => {
+      this.withReceipt(db, principalId, "reviewed_task", requestId, { taskId, claimId, expectedHeadSha, reviewCommentId }, async () => {
         await this.assertCurrentClaim(db, principalId, taskId, claimId);
         const task = await this.getTask(db, taskId);
         await this.requireRole(db, task.project_id, principalId, ProjectRole.REVIEWER);
         if (task.status !== TaskStatus.IN_REVIEW) {
           throw new CoordinationError("INVALID_TASK_STATUS", `Task ${taskId} is not in_review`);
         }
+        const pr = await this.verifyPullRequest(db, taskId, "review", expectedHeadSha, claimId, undefined, prefetched?.current, reviewCommentId);
         const now = this.clock();
         await db
           .updateTable("task")
@@ -938,7 +1108,7 @@ export class TaskCoordinationService {
           entityId: taskId,
           principalId,
           claimId,
-          payload: { actorRole: "reviewer", fromStatus: TaskStatus.IN_REVIEW, toStatus: TaskStatus.WAIT_ACCEPT },
+          payload: { actorRole: "reviewer", fromStatus: TaskStatus.IN_REVIEW, toStatus: TaskStatus.WAIT_ACCEPT, pullRequest: pr, reviewCommentId },
           occurredAt: now,
         });
         return { taskId, claimId, status: TaskStatus.WAIT_ACCEPT };
@@ -989,11 +1159,14 @@ export class TaskCoordinationService {
     taskId: string,
     claimId: string,
     actorRole: ActivityActorRole,
+    verification?: AcceptanceVerification,
+    prefetched?: PullRequestSnapshot,
   ) {
     const task = await this.getTask(db, taskId);
     if (task.status !== TaskStatus.WAIT_ACCEPT) {
       throw new CoordinationError("INVALID_TASK_STATUS", `Task ${taskId} is not wait_accept`);
     }
+    const pr = await this.verifyPullRequest(db, taskId, "accept", verification?.mergeSha, undefined, verification?.evidence, prefetched);
     const now = this.clock();
     await db
       .updateTable("task")
@@ -1016,7 +1189,7 @@ export class TaskCoordinationService {
       entityId: taskId,
       principalId,
       claimId,
-      payload: { actorRole, fromStatus: TaskStatus.WAIT_ACCEPT, toStatus: TaskStatus.ACCEPTED },
+      payload: { actorRole, fromStatus: TaskStatus.WAIT_ACCEPT, toStatus: TaskStatus.ACCEPTED, pullRequest: pr, verification },
       occurredAt: now,
     });
     await this.syncStoryAfterAcceptance(
@@ -1031,13 +1204,14 @@ export class TaskCoordinationService {
     return { taskId, claimId, status: TaskStatus.ACCEPTED };
   }
 
-  async acceptTask(principalId: string, taskId: string, claimId: string, requestId: string) {
+  async acceptTask(principalId: string, taskId: string, claimId: string, requestId: string, verification?: AcceptanceVerification) {
+    const prefetched = await this.prefetchPullRequest(principalId, taskId, claimId, "accept_task", requestId, "manager");
     return DatabaseClient.transaction().execute(async (db) =>
-      this.withReceipt(db, principalId, "accept_task", requestId, { taskId, claimId }, async () => {
+      this.withReceipt(db, principalId, "accept_task", requestId, { taskId, claimId, verification }, async () => {
         await this.assertCurrentClaim(db, principalId, taskId, claimId);
         const task = await this.getTask(db, taskId);
         await this.requireRole(db, task.project_id, principalId, ProjectRole.MANAGER);
-        return this.acceptTaskCore(db, principalId, taskId, claimId, "manager");
+        return this.acceptTaskCore(db, principalId, taskId, claimId, "manager", verification, prefetched?.current);
       }),
     );
   }
@@ -1121,13 +1295,14 @@ export class TaskCoordinationService {
   }
 
   // trusted-local Web UI専用。外部入力から任意のprincipalIdを渡すAPIとして公開しない。
-  async acceptTaskAsOperator(principalId: string, taskId: string) {
+  async acceptTaskAsOperator(principalId: string, taskId: string, verification?: AcceptanceVerification) {
+    const prefetched = await this.prefetchPullRequest(principalId, taskId, null, "accept_task", "", "operator");
     return DatabaseClient.transaction().execute(async (db) => {
       const claim = await this.claimAcceptanceCore(db, principalId, taskId, {
         requireManagerRole: false,
         enforceSelfAcceptance: false,
       });
-      return this.acceptTaskCore(db, principalId, taskId, claim.claimId, "operator");
+      return this.acceptTaskCore(db, principalId, taskId, claim.claimId, "operator", verification, prefetched?.current);
     });
   }
 

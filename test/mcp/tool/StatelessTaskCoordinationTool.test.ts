@@ -113,3 +113,19 @@ test("stateless Task tools return structured authorization errors", async () => 
   assert.equal(result.isError, true);
   assert.equal(result.structuredContent.error.code, "FORBIDDEN");
 });
+
+
+test("PR tools use Project grants and repository administration stays outside MCP", async () => {
+  const project = await projectRepository.create("GitHub", null, "repo/github");
+  const task = await taskRepository.create("Task", null, project.id);
+  await grantRepository.grant(project.id, "reviewer", ProjectRole.REVIEWER);
+  const visible = await callTool("reviewer", "list_task_pull_requests", { taskId: task.id });
+  assert.deepEqual(visible.structuredContent.pullRequests, []);
+  const forbidden = await callTool("stranger", "list_task_pull_requests", { taskId: task.id });
+  assert.equal(forbidden.isError, true);
+  assert.equal(forbidden.structuredContent.error.code, "FORBIDDEN");
+  const { rpc } = await call("reviewer", "tools/list");
+  const names = rpc.result.tools.map((tool: { name: string }) => tool.name);
+  assert.ok(names.includes("register_task_pull_request"));
+  assert.ok(!names.includes("configure_repository_workflow"));
+});

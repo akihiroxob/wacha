@@ -7,7 +7,12 @@ import { TaskClaimTable } from "@database/schema/taskClaim.ts";
 import { TaskCommentTable } from "@database/schema/taskComment.ts";
 import { TaskTable } from "@database/schema/task.ts";
 
+import type { ProjectWorkflowTable } from "./projectWorkflow.ts";
+import type { TaskPullRequestTable } from "./taskPullRequest.ts";
+
 export interface DataBase {
+  project_workflow: ProjectWorkflowTable;
+  task_pull_request: TaskPullRequestTable;
   change_log: ChangeLogTable;
   command_receipt: CommandReceiptTable;
   project_grant: ProjectGrantTable;

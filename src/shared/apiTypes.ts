@@ -106,7 +106,18 @@ export interface ProjectListResponse {
   projects: ProjectDto[];
 }
 
+export type RepositoryWorkflowDto = { repository: string; baseBranch: string; requiredChecks: string[] };
+export type TaskPullRequestDto = {
+  id: number; taskId: string; number: number; url: string; repository: string; headSha: string;
+  headBranch: string; baseBranch: string; state: "open" | "closed" | "merged"; mergeSha: string | null;
+  reviewedCommentId: number | null; checks: { name: string; state: string }[]; reviewedHeadSha: string | null;
+  acceptedMergeSha: string | null; acceptanceEvidence: string | null;
+};
+export type AcceptanceVerificationDto = { mergeSha: string; evidence: string };
+
 export interface ProjectDetailResponse {
+  workflow: RepositoryWorkflowDto | null;
+  pullRequests: TaskPullRequestDto[];
   project: ProjectDto;
   summary: TaskSummary;
   tasks: TaskDto[];

@@ -10,6 +10,7 @@ import type {
   TaskSummary,
 } from "@shared/apiTypes";
 import { Layout } from "@/components/Layout";
+import { RepositoryWorkflowSettings } from "@/components/GitHubWorkflow";
 import { Button } from "@/components/Button";
 import { StoryCard } from "@/components/StoryCard";
 import { TaskCard } from "@/components/TaskCard";
@@ -211,6 +212,7 @@ export const ProjectDetailPage = () => {
 
   const renderTaskRow = (task: TaskDto, highlight = false) => (
     <TaskCard
+      githubWorkflow={Boolean(data.workflow)}
       key={task.id}
       projectId={project.id}
       task={task}
@@ -303,6 +305,8 @@ export const ProjectDetailPage = () => {
             </button>
           ))}
         </nav>
+
+        <RepositoryWorkflowSettings projectId={projectId} workflow={data.workflow ?? null} />
 
         {activeView === "activity" ? (
           <ProjectActivityLog
@@ -536,6 +540,8 @@ export const ProjectDetailPage = () => {
 
         {selectedTask && (
           <TaskDrawer
+              githubWorkflow={Boolean(data.workflow)}
+              pullRequests={(data.pullRequests ?? []).filter((pr) => pr.taskId === selectedTask.id)}
             projectId={project.id}
             task={selectedTask}
             comments={commentsByTaskId.get(selectedTask.id) ?? []}

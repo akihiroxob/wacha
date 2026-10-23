@@ -174,6 +174,30 @@ export function initializeSchema(): Promise<void> {
       )
       .execute();
 
+    await DatabaseClient.schema.createTable("project_workflow").ifNotExists()
+      .addColumn("project_id", "text", (c) => c.primaryKey().references("project.id").onDelete("cascade"))
+      .addColumn("repository", "text", (c) => c.notNull())
+      .addColumn("base_branch", "text", (c) => c.notNull())
+      .addColumn("required_checks", "text", (c) => c.notNull())
+      .execute();
+    await DatabaseClient.schema.createTable("task_pull_request").ifNotExists()
+      .addColumn("id", "integer", (c) => c.primaryKey().autoIncrement())
+      .addColumn("task_id", "text", (c) => c.notNull().references("task.id").onDelete("cascade"))
+      .addColumn("repository", "text", (c) => c.notNull())
+      .addColumn("number", "integer", (c) => c.notNull())
+      .addColumn("work_claim_id", "text", (c) => c.notNull())
+      .addColumn("snapshot", "text", (c) => c.notNull())
+      .addColumn("reviewed_head_sha", "text")
+      .addColumn("reviewed_comment_id", "integer")
+      .addColumn("accepted_merge_sha", "text")
+      .addColumn("acceptance_evidence", "text")
+      .addColumn("created_at", "integer", (c) => c.notNull())
+      .addColumn("updated_at", "integer", (c) => c.notNull())
+      .addUniqueConstraint("uq_task_pr_repository_number", ["repository", "number"])
+      .execute();
+
+    await addColumnIfMissing("task_pull_request", "reviewed_comment_id", "integer");
+
     // 一度きりの破壊的移行: session 所有権を廃止し、旧 doing を再 Claim 可能に戻す。
     // membership 表の存在を migration marker とし、再起動のたびに doing を戻さない。
     if (await tableExists("project_membership")) {

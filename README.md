@@ -6,6 +6,10 @@ Worker Aggregation and Control Hub for Agents
 
 `wacha` は Streamable HTTP で MCP を提供する、プロジェクト / Story / Task 管理サーバです。
 
+## GitHub Workflow
+
+ProjectごとのPR作成・レビューとマージ・AC受入の設定とMCP契約は[GitHub Task Workflow](docs/github-task-workflow.md)を参照してください。
+
 ## Run
 
 ### Local

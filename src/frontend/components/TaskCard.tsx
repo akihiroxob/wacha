@@ -8,11 +8,12 @@ type TaskCardProps = {
   projectId: string;
   task: TaskDto;
   highlight?: boolean;
+  githubWorkflow?: boolean;
   onOpen: (taskId: string) => void;
 };
 
-export const TaskCard = ({ projectId, task, highlight = false, onOpen }: TaskCardProps) => {
-  const canAccept = task.status === "in_review" || task.status === "wait_accept";
+export const TaskCard = ({ projectId, task, highlight = false, githubWorkflow = false, onOpen }: TaskCardProps) => {
+  const canAccept = task.status === "wait_accept" || (!githubWorkflow && task.status === "in_review");
   const acceptTask = useAcceptTask(projectId);
 
   return (
@@ -46,7 +47,7 @@ export const TaskCard = ({ projectId, task, highlight = false, onOpen }: TaskCar
         {canAccept && (
           <button
             type="button"
-            onClick={() => acceptTask.mutate(task.id)}
+            onClick={() => githubWorkflow ? onOpen(task.id) : acceptTask.mutate({ taskId: task.id })}
             disabled={acceptTask.isPending}
             className="shrink-0 rounded-xl bg-stone-900 px-3.5 py-2 text-sm font-medium text-white transition hover:bg-stone-700 disabled:opacity-50"
           >

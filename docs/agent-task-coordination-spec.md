@@ -1,10 +1,6 @@
 # Agent Task Coordination Specification
 
-- Status: Implemented initial version
-- Date: 2026-08-01
-- Target branch: `feature/codewithclaude-advanced`
-- Related design: `minimal-stateless-task-coordination-design.md`
-- Audience: Codex, Claude Code, maintainers, and external orchestrator implementers
+GitHub-linked Projects additionally follow [GitHub Task Workflow](github-task-workflow.md). That contract governs PR registration, Claim-bound PR review comments, merge verification, and acceptance evidence. Local-only Projects retain the direct Manager review path documented below.
 
 ## 1. Purpose
 

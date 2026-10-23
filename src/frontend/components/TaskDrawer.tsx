@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import type { FormEvent, KeyboardEvent, ToggleEvent } from "react";
 import { Link } from "react-router-dom";
 import clsx from "clsx";
-import type { TaskCommentDto, TaskDto } from "@shared/apiTypes";
+import type { TaskCommentDto, TaskDto, TaskPullRequestDto } from "@shared/apiTypes";
+import { AcceptanceEvidence, PullRequestHistory } from "@/components/GitHubWorkflow";
 import { StatusBadge } from "@/components/Badge";
 import { Markdown } from "@/components/Markdown";
 import { formatAbsoluteTime, formatRelativeTime } from "@/lib/time";
@@ -19,15 +20,18 @@ type TaskDrawerProps = {
   projectId: string;
   task: TaskDto;
   comments: TaskCommentDto[];
+  pullRequests: TaskPullRequestDto[];
+  githubWorkflow: boolean;
   onClose: () => void;
 };
 
-export const TaskDrawer = ({ projectId, task, comments, onClose }: TaskDrawerProps) => {
+export const TaskDrawer = ({ projectId, task, comments, pullRequests, githubWorkflow, onClose }: TaskDrawerProps) => {
   const drawerRef = useRef<HTMLDivElement>(null);
 
   const canCancel = task.status === "todo" || task.status === "doing";
-  const canAccept = task.status === "in_review" || task.status === "wait_accept";
-  const canReject = canAccept;
+  const canAccept = task.status === "wait_accept" || (!githubWorkflow && task.status === "in_review");
+  const canReject = task.status === "in_review" || task.status === "wait_accept";
+  const [acceptanceEvidence, setAcceptanceEvidence] = useState("");
 
   const [actionError, setActionError] = useState<string | null>(null);
   const [showRejectForm, setShowRejectForm] = useState(false);
@@ -45,16 +49,17 @@ export const TaskDrawer = ({ projectId, task, comments, onClose }: TaskDrawerPro
     const drawer = drawerRef.current;
     if (drawer && !drawer.matches(":popover-open")) drawer.showPopover();
     setActionError(null);
+    setAcceptanceEvidence("");
     setShowRejectForm(false);
     setShowCancelForm(false);
-  }, [task.id]);
+  }, [task.id, pullRequests.at(-1)?.mergeSha]);
 
   const handleToggle = (event: ToggleEvent<HTMLDivElement>) => {
     if (event.newState === "closed") onClose();
   };
 
   const handleAccept = () => {
-    acceptTask.mutate(task.id, {
+    acceptTask.mutate({ taskId: task.id, verification: githubWorkflow ? { mergeSha: pullRequests.at(-1)?.mergeSha ?? "", evidence: acceptanceEvidence } : undefined }, {
       onSuccess: () => setActionError(null),
       onError: (error) => setActionError(error.message),
     });
@@ -168,7 +173,7 @@ export const TaskDrawer = ({ projectId, task, comments, onClose }: TaskDrawerPro
               <button
                 type="button"
                 onClick={handleAccept}
-                disabled={acceptTask.isPending}
+                disabled={acceptTask.isPending || (githubWorkflow && !acceptanceEvidence.trim())}
                 className="rounded-xl bg-stone-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-stone-700 disabled:opacity-50"
               >
                 Accept
@@ -223,6 +228,8 @@ export const TaskDrawer = ({ projectId, task, comments, onClose }: TaskDrawerPro
               削除
             </button>
           </div>
+
+          {canAccept && githubWorkflow && <AcceptanceEvidence value={acceptanceEvidence} onChange={setAcceptanceEvidence} />}
 
           {actionError && (
             <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -285,6 +292,8 @@ export const TaskDrawer = ({ projectId, task, comments, onClose }: TaskDrawerPro
               )}
             </div>
           </div>
+
+          <PullRequestHistory pullRequests={pullRequests} />
 
           {task.rejectReason?.trim() && (
             <div className="rounded-2xl border border-red-100 bg-red-50 p-4">

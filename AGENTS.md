@@ -76,7 +76,7 @@ Agent が Task を選び、Wacha が Claim と状態遷移の正当性を検証�
 
 最終受入の詳細は `skill/accept-task.md` と、それが要求する `knowledge/tips/acceptance.md` を正とする。Project固有のアーキテクチャはWachaへ固定せず、対象Projectの`AGENTS.md`と設計資料から取得する。
 
-`claim_acceptance` の対象が `in_review` の場合は、Manager が Reviewer 工程を代行したものとして、Claim 取得と同じトランザクションで `wait_accept` へ進む。Change Log には `manager_direct_review` 経路が残る。
+GitHub連携が未設定のProjectで、`claim_acceptance` の対象が `in_review` の場合は、Manager が Reviewer 工程を代行したものとして、Claim 取得と同じトランザクションで `wait_accept` へ進む。Change Log には `manager_direct_review` 経路が残る。
 
 ## Claim と requestId
 
@@ -163,3 +163,13 @@ Change Log は通知配送や Agent の会話コンテキストを管理しな�
 ## 旧方式からの移行
 
 旧 session MCP endpoint と runtime Role 割当 Tool は提供しない。既存 DB の初回起動では `project_membership` を削除し、Claim を持たない旧 `doing` Task を `todo` へ戻す。詳細は `docs/agent-task-coordination-migration.md` を参照する。
+
+## GitHub連携
+
+- Project単位のRepository workflowとMCP契約は `docs/github-task-workflow.md` に従う。
+- GitHub連携Projectではcurrent Work Claimにopen PRを登録して完了し、Reviewerがhead SHA・current Review Claimに紐づくPRコメント・指定したCIチェック（任意）の成功・マージを確認して `wait_accept` へ進める。
+- Managerの直接レビューは未連携Projectに限定する。GitHub連携Projectの受入はレビュー済みmerge SHAとAC確認根拠が必須。
+- Reviewer差し戻しは同じopen PR、マージ後のManager差し戻しは新しいPR。TaskのPR履歴を消さない。
+- Ralphが既取得のTask/Claimを渡す場合は再取得せず、実装・評価の判断をRalphの指定する結果ファイルへ返す。Git/GitHub操作と状態遷移はRalphが実行する。
+
+- GitHubは同一アカウント・PATで運用できる。GitHubのApproveを必須にせず、PRコメントのID・Task・Review Claim・head SHAを照合する。WachaのWorker/Reviewer/Manager Principalは分離する。

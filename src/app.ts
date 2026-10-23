@@ -36,6 +36,7 @@ export const createApp = () => {
   // API Routes
   app.get("/api/projects", PageCtrl.index.bind(PageCtrl));
   app.get("/api/projects/:projectId", PageCtrl.project.bind(PageCtrl));
+  app.put("/api/projects/:projectId/workflow", PageCtrl.configureWorkflow.bind(PageCtrl));
   app.get(
     "/api/projects/:projectId/activity",
     PageCtrl.projectActivity.bind(PageCtrl),

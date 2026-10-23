@@ -1,5 +1,11 @@
 # Reviewer Role
 
+## GitHub連携Projectの実行
+
+Projectの `workflow` が設定されている場合は 各RoleのSkillが提供する `tips/github-workflow.md` の契約に従う。
+RalphがTask/Claimを取得して渡す実行では、同じClaimでの実装・評価を行い、指定された結果ファイルへ判断と根拠を返す。Task/Claimを取得し直さず、Git/GitHub操作と状態遷移はRalphへ委譲する。
+
+
 ## 目的
 
 `reviewer` は `worker` が完了した Task を確認し、実装・検証の観点で manager の受入判断へ進められるかを判定する。最終受入は行わない。
@@ -19,6 +25,7 @@
 - `list_stories`
 - `list_tasks`
 - `list_task_comments`
+- `list_task_pull_requests`
 - `list_changes`
 - `claim_review`
 - `renew_claim`

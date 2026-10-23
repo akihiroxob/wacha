@@ -577,3 +577,20 @@ test("POST /mcp error responses keep the JSON-RPC shape", async () => {
   assert.equal(typeof body.error.code, "number");
   assert.equal(typeof body.error.message, "string");
 });
+
+
+test("Project GitHub workflow can be configured through Human API and returned in detail", async () => {
+  const project = await projectRepository.create("GitHub", null, "repo/github");
+  const workflow = { repository: "Org/Repo", baseBranch: "main", requiredChecks: ["verify"] };
+  const configured = await app.request(`/api/projects/${project.id}/workflow`, jsonInit("PUT", { workflow }));
+  assert.equal(configured.status, 200);
+  const detail = await (await app.request(`/api/projects/${project.id}`)).json();
+  assert.deepEqual(detail.workflow, { ...workflow, repository: "org/repo" });
+  assert.deepEqual(detail.pullRequests, []);
+  const optionalChecks = await app.request(`/api/projects/${project.id}/workflow`, jsonInit("PUT", { workflow: { ...workflow, requiredChecks: [] } }));
+  assert.equal(optionalChecks.status, 200);
+  const updatedDetail = await (await app.request(`/api/projects/${project.id}`)).json();
+  assert.deepEqual(updatedDetail.workflow, { ...workflow, repository: "org/repo", requiredChecks: [] });
+  const invalid = await app.request(`/api/projects/${project.id}/workflow`, jsonInit("PUT", { workflow: { ...workflow, requiredChecks: [""] } }));
+  assert.equal(invalid.status, 400);
+});
