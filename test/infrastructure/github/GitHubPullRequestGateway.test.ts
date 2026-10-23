@@ -36,7 +36,7 @@ test("ordinary and malformed comments are not approval evidence", async () => {
 test("missing, pending, failed and ambiguous checks fail closed", async () => {
   const pr = await gateway([]).getPullRequest("org/repo", 1);
   assert.equal(checksPassed(pr, ["verify"]), true);
-  assert.equal(checksPassed(pr, []), false);
+  assert.equal(checksPassed(pr, []), true);
   assert.equal(checksPassed(pr, ["missing"]), false);
   assert.equal(checksPassed({ ...pr, checks: [...pr.checks, { name: "verify", state: "failure" }] }, ["verify"]), false);
 });

@@ -587,6 +587,10 @@ test("Project GitHub workflow can be configured through Human API and returned i
   const detail = await (await app.request(`/api/projects/${project.id}`)).json();
   assert.deepEqual(detail.workflow, { ...workflow, repository: "org/repo" });
   assert.deepEqual(detail.pullRequests, []);
-  const invalid = await app.request(`/api/projects/${project.id}/workflow`, jsonInit("PUT", { workflow: { ...workflow, requiredChecks: [] } }));
+  const optionalChecks = await app.request(`/api/projects/${project.id}/workflow`, jsonInit("PUT", { workflow: { ...workflow, requiredChecks: [] } }));
+  assert.equal(optionalChecks.status, 200);
+  const updatedDetail = await (await app.request(`/api/projects/${project.id}`)).json();
+  assert.deepEqual(updatedDetail.workflow, { ...workflow, repository: "org/repo", requiredChecks: [] });
+  const invalid = await app.request(`/api/projects/${project.id}/workflow`, jsonInit("PUT", { workflow: { ...workflow, requiredChecks: [""] } }));
   assert.equal(invalid.status, 400);
 });
