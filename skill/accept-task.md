@@ -2,7 +2,7 @@
 name: accept-task
 description: manager が Task の成果を要件と Project 全体の整合性に照らして最終受入し、Accept または Reject を判断する。
 status: active
-version: 5
+version: 6
 allowRoles: [manager]
 requiredKnowledge:
   - principles/frontend-architecture.md
@@ -52,6 +52,8 @@ Projectに `workflow` が設定されている場合は `knowledge/tips/github-w
 8. 両方を満たす場合だけ `accept_task` を呼ぶ。製品の不足は、期待との差分と実行可能な再受入条件を付けて `reject_task` を呼ぶ。計画・環境・依存が未解決で判定できない場合は、原因と再開条件を残して `release_claim` する。
 
 ## UI変更の受入条件
+
+部品カタログと製品の表示が同じ実装・トークンであることを確認し、採用したムードボード/プロトタイプの視覚方向と製品画面を比較する。カタログの表示成功だけで画面適用済みとしない。
 
 React UIの受入では `tips/frontend-quality-gates.md` に従い、ProjectのPolicy・構造検査結果と、対象SHAの実ブラウザの観測を照合する。Desktop・狭い画面の保存画像を実際に見て、操作、変更に関係する状態、文字切れ、余白、折返し、親layoutによる部品の伸張を確認する。同じsize契約は必要に応じて寸法を測り、異なる用途・sizeを同一寸法にはしない。ページが開けることだけで見た目を受け入れない。必須確認が未実施ならAcceptせず、原因と再開条件を返す。確認済み証拠の再利用は対象Task・SHA・環境・データ・現在のACとの一致を確認する。
 

@@ -2,7 +2,7 @@
 name: review-task
 description: in_review の task を、完了条件・既存構成・設計原則・変更範囲の観点で検証し、受け入れ可能性を明確に判定する。
 status: active
-version: 8
+version: 9
 allowRoles: [reviewer]
 requiredKnowledge:
   - tips/github-workflow.md
@@ -54,6 +54,8 @@ Projectに `workflow` が設定されている場合は `knowledge/tips/github-w
 11. 受け入れ可能なら同じClaimで `reviewed_task`、追加修正が必要なら理由付きで `reject_task` を実行する。判定せず中断する場合は `release_claim` する。
 
 ## UI変更の承認条件
+
+UI方針・トークン・製品部品・カタログの整合を確認し、重複した見本専用実装を認めない。変更した状態例の描画・操作・buildと、製品画面への影響を確認する。
 
 React UIの変更では `tips/frontend-quality-gates.md` に従い、構造検査を対象SHAで実行し、依存方向・公開入口・基本部品の利用と例外を差分で確認する。ファイルを移しただけ、CSS classだけを共有、型チェックだけのlint、全違反の一括除外では成立しない。共通部品とトークンの変更は利用画面への影響を確認する。変更で生じた・関連する違反は修正を求める。必須検査が未実施なら承認せず、実装の不足と環境・前提整備の不足を区別して返す。
 

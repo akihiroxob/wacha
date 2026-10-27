@@ -19,7 +19,7 @@
 
 ## UI開発の共通デフォルト
 
-React UIを変更するWorker・Reviewerと受入するManagerは、各Skillが配信する `principles/frontend-architecture.md` と `tips/frontend-quality-gates.md` を適用する。Projectの明示Policyを優先し、未指定部分にはFeature単位の配置、依存境界、共通React部品、SCSS・デザイントークンを使う。検査コードと実行コマンドはProject側に接続し、CIの有無とRoleの検証責任を分ける。Skillを読んだことだけを構造検査・画面確認の実施とみなさない。
+React UIを変更するWorker・Reviewerと受入するManagerは、各Skillが配信する `principles/frontend-architecture.md` と `tips/frontend-quality-gates.md` を適用する。Projectの明示Policyを優先し、未指定部分にはFeature単位の配置、依存境界、共通React部品、SCSS・デザイントークンを使う。検査コードと実行コマンドはProject側に接続し、CIの有無とRoleの検証責任を分ける。Skillを読んだことだけを構造検査・画面確認の実施とみなさない。 継続するReact UIには、Project固有のUI方針・共有トークン・製品の実コンポーネント・同じソースを使う部品カタログをそろえる。カタログの採用製品はProjectで選定し、共通Knowledgeへ固有の配色を持ち込まない。
 
 ## 作業フェーズ
 

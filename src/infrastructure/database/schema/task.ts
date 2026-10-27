@@ -10,6 +10,7 @@ export interface TaskTable {
   title: string;
   description: string | null;
   status: TaskStatus;
+  completion_mode: Generated<"pull_request" | "evidence">;
   assignee: string | null;
   reject_reason: string | null;
   resume_source_status: ResumeSourceStatus | null;
