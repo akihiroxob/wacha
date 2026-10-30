@@ -2,7 +2,7 @@
 name: implement-task
 description: 割り当てられた task を、既存構成・設計原則・実装品質を守りながらレビュー可能な状態まで実装する。
 status: active
-version: 9
+version: 10
 allowRoles: [worker]
 requiredKnowledge:
   - tips/github-workflow.md
@@ -109,6 +109,8 @@ Projectに `workflow` が設定されている場合は `knowledge/tips/github-w
 - 今回の Task と無関係な設計の問題は、`[design-strain]` を付けた単発 Task として根拠を記録する。
 
 ## UI変更の完了条件
+
+部品の変更に合わせて実装と同じソースを使うカタログの状態例・使用方法を更新し、製品画面への適用と両方を検証する。未整備ならfrontend-architecture.mdの小さなデザインシステムに従い、必要な導入範囲を計画する。
 
 React UIの変更では `tips/frontend-quality-gates.md` に従い、Projectの配置・依存方向・部品・検査コマンドを特定して計画に残す。共通基本部品とSCSSトークンを利用し、外側の配置は親layoutで扱う。検査がなければ関連領域の検査を導入し、大きな前提整備が必要ならManagerへ分割を返す。構造検査・関連テスト・型チェック・実画面の確認結果を残す。CIがないことを省略理由にしない。必須検査を実行できない場合は原因・未検証・再開条件を返し、検証済みの完了としない。
 

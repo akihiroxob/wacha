@@ -1,6 +1,6 @@
 # GitHubを正本とするTask実行
 
-ProjectにRepository workflowが設定されている場合は、Taskごとのbranch・worktree・PRを使う。Task管理サービスはPRの参照と検証結果を保持し、コードやPR本文を複製しない。
+ProjectにRepository workflowが設定されている通常Task（`completionMode: pull_request`）では、Taskごとのbranch・worktree・PRを使う。Task管理サービスはPRの参照と検証結果を保持し、コードやPR本文を複製しない。
 
 ## Roleの責務
 
@@ -25,3 +25,9 @@ Managerによるマージ後の差し戻しは、同じTaskの新規PRで対応�
 - 環境・権限・認証が変わらない限り解消しない問題は根拠を残して停止する。同じ操作の無制限な再起動を行わない。
 
 実行RunnerがTask・Claim・専用worktreeを取得済みの場合は、そのContextを使用する。Agentは実装・評価・検証根拠をRunnerへ返し、Git/GitHub操作とTask状態遷移をRunnerへ委譲する。Claimを取り直さない。
+
+## 変更を伴わない運用Task
+
+ManagerがRepository変更を伴わないと判断したTaskには`completionMode: evidence`を選ぶ。Workerは実施内容・許可範囲・検証対象・操作結果・残る制約を記録し、ReviewerとManagerが独立に検証する。各段階のcurrent Claimに紐づくコメントを残し、Managerの受入根拠も記録する。PR・commit・mergeは作成しない。Taskを完了させるためだけの変更は作らない。
+
+モードは`issue_task`・`edit_task`でManagerが指定し、Worker/Reviewerが結果JSONだけで変更しない。既定は`pull_request`。モード変更は有効ClaimとPR履歴がないtodo/rejectedのTaskに限る。実装変更が必要なら通常のPR方式でTaskを切り出す。Runnerが取得済みのTask/Claimと状態遷移の責務は、運用Taskでも維持する。

@@ -126,6 +126,10 @@ export class TaskCoordinationService {
       await this.requireRole(DatabaseClient, task.project_id, principalId, role);
       if (claimId) await this.assertCurrentClaim(DatabaseClient, principalId, taskId, claimId);
     }
+    if (task.completion_mode === "evidence") {
+      if (toolName === "register_task_pull_request") throw new CoordinationError("INVALID_INPUT", "Evidence Tasks do not register PRs");
+      return null;
+    }
     const workflow = await this.getRepositoryWorkflow(task.project_id);
     if (!workflow) return null;
     const rows = await this.getTaskPullRequests(taskId);
@@ -153,6 +157,7 @@ export class TaskCoordinationService {
         const task = await this.getTask(db, taskId);
         await this.requireRole(db, task.project_id, principalId, ProjectRole.WORKER);
         if (task.status !== TaskStatus.DOING) throw new CoordinationError("INVALID_TASK_STATUS", "Task is not doing");
+        if (task.completion_mode === "evidence") throw new CoordinationError("INVALID_INPUT", "Evidence Tasks do not register PRs");
         const workflow = await this.getRepositoryWorkflow(task.project_id, db);
         if (!workflow) throw new CoordinationError("INVALID_INPUT", "Project has no GitHub workflow");
         const pr = prefetched?.current;
@@ -190,6 +195,14 @@ export class TaskCoordinationService {
   private async verifyPullRequest(db: DatabaseExecutor, taskId: string, phase: "complete" | "review" | "accept",
     expectedSha?: string, claimId?: string, evidence?: string, prefetched?: PullRequestSnapshot, reviewCommentId?: number) {
     const task = await this.getTask(db, taskId);
+    if (task.completion_mode === "evidence") {
+      if (phase !== "complete") {
+        const note = await db.selectFrom("task_comment").select("id").where("task_id", "=", taskId)
+          .where("claim_id", "=", claimId ?? "").executeTakeFirst();
+        if (!note || (phase === "accept" && !evidence?.trim())) throw new CoordinationError("INVALID_INPUT", "Evidence Tasks require a current Claim-bound verification note");
+      }
+      return null;
+    }
     const workflow = await this.getRepositoryWorkflow(task.project_id, db);
     if (!workflow) return null;
     const row = await db.selectFrom("task_pull_request").selectAll().where("task_id", "=", taskId).orderBy("id", "desc").executeTakeFirst();
@@ -625,6 +638,7 @@ export class TaskCoordinationService {
         storyId: task.story_id,
         title: task.title,
         description: task.description,
+        completionMode: task.completion_mode,
         status: task.status,
         assignee: unexpiredClaim?.principal_id ?? null,
         rejectReason: task.reject_reason,
@@ -1166,7 +1180,7 @@ export class TaskCoordinationService {
     if (task.status !== TaskStatus.WAIT_ACCEPT) {
       throw new CoordinationError("INVALID_TASK_STATUS", `Task ${taskId} is not wait_accept`);
     }
-    const pr = await this.verifyPullRequest(db, taskId, "accept", verification?.mergeSha, undefined, verification?.evidence, prefetched);
+    const pr = await this.verifyPullRequest(db, taskId, "accept", verification?.mergeSha, claimId, verification?.evidence, prefetched);
     const now = this.clock();
     await db
       .updateTable("task")
@@ -1380,7 +1394,7 @@ export class TaskCoordinationService {
 
   async issueTask(
     principalId: string,
-    input: { projectId: string; storyId?: string; title: string; description?: string },
+    input: { projectId: string; storyId?: string; title: string; description?: string; completionMode?: "pull_request" | "evidence" },
     requestId: string,
   ) {
     return DatabaseClient.transaction().execute(async (db) =>
@@ -1390,6 +1404,9 @@ export class TaskCoordinationService {
           ProjectRole.REVIEWER,
           ProjectRole.WORKER,
         ]);
+        const completionMode = input.completionMode ?? "pull_request";
+        if (!["pull_request", "evidence"].includes(completionMode)) throw new CoordinationError("INVALID_INPUT", "Unknown completion mode");
+        if (completionMode === "evidence") await this.requireRole(db, input.projectId, principalId, ProjectRole.MANAGER);
         const title = this.requiredText(input.title, "Task title");
         if (input.storyId) {
           const story = await db
@@ -1419,6 +1436,7 @@ export class TaskCoordinationService {
             title,
             description: input.description?.trim() || null,
             status: TaskStatus.TODO,
+            completion_mode: completionMode,
             assignee: null,
             reject_reason: null,
             resume_source_status: null,
@@ -1432,7 +1450,7 @@ export class TaskCoordinationService {
           type: "TASK_CREATED",
           entityId: id,
           principalId,
-          payload: { actorRole, status: TaskStatus.TODO, storyId: input.storyId ?? null },
+          payload: { actorRole, status: TaskStatus.TODO, storyId: input.storyId ?? null, completionMode },
           occurredAt: now,
         });
         return {
@@ -1442,6 +1460,7 @@ export class TaskCoordinationService {
           title,
           description: input.description?.trim() || null,
           status: TaskStatus.TODO,
+          completionMode,
           sortOrder,
           createdAt: now,
           updatedAt: now,
@@ -1458,6 +1477,7 @@ export class TaskCoordinationService {
       title: string;
       description?: string;
       sortOrder?: number;
+      completionMode?: "pull_request" | "evidence";
     },
     requestId: string,
   ) {
@@ -1468,6 +1488,17 @@ export class TaskCoordinationService {
         if (task.project_id !== input.projectId) {
           throw new CoordinationError("INVALID_TASK_STATUS", "Task does not belong to the Project");
         }
+        if (input.completionMode !== undefined && !["pull_request", "evidence"].includes(input.completionMode)) {
+          throw new CoordinationError("INVALID_INPUT", "Unknown completion mode");
+        }
+        if (input.completionMode !== undefined && input.completionMode !== task.completion_mode) {
+          const active = await db.selectFrom("task_claim").select("id").where("task_id", "=", task.id)
+            .where("state", "=", "active").where("expires_at", ">", this.clock()).executeTakeFirst();
+          const prs = await this.getTaskPullRequests(task.id, db);
+          if (![TaskStatus.TODO, TaskStatus.REJECTED].includes(task.status as "todo" | "rejected") || active || prs.length) {
+            throw new CoordinationError("INVALID_TASK_STATUS", "Completion mode requires an unclaimed todo/rejected Task without PR history");
+          }
+        }
         const title = this.requiredText(input.title, "Task title");
         const now = this.clock();
         await db
@@ -1476,10 +1507,15 @@ export class TaskCoordinationService {
             title,
             description: input.description?.trim() || null,
             ...(input.sortOrder === undefined ? {} : { sort_order: input.sortOrder }),
+            ...(input.completionMode === undefined ? {} : { completion_mode: input.completionMode }),
             updated_at: now,
           })
           .where("id", "=", input.taskId)
           .execute();
+        if (input.completionMode !== undefined && input.completionMode !== task.completion_mode) {
+          await this.appendChange(db, { projectId: input.projectId, type: "TASK_UPDATED", entityId: task.id,
+            principalId, payload: { actorRole: "manager", completionMode: input.completionMode }, occurredAt: now });
+        }
         const updated = await this.getTask(db, input.taskId);
         return {
           id: updated.id,
@@ -1487,6 +1523,7 @@ export class TaskCoordinationService {
           storyId: updated.story_id,
           title: updated.title,
           description: updated.description,
+          completionMode: updated.completion_mode,
           status: updated.status,
           sortOrder: updated.sort_order,
           updatedAt: updated.updated_at,

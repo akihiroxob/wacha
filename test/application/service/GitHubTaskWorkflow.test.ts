@@ -174,3 +174,37 @@ test("configured CI still blocks review when missing or failing", async () => {
     await assert.rejects(service.reviewedTask("reviewer", task.id, review.claimId, "reviewed", sha, 42), code("PULL_REQUEST_NOT_READY"));
   }
 });
+
+test("Manager-selected evidence Tasks preserve independent review and acceptance without PRs", async () => {
+  const project = await projects.create("Operations", null, "/repo");
+  await service.configureRepositoryWorkflow(project.id, { repository: "org/repo", baseBranch: "main", requiredChecks: [] });
+  for (const role of ["worker", "reviewer", "manager"] as const) await grants.grant(project.id, role, role);
+  await assert.rejects(service.issueTask("worker", { projectId: project.id, title: "Repair", completionMode: "evidence" }, "forged-mode"), code("FORBIDDEN"));
+  const task = await service.issueTask("manager", { projectId: project.id, title: "Repair", completionMode: "evidence" }, "issue-evidence");
+  assert.equal(task.completionMode, "evidence");
+  const work = await service.claimTask("worker", task.id, "work-evidence");
+  await assert.rejects(service.editTask("manager", { projectId: project.id, taskId: task.id, title: task.title, completionMode: "pull_request" }, "change-active"), code("INVALID_TASK_STATUS"));
+  await assert.rejects(service.registerTaskPullRequest("worker", task.id, work.claimId, 1, "evidence-pr"), code("INVALID_INPUT"));
+  await service.addTaskComment("worker", task.id, work.claimId, "POST 201; restart GET 200", "evidence-work-note");
+  await service.completeTask("worker", task.id, work.claimId, "evidence-complete");
+  await assert.rejects(service.claimAcceptance("manager", task.id, "evidence-shortcut"), code("PULL_REQUEST_NOT_READY"));
+  const review = await service.claimReview("reviewer", task.id, "evidence-review");
+  await assert.rejects(service.reviewedTask("reviewer", task.id, review.claimId, "evidence-unverified"), code("INVALID_INPUT"));
+  await service.addTaskComment("reviewer", task.id, review.claimId, "Independently verified persistence", "evidence-review-note");
+  await service.reviewedTask("reviewer", task.id, review.claimId, "evidence-reviewed");
+  const acceptance = await service.claimAcceptance("manager", task.id, "evidence-acceptance");
+  await service.addTaskComment("manager", task.id, acceptance.claimId, "All AC verified", "evidence-accept-note");
+  await service.acceptTask("manager", task.id, acceptance.claimId, "evidence-accepted", { mergeSha: merge, evidence: "All AC verified" });
+  assert.equal(calls, 0);
+  assert.equal((await service.listTasks("manager", project.id)).tasks[0]?.status, "accepted");
+});
+
+test("Manager may select evidence for unclaimed operational Tasks, but not Tasks with PR history", async () => {
+  const { project, task, work } = await setup();
+  await service.registerTaskPullRequest("worker", task.id, work.claimId, 1, "existing-pr");
+  await service.releaseClaim("worker", work.claimId, "Deferred", "release-existing");
+  await assert.rejects(service.editTask("manager", { projectId: project.id, taskId: task.id, title: task.title, completionMode: "evidence" }, "rewrite-history"), code("INVALID_TASK_STATUS"));
+  const operation = await service.issueTask("manager", { projectId: project.id, title: "Operational recovery" }, "issue-operation");
+  const edited = await service.editTask("manager", { projectId: project.id, taskId: operation.id, title: operation.title, completionMode: "evidence" }, "edit-operation");
+  assert.equal(edited.completionMode, "evidence");
+});

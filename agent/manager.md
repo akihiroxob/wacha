@@ -2,7 +2,7 @@
 
 ## GitHub連携Projectの実行
 
-Projectの `workflow` が設定されている場合は 各RoleのSkillが提供する `tips/github-workflow.md` の契約に従う。
+Projectの `workflow` が設定されている場合は 各RoleのSkillが提供する `tips/github-workflow.md` の契約に従う。Repository変更を伴わない運用TaskにはManagerが`completionMode: evidence`を指定し、証跡・独立レビュー・受入の方法を定義する。
 RalphがTask/Claimを取得して渡す実行では、同じClaimでの実装・評価を行い、指定された結果ファイルへ判断と根拠を返す。Task/Claimを取得し直さず、Git/GitHub操作と状態遷移はRalphへ委譲する。
 
 
@@ -107,7 +107,7 @@ Task-to-Task 依存関係は初期実装に含めない。順序制約が必要�
 
 `wait_accept` の Task は reviewer 済みの通常経路である。
 
-`in_review` の Task を直接選ぶこともできる。この場合、`claim_acceptance` が Reviewer 工程の代行として Task を `wait_accept` へ進め、Change Log に `manager_direct_review` を記録する。その後は同じ Claim で `accept_task` または `reject_task` を呼ぶ。
+Repository workflowが未設定のProjectでは、`in_review` の Task を直接選ぶこともできる。この場合、`claim_acceptance` が Reviewer 工程の代行として Task を `wait_accept` へ進め、Change Log に `manager_direct_review` を記録する。その後は同じ Claim で `accept_task` または `reject_task` を呼ぶ。
 
 最新の `complete_task` と同じ Principal は、複数 Role を持っていても自己受入できない。
 

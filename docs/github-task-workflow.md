@@ -4,7 +4,7 @@
 
 Web UIのProject詳細にある「GitHub連携」で、`owner/repository`、統合先branch、任意のCIチェック名を設定する。チェック名はGitHubのjob名またはcommit statusのcontext名と一致させる。CI確認は任意。空欄（`requiredChecks: []`）ならCIを条件にせず、指定した場合は全チェックの成功を必須とする。
 
-未設定のProjectはローカル方式を使用する。GitHub方式を設定したProjectでは、PRの登録・マージ・AC検証がTaskの状態遷移条件となる。`doing`・`in_review`・`wait_accept`のTaskがある間は設定を変更できない。未解決TaskにPR履歴がある場合は設定変更・連携解除ができない。
+未設定のProjectはローカル方式を使用する。GitHub方式の通常Task（`completionMode: pull_request`）では、PRの登録・マージ・AC検証が状態遷移条件となる。`doing`・`in_review`・`wait_accept`のTaskがある間は設定を変更できない。未解決TaskにPR履歴がある場合は設定変更・連携解除ができない。
 
 Serverの`WACHA_GITHUB_TOKEN`に、対象repositoryのPull requests、Contents、Checks、Commit statusesの読み取り権限を持つ資格情報を設定する。TokenはDB・Project設定・MCP応答へ保存しない。公開repositoryでは無認証読み取りも可能だが、安定運用には認証を使用する。
 
@@ -49,3 +49,9 @@ Manager差し戻しでは、マージ済みPRを再使用せず、最新の統�
 PRのマージ後にWacha更新が失敗した場合は、マージ結果を確認して`reviewed_task`を再送する。Task状態のためにGitHub上で再マージすることはない。期限切れClaimは新しいClaimを取得して再検証する。
 
 Web UIのPR履歴は最終確認時のsnapshotであり、GitHubの現在状態はPRリンク先で確認する。ACの妥当性はManagerが判断し、Serverは対象commit・Claim・必須根拠の整合を強制する。
+
+## Repository変更を伴わない運用Task
+
+`issue_task`・`edit_task`でManagerが`completionMode: evidence`を指定すると、操作・検証の証跡で完了するTaskになる。既定は`pull_request`。Worker・Reviewerによる証跡モードの選択は許可しない。変更できるのは有効ClaimもPR履歴もないtodo/rejectedのTaskだけで、選択はChange Logへ記録する。`list_tasks`は`completionMode`を返す。
+
+証跡モードではPRを登録せず、Workerはcurrent Work Claimの実施・検証コメントを記録してcomplete_taskする。Reviewerは別Principalで検証し、current Review Claimのコメントを記録してreviewed_taskする。Managerはcurrent Acceptance Claimのコメントとverification.evidenceを記録してACを受け入れる。Claim・自己レビュー禁止・自己受入禁止・ReviewerからManagerへの段階は維持する。Repositoryの変更が必要になった場合は、PRを用いる別Taskとして扱う。

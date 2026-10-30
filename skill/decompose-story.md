@@ -2,9 +2,10 @@
 name: decompose-story
 description: Story を、実装・レビュー・受け入れまで進めやすい独立した task 群に分解する。
 status: active
-version: 4
+version: 6
 allowRoles: [manager]
 requiredKnowledge:
+  - principles/frontend-architecture.md
   - tips/story-splitting.md
   - tips/task-writing.md
 requiredTools:
@@ -28,9 +29,13 @@ Story を、実装・レビュー・受け入れまで進めやすい独立し�
 2. `knowledge/tips/story-splitting.md` に従い、独立に検証できる成果単位を決める。別々の成果なら Story を分け、同じ Story に置く場合は各 Task の受入境界と統合条件の所有 Task を明記する。
 3. 各 Task を `knowledge/tips/task-writing.md` の形式で記述する。ACごとに所有 Task、Given の準備操作、利用可能時点、観測方法、対象 revision、依存 Task ID・必要状態、環境制約を確認する。
 4. 自身の受入に後続 Task が必要なら、順序変更・縦切りへの統合・ACの割当変更で実行可能にする。共通基盤も、その Task で観測できる結果を完了条件にする。
-5. 必要な Story / Task を `issue_story`・`issue_task` で登録し、`edit_story`・`edit_task` で実際の ID と受入境界を反映する。移したACは移動先へ先に保存してから移動元を更新し、未割当・重複・循環を確認する。
+5. Taskの成果物を確認し、Repository変更が必要なら既定の`completionMode: pull_request`、変更を伴わない運用なら`evidence`を選ぶ。どちらも実施・独立レビュー・AC検証の根拠を定義する。必要な Story / Task を `issue_story`・`issue_task` で登録し、`edit_story`・`edit_task` で実際の ID と受入境界を反映する。移したACは移動先へ先に保存してから移動元を更新し、未割当・重複・循環を確認する。
 6. 依存 Task ID、実装・受入のどちらを待つか、再選択条件を本文に明示する。`sortOrder` は選択材料であり依存を強制しない。サーバーに依存制御がない間は、候補に現れても前提未成立の Task を選択しないよう引き継ぐ。
 7. 起票後・差し戻しでACを変更した後も、Given の成立と要件の割当を再確認する。未成立の依存が変わらないまま同じ計画を再試行しない。
+
+## UI・デザインシステムの分解
+
+React UIでは既存のUI方針・トークン・実コンポーネント・カタログを確認する。未整備なら、現在必要な部品で観測できる基盤整備と、製品画面への適用を独立して検証できる増分に分ける。ムードボード/プロトタイプの参照箇所・採用する視覚方向・比較方法をACに含め、構造整理だけで視覚適用済みとしない。既存Policy内の選定・実装に都度の人の再承認を追加しない。
 
 ## Success Criteria
 

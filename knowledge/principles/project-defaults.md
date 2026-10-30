@@ -16,6 +16,7 @@ React UIの構成・共通部品・SCSSについては、明示的な上書き�
 | Web UI | React と Vite | クライアント主体の画面・アプリの場合。サーバー描画、検索流入、配信環境などに固有の要件があれば Project で選定する |
 | API サーバー | Node.js と Hono | HTTP API を新規に構築する場合。既存の実行基盤や運用制約があればそれを優先する |
 | UI のスタイル | SCSS と共有デザイントークン | 新しい React UI の方針が未指定の場合。詳細は `knowledge/principles/frontend-architecture.md` に従う |
+| UIのデザインシステム | UI方針・トークン・実コンポーネント・部品カタログ | 継続して開発するReact UI。既存の同等な仕組みを再利用し、新規カタログはStorybookを第一候補としてProjectで選定する |
 
 Web UI、API、CLI のうち必要なものだけを採用する。他の種類のソフトウェアに TypeScript や React を当てはめない。バージョン、状態管理、ルーター、DB、ORM、テストツールは、必要な要件と既存環境を確認して選ぶ。推奨構成を満たすためだけに依存や層を追加しない。
 

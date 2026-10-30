@@ -7,7 +7,7 @@ async function addColumnIfMissing(
   table: string,
   column: string,
   dataType: "text" | "integer",
-  defaultTo?: number,
+  defaultTo?: number | string,
 ): Promise<boolean> {
   try {
     await DatabaseClient.schema
@@ -101,6 +101,8 @@ export function initializeSchema(): Promise<void> {
       .addForeignKeyConstraint("task_project_fk", ["project_id"], "project", ["id"])
       .addForeignKeyConstraint("task_story_fk", ["story_id"], "story", ["id"])
       .execute();
+
+    await addColumnIfMissing("task", "completion_mode", "text", "pull_request");
 
     await DatabaseClient.schema
       .createTable("task_comment")
